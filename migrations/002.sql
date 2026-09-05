@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS shift_plans(id TEXT PRIMARY KEY,site_id TEXT REFERENCES sites(id),guard_id TEXT REFERENCES users(id),start_time TEXT NOT NULL,end_time TEXT NOT NULL,created_by TEXT REFERENCES users(id),created_at TEXT NOT NULL);
