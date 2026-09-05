@@ -5,5 +5,10 @@ data/
 !.env.example
 .vercel/
 *.log
+.agents/
+skills-lock.json
 test-results/
 playwright-report/
+
+.vercel
+.env*

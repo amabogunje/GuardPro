@@ -7,6 +7,7 @@ import {
 let selectedReportId = null,
   reportMediaUrls = [];
 let reportSubmitting = false;
+let signingOut = false;
 let recordingPlaybackUrl = null;
 let photoStream = null;
 import { nextPatrol, shiftPatrols } from "./patrol-time.js";
@@ -69,7 +70,15 @@ function toast(t) {
   timer = setTimeout(() => ($("#toast").style.display = "none"), 7000);
 }
 async function api(url, body, method) {
+  if (body instanceof FormData) {
+    for (const item of body.values())
+      if (item instanceof Blob && item.size > 4 * 1024 * 1024)
+        throw new Error(
+          "This file is too large (4 MB maximum). Choose a smaller photo or record a shorter message.",
+        );
+  }
   let r = await fetch(url, {
+    signal: AbortSignal.timeout(20000),
     method: method || (body ? "POST" : "GET"),
     headers: {
       ...(vault.auth ? { "X-Session-Proof": vault.auth } : {}),
@@ -657,7 +666,7 @@ async function enqueue(kind, payload, media = []) {
   return q;
 }
 async function sync() {
-  if (busy || !user || !navigator.onLine) return;
+  if (busy || signingOut || !user || !navigator.onLine) return;
   busy = true;
   try {
     for (let q of pending()) {
@@ -703,6 +712,7 @@ async function sync() {
   } finally {
     busy = false;
     if (
+      !signingOut &&
       ["home", "incidents", "summaries"].includes(page) &&
       !holding &&
       !recordingSaving &&
@@ -876,8 +886,10 @@ async function scan(code, method = "qr") {
     });
     selectedCheckpoint = null;
     $("#manualDialog")?.close();
+    // The scan is safely stored locally. Network upload must not block Home.
+    scanBusy = false;
     render();
-    await sync();
+    sync();
   } finally {
     scanBusy = false;
   }
@@ -1263,10 +1275,10 @@ document.addEventListener("click", async (e) => {
         throw new Error(
           "Finish the recording and wait for playback before signing out.",
         );
-      if (busy)
-        throw new Error(
-          "Upload in progress. Please wait for it to finish before signing out.",
-        );
+      signingOut = true;
+      b.disabled = true;
+      b.textContent = "Signing out…";
+      while (busy) await new Promise((resolve) => setTimeout(resolve, 50));
       await saveDraftFromForm();
       await persist();
       try {
@@ -1282,6 +1294,7 @@ document.addEventListener("click", async (e) => {
       state = null;
       vault = { state: null, queue: [], draft: null };
       roundId = null;
+      signingOut = false;
       login();
       toast(
         "Device locked. Unsynchronized work remains encrypted for your sign-in.",
@@ -1407,6 +1420,7 @@ document.addEventListener("click", async (e) => {
         `<button data-page="admin" class="back">← Site management</button><button data-action="print">Print labels</button><div class="sheet">${labels.map((c) => `<article><h2>${esc(site().name)}</h2><h3>${esc(c.name)}</h3><img src="${c.image}" alt="Checkpoint QR"><p><code>${esc(c.code)}</code></p><small>Guard Companion · ISDL</small></article>`).join("")}</div>`;
     } else if (a === "print") window.print();
   } catch (err) {
+    signingOut = false;
     toast(err.message);
     b.disabled = false;
   }

@@ -2,11 +2,11 @@
 
 **Provided by Integrated Systems and Devices Limited — ISDL.**
 
-A working local guard-supervision MVP for existing guards. It records attendance, patrol activity, approved incident reports, handovers and follow-up. It does not replace CCTV, physical access control or emergency response. All seeded people, properties and events are fictional.
+A working guard-supervision MVP for existing guards. It records attendance, patrol activity, approved incident reports, handovers and follow-up. It does not replace CCTV, physical access control or emergency response. All seeded people, properties and events are fictional.
 
 ## Run locally
 
-Requires **Node.js 24+** and npm. SQLite is included with Node; no database service or Docker is needed.
+Requires **Node.js 24** and npm. SQLite is included with Node; no database service or Docker is needed.
 
 ```powershell
 npm ci
@@ -14,9 +14,9 @@ Copy-Item .env.example .env
 npm start
 ```
 
-Open **http://127.0.0.1:3000**. Use that same address consistently: `localhost` and `127.0.0.1` have separate cookies and offline storage. The server binds only to this computer by default. Nothing has been publicly deployed.
+Open **http://127.0.0.1:3000**. Use that same address consistently: `localhost` and `127.0.0.1` have separate cookies and offline storage. The server binds only to this computer by default. Hosted setup is documented in [Vercel deployment](docs/VERCEL.md).
 
-Schema migrations in `migrations/001.sql`, `002.sql`, and `003.sql` run idempotently on startup. A new database is seeded automatically. The data directory contains `guard.db`, its SQLite WAL files, and private `media/`. Keep this directory out of a public web root and out of source control. For a fresh demo without deleting anything, set `DATA_DIR=./data/fresh-demo` in `.env` and restart. Choose a new browser profile too if you want a fresh offline vault.
+SQLite schema migrations in `migrations/001.sql` through `008.sql` run idempotently on startup. A new database is seeded automatically. The data directory contains `guard.db`, its SQLite WAL files, and private `media/`. Keep this directory out of a public web root and out of source control. For a fresh demo without deleting anything, set `DATA_DIR=./data/fresh-demo` in `.env` and restart. Choose a new browser profile too if you want a fresh offline vault.
 
 | Account | Role | Assigned property |
 |---|---|---|
@@ -29,9 +29,9 @@ All demo accounts initially use **`Pilot-only-2026!`**. `DEMO_PASSWORD` only cha
 
 ## Ten-minute demonstration
 
-1. Sign in as Bala. The off-duty home shows a taller **Start your shift** card, **Off duty**, and **Click here**. **Message supervisor** is disabled until check-in. All in-app conversations belong to a shift; use your usual external contact method before work. Click here starts the shift directly and keeps you on Home. The on-duty card shows the start date/time, running elapsed timer and scheduled end in Nigerian local time. Instructions remain available through Hear instructions; there is no acknowledgement or instruction step during check-in. Bala’s fictional demo schedule is 06:00–18:00 and can be changed in Site management.
-2. Open **Start patrol**. Choose the 09:00 slot. Scan printed checkpoints or enter `OAK-1` through `OAK-4`. The checklist counts stops within a round. **Start another round** creates a separate round.
-3. Open **Report a problem**. Hold to speak, release, listen, optionally add a JPEG/PNG photo. With no AI key, type your observation. Enter “Around nine” for event time; review and confirm.
+1. Sign in as Bala. The off-duty home shows a taller **Start your shift** card, **Off duty**, and **Click here**. **Message supervisor** is disabled until check-in. All in-app conversations belong to a shift; use your usual external contact method before work. Click here asks for confirmation, starts the shift and keeps you on Home. The on-duty card shows the start date/time, running elapsed timer and scheduled end in Nigerian local time. Instructions remain available through Hear instructions; there is no acknowledgement or instruction step during check-in. Bala’s fictional demo schedule is 06:00–18:00 and can be changed in Site management.
+2. Open **Start patrol**. The next scheduled patrol is selected automatically. Select a checkpoint and scan its QR/NFC label, or use **Unable to scan?** and enter `OAK-1` through `OAK-4`. Scanning saves automatically. Return Home when the patrol is complete.
+3. Open **Report a problem**. Tap **Press to start**, then **Tap to stop**; play the recording back and optionally add photos or typed text. Select **Submit** and confirm. Audio-only reports work without an AI key; no transcript is fabricated. Event times are only extracted when supplied; the report timestamp is saved separately. Each attachment is limited to 4 MB.
 4. In another browser profile, sign in as owner. Open **Incidents** to see the submitted report and its private original media. Submission time and event time remain separate.
 5. Sign in as supervisor. Open Incidents. Acknowledge the new issue, assign a responsible person and next action, then resolve with a note and optional photo. Each transition preserves actor and timestamp. Acknowledgement alone never resolves the incident.
 6. Open **Daily reports**, generate a draft, inspect counts/source records, edit the narrative and approve. The owner sees only approved summaries. Download source records as JSON.
@@ -40,7 +40,7 @@ All demo accounts initially use **`Pilot-only-2026!`**. `DEMO_PASSWORD` only cha
 
 ## Offline demonstration
 
-Sign in once while online and wait for the app shell to cache. Disconnect using browser DevTools Network → Offline. Capture a patrol or incident, optionally with audio/photo, then submit locally. Reload, unlock with the same account/password, and check the pending count. Sign out and back in: the pending record survives. Reconnect and press the upload button. Repeated retries must still create one record.
+Sign in once while online and wait for the app shell to cache. Disconnect using browser DevTools Network → Offline. Capture a patrol or incident, optionally with audio/photo, then submit locally. Reload: the signed-in tab and saved work return. Sign out and back in: pending records survive. Reconnect with the app open to synchronize automatically. Repeated retries must still create one record.
 
 For an interrupted media upload, block `/api/media/**` in a browser testing tool, submit a photo report, then unblock and retry. The incident stays submitted while the attachment remains failed/pending locally. The automated browser suite performs this scenario.
 
@@ -66,7 +66,7 @@ Coverage includes authentication, cookie-only access denial, customer/site/media
 
 See [architecture and limitations](docs/ARCHITECTURE.md), [pilot checklist](docs/PILOT.md), and [operating assumptions](docs/OPERATIONS.md).
 
-Patrol scheduling: owners and supervisors can open **Overview → Scheduled rounds → Edit patrol schedule**, choose specific times or a repeating window (for example every 15 minutes), then save. Times are Nigerian local time. The guard sees the countdown on Start patrol. Enable optional phone notifications under Hear instructions; keep the app open for pilot reminders.
+Patrol scheduling: owners and supervisors can open **Overview → Scheduled rounds → Edit patrol schedule**, choose specific times or a repeating window (for example every 15 minutes), then save. Times are Nigerian local time. The guard sees the countdown on Start patrol. Foreground reminders are handled by the app; mobile browsers do not guarantee reminders while closed.
 
 Patrols: select a checkpoint, choose QR or NFC, and scan to save automatically. Manual code entry is under Unable to scan. NFC tags must hold the printed checkpoint code as an NDEF text record. Schedule changes apply to new shifts; unfinished patrols resume automatically. Early starts remain enabled for testing. Migration 004 adds optional site location reference settings under Scheduled rounds → Location checks.
 

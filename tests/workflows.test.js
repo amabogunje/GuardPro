@@ -7,7 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { chromium } from "@playwright/test";
-const base = "http://127.0.0.1:3101",
+const base = process.env.TEST_BASE_URL || "http://127.0.0.1:3101",
   data = path.resolve("data", "test-" + Date.now());
 let server, guard, owner, supervisor, other, incident, mid, shift;
 async function req(route, cookie, body, expected = 200) {
@@ -58,16 +58,27 @@ async function waitRecords(predicate) {
   assert.fail("Expected records were not received");
 }
 before(async () => {
-  server = spawn(process.execPath, ["server.js"], {
-    env: { ...process.env, PORT: "3101", DATA_DIR: data, OPENAI_API_KEY: "" },
-    stdio: "pipe",
-  });
-  await new Promise((resolve, reject) => {
-    server.stdout.on("data", (d) => {
-      if (String(d).includes("running")) resolve();
+  fs.mkdirSync(data, { recursive: true });
+  if (!process.env.TEST_BASE_URL) {
+    server = spawn(process.execPath, ["server.js"], {
+      env: {
+        ...process.env,
+        PORT: "3101",
+        DATA_DIR: data,
+        OPENAI_API_KEY: "",
+        DATABASE_URL: "",
+        BLOB_READ_WRITE_TOKEN: "",
+        VERCEL: "",
+      },
+      stdio: "pipe",
     });
-    server.on("exit", (c) => reject(new Error("Server exited " + c)));
-  });
+    await new Promise((resolve, reject) => {
+      server.stdout.on("data", (d) => {
+        if (String(d).includes("running")) resolve();
+      });
+      server.on("exit", (c) => reject(new Error("Server exited " + c)));
+    });
+  }
   [guard, owner, supervisor, other] = await Promise.all(
     ["bala", "owner", "supervisor", "other"].map(login),
   );
@@ -1175,13 +1186,17 @@ test("patrol mobile: selected QR/NFC auto-save, resume, hidden manual exception"
     await p
       .getByRole("button", { name: "Main gate Unchecked", exact: true })
       .click();
-    const qrBox = await p
-      .getByRole("button", { name: "Scan QR code", exact: true })
-      .boundingBox();
-    const nfcBox = await p
-      .getByRole("button", { name: "Scan NFC tag", exact: true })
-      .boundingBox();
-    assert.ok(Math.abs(qrBox.y - nfcBox.y) < 1);
+    // Read both positions in one frame; entry animations can move the page
+    // between two remote boundingBox requests on the cloud-backed version.
+    const scanButtonY = await p
+      .locator(".scan-actions")
+      .evaluate((el) =>
+        [...el.querySelectorAll("button")].map(
+          (b) => b.getBoundingClientRect().y,
+        ),
+      );
+    assert.equal(scanButtonY.length, 2);
+    assert.ok(Math.abs(scanButtonY[0] - scanButtonY[1]) < 1);
     await p.evaluate(() => (window.testQr = "OAK-1"));
     await p.getByRole("button", { name: "Scan QR code", exact: true }).click();
     await p.getByText("1 of 4 stops checked", { exact: true }).waitFor();
@@ -2476,4 +2491,70 @@ test("sign-out invalidates a restored second tab", async () => {
   } finally {
     await browser.close();
   }
+});
+
+test("concurrent retries create one report and attachment; competing shifts remain unique", async () => {
+  // More simultaneous logins than the database pool's size must not deadlock.
+  await Promise.all(Array.from({ length: 6 }, () => login("bala")));
+  let active = (await req("/api/state", guard)).shifts.find((s) => !s.ended_at);
+  if (!active) {
+    const start = event("start");
+    await req("/api/events", guard, start);
+    active = { id: start.id };
+  }
+  const report = event("incident", {
+    shift_id: active.id,
+    event_time: "Around nine",
+    report: "Concurrent retry verification (fictional).",
+    approved: true,
+    transcript: "",
+  });
+  const replies = await Promise.all(
+    Array.from({ length: 5 }, () => req("/api/events", guard, report)),
+  );
+  assert.equal(replies.filter((r) => !r.duplicate).length, 1);
+  const mediaId = randomUUID();
+  const bytes = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aUAAAAABJRU5ErkJggg==",
+    "base64",
+  );
+  const uploaded = await Promise.all(
+    Array.from({ length: 3 }, () => {
+      const form = new FormData();
+      form.append(
+        "file",
+        new Blob([bytes], { type: "image/png" }),
+        "fixture.png",
+      );
+      form.append("source", "photo library");
+      return req("/api/media/" + report.id + "/" + mediaId, guard, form);
+    }),
+  );
+  assert.equal(uploaded.filter((r) => !r.duplicate).length, 1);
+  const state = await req("/api/state", owner);
+  const saved = state.incidents.find((i) => i.id === report.id);
+  assert.equal(saved.media.length, 1);
+  assert.equal(saved.revisions.length, 1);
+  assert.equal(state.events.filter((e) => e.id === report.id).length, 1);
+  await req("/api/events", guard, event("end", { shift_id: active.id }));
+  const competing = await Promise.all(
+    [event("start"), event("start")].map(async (body) => {
+      const response = await fetch(base + "/api/events", {
+        method: "POST",
+        headers: {
+          cookie: guard,
+          "X-Session-Proof": guard.split("=")[1],
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      return response.status;
+    }),
+  );
+  assert.deepEqual(competing.sort(), [200, 409]);
+  const duty = (await req("/api/state", guard)).shifts.filter(
+    (s) => !s.ended_at,
+  );
+  assert.equal(duty.length, 1);
+  await req("/api/events", guard, event("end", { shift_id: duty[0].id }));
 });

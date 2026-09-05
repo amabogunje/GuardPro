@@ -8,7 +8,16 @@ import { transcribeAndDraft, draftSummary } from "./ai.js";
 import express from "express";
 import multer from "multer";
 import QRCode from "qrcode";
-import { DatabaseSync } from "node:sqlite";
+import {
+  all,
+  one,
+  run,
+  transaction,
+  postgres,
+  consumeRate,
+} from "./database.js";
+import { saveMedia, serveMedia, maxUploadBytes } from "./storage.js";
+import { migrate } from "./migrate.js";
 import {
   randomUUID,
   randomBytes,
@@ -16,24 +25,8 @@ import {
   timingSafeEqual,
   createHmac,
 } from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
-const dir = path.resolve(process.env.DATA_DIR || "data");
-fs.mkdirSync(dir, { recursive: true });
-fs.mkdirSync(path.join(dir, "media"), { recursive: true });
-const db = new DatabaseSync(path.join(dir, "guard.db"));
-db.exec(fs.readFileSync("migrations/001.sql", "utf8"));
-db.exec(fs.readFileSync("migrations/002.sql", "utf8"));
-db.exec(fs.readFileSync("migrations/004.sql", "utf8"));
-db.exec(fs.readFileSync("migrations/005.sql", "utf8"));
-db.exec(fs.readFileSync("migrations/006.sql", "utf8"));
-db.exec(fs.readFileSync("migrations/007.sql", "utf8"));
-db.exec(fs.readFileSync("migrations/008.sql", "utf8"));
-db.exec("PRAGMA journal_mode=WAL");
-const all = (s, ...p) => db.prepare(s).all(...p),
-  one = (s, ...p) => db.prepare(s).get(...p),
-  run = (s, ...p) => db.prepare(s).run(...p),
-  now = () => new Date().toISOString(),
+if (!postgres) await migrate();
+const now = () => new Date().toISOString(),
   id = () => randomUUID();
 const hash = (p) => {
   let s = randomBytes(16).toString("hex");
@@ -43,88 +36,45 @@ const verify = (p, h) => {
   let [s, v] = h.split(":");
   return timingSafeEqual(Buffer.from(v, "hex"), scryptSync(p, s, 64));
 };
-if (!one("SELECT id FROM users LIMIT 1")) {
-  let password = hash(process.env.DEMO_PASSWORD || "Pilot-only-2026!");
-  for (let [uid, name, role] of [
-    ["bala", "Bala", "guard"],
-    ["owner", "Ada Okafor", "owner"],
-    ["supervisor", "ISDL Supervisor", "supervisor"],
-    ["other", "Other Customer", "owner"],
-  ])
-    run(
-      "INSERT INTO users VALUES(?,?,?,?,?)",
-      uid,
-      name,
-      uid + "@demo.isdl",
-      password,
-      role,
-    );
-  run(
-    "INSERT INTO customers VALUES(?,?)",
-    "oak",
-    "Oak House household (fictional)",
-  );
-  run(
-    "INSERT INTO customers VALUES(?,?)",
-    "other",
-    "Other household (fictional)",
-  );
-  run(
-    "INSERT INTO sites(id,customer_id,name,instructions,phone) VALUES(?,?,?,?,?)",
-    "oak",
-    "oak",
-    "Oak House, Ikeja",
-    "Check the gate lock. Keep the walkway clear. Call your supervisor if you need help. Do not confront anyone.",
-    "+2340000000000",
-  );
-  run(
-    "INSERT INTO sites(id,customer_id,name) VALUES(?,?,?)",
-    "other",
-    "other",
-    "Palm Court (fictional)",
-  );
-  for (let uid of ["bala", "owner", "supervisor"])
-    run("INSERT INTO assignments VALUES(?,?)", uid, "oak");
-  run("INSERT INTO assignments VALUES(?,?)", "other", "other");
-  for (let [i, n] of [
-    "Main gate",
-    "Back gate",
-    "Generator area",
-    "Perimeter",
-  ].entries())
-    run(
-      "INSERT INTO checkpoints VALUES(?,?,?,?)",
-      "cp" + i,
-      "oak",
-      n,
-      "OAK-" + (i + 1),
-    );
-  run(
-    "INSERT INTO incidents(id,site_id,user_id,captured_at,received_at,event_time,report,transcript,status,next_action) VALUES(?,?,?,?,?,?,?,?,?,?)",
-    "demo-incident",
-    "oak",
-    "bala",
-    now(),
-    now(),
-    "Around nine",
-    "Back gate lock damaged. Reported to supervisor. Repair pending.",
-    "Back gate lock damaged. Reported to supervisor. Repair pending.",
-    "Acknowledged",
-    "Repair pending",
-  );
-  run(
-    "INSERT INTO transitions VALUES(?,?,?,?,?,?)",
-    id(),
-    "demo-incident",
-    "supervisor",
-    now(),
-    "Acknowledged",
-    "Supervisor acknowledged; repair pending",
-  );
-}
-db.exec(fs.readFileSync("migrations/003.sql", "utf8"));
 const app = express();
 app.disable("x-powered-by");
+if (process.env.VERCEL) app.set("trust proxy", 1);
+// Commit mutations before sending their success response.
+const post = (url, ...handlers) => {
+  const handler = handlers.pop();
+  app.post(url, ...handlers, async (req, res, next) => {
+    const original = res.json;
+    let response;
+    res.json = (value) => {
+      response = value;
+      return res;
+    };
+    try {
+      // Count attempts before acquiring a transaction connection. This also
+      // avoids pool exhaustion when several logins arrive simultaneously.
+      if (url === "/api/login" && !(await rate("login:" + req.ip, 600000, 40)))
+        fail("Too many attempts; wait ten minutes", 429);
+      if (url === "/api/ai" && !(await rate("ai:" + req.user.id, 3600000, 20)))
+        fail("Hourly AI pilot limit reached", 429);
+      await transaction(() => handler(req, res));
+      res.json = original;
+      res.json(response);
+    } catch (error) {
+      res.json = original;
+      next(error);
+    }
+  });
+};
+const mapAsync = async (items, fn) => {
+  const result = [];
+  for (const item of items) result.push(await fn(item));
+  return result;
+};
+const filterAsync = async (items, fn) => {
+  const result = [];
+  for (const item of items) if (await fn(item)) result.push(item);
+  return result;
+};
 app.use(express.json({ limit: "1mb" }));
 app.use((req, res, next) => {
   res.set({
@@ -146,15 +96,21 @@ app.use((req, res, next) => {
 const fail = (m, status = 400) => {
   throw Object.assign(new Error(m), { status });
 };
-const requireSite = (u, s) => {
-  if (!one("SELECT 1 FROM assignments WHERE user_id=? AND site_id=?", u.id, s))
+const requireSite = async (u, s) => {
+  if (
+    !(await one(
+      "SELECT 1 FROM assignments WHERE user_id=? AND site_id=?",
+      u.id,
+      s,
+    ))
+  )
     fail("Access denied", 403);
 };
 const supervisor = (u) => {
   if (u.role !== "supervisor") fail("Supervisor only", 403);
 };
-const audit = (u, a, d) =>
-  run(
+const audit = async (u, a, d) =>
+  await run(
     "INSERT INTO audit VALUES(?,?,?,?,?)",
     id(),
     u.id,
@@ -163,13 +119,16 @@ const audit = (u, a, d) =>
     JSON.stringify(d),
   );
 const limit = new Map();
-app.post("/api/login", (req, res) => {
-  let key = req.ip,
-    v = limit.get(key) || { n: 0, t: Date.now() };
-  if (Date.now() - v.t > 600000) v = { n: 0, t: Date.now() };
-  limit.set(key, v);
-  if (++v.n > 40) fail("Too many attempts; wait ten minutes", 429);
-  let u = one(
+async function rate(key, duration, maximum) {
+  if (postgres) return (await consumeRate(key, duration)) <= maximum;
+  let entry = limit.get(key) || { n: 0, t: Date.now() };
+  if (Date.now() - entry.t > duration) entry = { n: 0, t: Date.now() };
+  entry.n++;
+  limit.set(key, entry);
+  return entry.n <= maximum;
+}
+post("/api/login", async (req, res) => {
+  let u = await one(
     "SELECT * FROM users WHERE email=?",
     String(req.body.email || "").toLowerCase(),
   );
@@ -177,7 +136,7 @@ app.post("/api/login", (req, res) => {
     fail("Incorrect email or password", 401);
   let token = randomBytes(32).toString("hex"),
     expiresAt = Date.now() + 12 * 3600000;
-  run("INSERT INTO sessions VALUES(?,?,?)", token, u.id, expiresAt);
+  await run("INSERT INTO sessions VALUES(?,?,?)", token, u.id, expiresAt);
   res.cookie("session", token, {
     httpOnly: true,
     sameSite: "strict",
@@ -186,13 +145,13 @@ app.post("/api/login", (req, res) => {
   });
   res.json({ id: u.id, name: u.name, role: u.role, proof: token, expiresAt });
 });
-app.use(["/api", "/media"], (req, res, next) => {
+app.use(["/api", "/media"], async (req, res, next) => {
   let token = (req.headers.cookie || "")
     .split(";")
     .map((s) => s.trim())
     .find((s) => s.startsWith("session="))
     ?.slice(8);
-  req.user = one(
+  req.user = await one(
     "SELECT u.id,u.name,u.role FROM sessions s JOIN users u ON u.id=s.user_id WHERE token=? AND expires>?",
     token || "",
     Date.now(),
@@ -203,13 +162,13 @@ app.use(["/api", "/media"], (req, res, next) => {
   req.token = token;
   next();
 });
-app.post("/api/logout", (req, res) => {
-  run("DELETE FROM sessions WHERE token=?", req.token);
+post("/api/logout", async (req, res) => {
+  await run("DELETE FROM sessions WHERE token=?", req.token);
   res.clearCookie("session");
   res.json({ ok: true });
 });
-function canReadMessage(u, eventId) {
-  const context = one(
+async function canReadMessage(u, eventId) {
+  const context = await one(
     "SELECT * FROM message_context WHERE event_id=?",
     eventId,
   );
@@ -218,45 +177,120 @@ function canReadMessage(u, eventId) {
   return (
     u.role === "guard" &&
     context.guard_id === u.id &&
-    !!one(
+    !!(await one(
       "SELECT id FROM shifts WHERE id=? AND user_id=? AND ended_at IS NULL",
       context.shift_id,
       u.id,
-    )
+    ))
   );
 }
-app.get("/api/state", (req, res) => {
-  let u = req.user,
-    sites = all(
-      "SELECT s.* FROM sites s JOIN assignments a ON a.site_id=s.id WHERE a.user_id=?",
+app.get("/api/state", async (req, res) => {
+  const u = req.user;
+  const scoped = (t) =>
+    all(
+      `SELECT t.* FROM ${t} t JOIN assignments a ON a.site_id=t.site_id WHERE a.user_id=?`,
       u.id,
     );
-  let ids = sites.map((s) => s.id);
-  let scoped = (t) =>
-    all(`SELECT * FROM ${t}`).filter((x) => ids.includes(x.site_id));
-  let incidents = scoped("incidents");
+  const [
+    sites,
+    shiftPlans,
+    siteLocations,
+    checkpoints,
+    shifts,
+    events,
+    incidents,
+    summaries,
+    notifications,
+    instructions,
+    contexts,
+    media,
+    messageMedia,
+    history,
+    revisions,
+    names,
+  ] = await Promise.all([
+    all(
+      "SELECT s.* FROM sites s JOIN assignments a ON a.site_id=s.id WHERE a.user_id=?",
+      u.id,
+    ),
+    scoped("shift_plans"),
+    scoped("site_locations"),
+    scoped("checkpoints"),
+    scoped("shifts"),
+    scoped("events"),
+    scoped("incidents"),
+    scoped("summaries"),
+    scoped("notifications"),
+    all(
+      "SELECT v.id,v.site_id,v.created_at FROM instruction_versions v JOIN assignments a ON a.site_id=v.site_id WHERE a.user_id=? ORDER BY v.created_at DESC,v.id DESC",
+      u.id,
+    ),
+    all(
+      "SELECT c.* FROM message_context c JOIN events e ON e.id=c.event_id JOIN assignments a ON a.site_id=e.site_id WHERE a.user_id=?",
+      u.id,
+    ),
+    all(
+      "SELECT m.id,m.incident_id,m.mime,m.source,m.size FROM media m JOIN incidents i ON i.id=m.incident_id JOIN assignments a ON a.site_id=i.site_id WHERE a.user_id=?",
+      u.id,
+    ),
+    all(
+      "SELECT m.id,m.event_id,m.mime,m.source,m.size FROM message_media m JOIN events e ON e.id=m.event_id JOIN assignments a ON a.site_id=e.site_id WHERE a.user_id=?",
+      u.id,
+    ),
+    all(
+      "SELECT t.*,u.name FROM transitions t JOIN users u ON u.id=t.actor JOIN incidents i ON i.id=t.incident_id JOIN assignments a ON a.site_id=i.site_id WHERE a.user_id=? ORDER BY t.at,t.id",
+      u.id,
+    ),
+    all(
+      "SELECT r.* FROM revisions r JOIN incidents i ON i.id=r.incident_id JOIN assignments a ON a.site_id=i.site_id WHERE a.user_id=?",
+      u.id,
+    ),
+    all(
+      "SELECT DISTINCT u.id,u.name,u.role FROM users u JOIN assignments a ON a.user_id=u.id WHERE a.site_id IN (SELECT site_id FROM assignments WHERE user_id=?)",
+      u.id,
+    ),
+  ]);
+  const byContext = new Map(contexts.map((c) => [c.event_id, c]));
+  const byEvent = new Map(events.map((e) => [e.id, e]));
+  const readableMessage = (id) => {
+    const c = byContext.get(id);
+    return Boolean(
+      c?.shift_id &&
+      (u.role === "supervisor" ||
+        (u.role === "guard" &&
+          c.guard_id === u.id &&
+          shifts.some(
+            (s) => s.id === c.shift_id && s.user_id === u.id && !s.ended_at,
+          ))),
+    );
+  };
+  const readableNotification = (n) => {
+    const e = byEvent.get(n.event_id);
+    return e && (e.kind !== "message" || readableMessage(e.id));
+  };
+  const displayMedia = (m) => ({
+    id: m.id,
+    mime: m.mime,
+    source: m.source,
+    size: m.size,
+  });
   res.json({
     user: u,
     sites: sites.map((s) => ({
       ...s,
       instruction_audio:
-        one(
-          "SELECT id FROM instruction_versions WHERE site_id=? ORDER BY rowid DESC LIMIT 1",
-          s.id,
-        )?.id || null,
+        instructions.find((v) => v.site_id === s.id)?.id || null,
     })),
-    shiftPlans: scoped("shift_plans").filter(
+    shiftPlans: shiftPlans.filter(
       (p) => u.role !== "guard" || p.guard_id === u.id,
     ),
-    siteLocations: scoped("site_locations"),
-    checkpoints: scoped("checkpoints"),
-    shifts: scoped("shifts").filter(
-      (s) => u.role !== "guard" || s.user_id === u.id,
-    ),
-    events: scoped("events")
+    siteLocations,
+    checkpoints,
+    shifts: shifts.filter((s) => u.role !== "guard" || s.user_id === u.id),
+    events: events
       .filter((e) =>
         e.kind === "message"
-          ? canReadMessage(u, e.id)
+          ? readableMessage(e.id)
           : u.role !== "guard" || e.user_id === u.id || e.kind === "end",
       )
       .map((e) => ({
@@ -264,20 +298,18 @@ app.get("/api/state", (req, res) => {
         payload: {
           ...JSON.parse(e.payload),
           ...(e.kind === "message"
-            ? one(
-                "SELECT guard_id,shift_id FROM message_context WHERE event_id=?",
-                e.id,
-              )
+            ? {
+                guard_id: byContext.get(e.id).guard_id,
+                shift_id: byContext.get(e.id).shift_id,
+              }
             : {}),
         },
         ...(e.kind === "message"
           ? {
-              sender_name:
-                one("SELECT name FROM users WHERE id=?", e.user_id)?.name || "",
-              media: all(
-                "SELECT id,mime,source,size FROM message_media WHERE event_id=?",
-                e.id,
-              ),
+              sender_name: names.find((n) => n.id === e.user_id)?.name || "",
+              media: messageMedia
+                .filter((m) => m.event_id === e.id)
+                .map(displayMedia),
             }
           : {}),
       })),
@@ -288,42 +320,21 @@ app.get("/api/state", (req, res) => {
       )
       .map((i) => ({
         ...i,
-        media: all(
-          "SELECT id,mime,source,size FROM media WHERE incident_id=?",
-          i.id,
-        ),
-        history: all(
-          "SELECT t.*,u.name FROM transitions t JOIN users u ON u.id=t.actor WHERE incident_id=? ORDER BY at",
-          i.id,
-        ),
-        revisions: all("SELECT * FROM revisions WHERE incident_id=?", i.id),
+        media: media.filter((m) => m.incident_id === i.id).map(displayMedia),
+        history: history.filter((h) => h.incident_id === i.id),
+        revisions: revisions.filter((r) => r.incident_id === i.id),
       })),
-    summaries: scoped("summaries").filter(
+    summaries: summaries.filter(
       (s) => u.role === "supervisor" || s.status === "Approved",
     ),
-    notifications: all(
-      "SELECT n.* FROM notifications n JOIN events e ON e.id=n.event_id LEFT JOIN message_context c ON c.event_id=e.id WHERE n.recipient=? AND (e.kind<>'message' OR c.shift_id IS NOT NULL)",
-      u.id,
-    ).filter(
-      (n) =>
-        one("SELECT kind FROM events WHERE id=?", n.event_id)?.kind !==
-          "message" || canReadMessage(u, n.event_id),
+    notifications: notifications.filter(
+      (n) => n.recipient === u.id && readableNotification(n),
     ),
-    sentNotifications: all(
-      "SELECT n.* FROM notifications n JOIN events e ON e.id=n.event_id WHERE e.user_id=? AND (e.kind<>'message' OR EXISTS (SELECT 1 FROM message_context c WHERE c.event_id=e.id AND c.shift_id IS NOT NULL))",
-      u.id,
-    ).filter(
+    sentNotifications: notifications.filter(
       (n) =>
-        one("SELECT kind FROM events WHERE id=?", n.event_id)?.kind !==
-          "message" || canReadMessage(u, n.event_id),
+        byEvent.get(n.event_id)?.user_id === u.id && readableNotification(n),
     ),
-    users:
-      u.role === "supervisor"
-        ? all(
-            "SELECT DISTINCT u.id,u.name,u.role FROM users u JOIN assignments a ON a.user_id=u.id WHERE a.site_id IN (SELECT site_id FROM assignments WHERE user_id=?)",
-            u.id,
-          )
-        : [],
+    users: u.role === "supervisor" ? names : [],
     ai: process.env.OPENAI_API_KEY ? "live" : "unavailable",
   });
 });
@@ -331,14 +342,14 @@ const text = (x, max = 5000) =>
   String(x || "")
     .trim()
     .slice(0, max);
-app.post("/api/events", (req, res) => {
+post("/api/events", async (req, res) => {
   let u = req.user,
     b = req.body;
-  requireSite(u, b.site_id);
+  await requireSite(u, b.site_id);
   if (u.role !== "guard" && !(u.role === "supervisor" && b.kind === "message"))
     fail("Guard only", 403);
   if (!/^[a-zA-Z0-9-]{8,80}$/.test(b.id || "")) fail("Invalid record ID");
-  let previous = one("SELECT * FROM events WHERE id=?", b.id);
+  let previous = await one("SELECT * FROM events WHERE id=?", b.id);
   if (previous) {
     if (previous.user_id !== u.id || previous.site_id !== b.site_id)
       fail("Record conflict", 409);
@@ -368,17 +379,17 @@ app.post("/api/events", (req, res) => {
     if (u.role === "guard" && p.guard_id && p.guard_id !== u.id)
       fail("Not your conversation", 403);
     if (
-      !one(
+      !(await one(
         "SELECT 1 FROM assignments a JOIN users u ON u.id=a.user_id WHERE a.site_id=? AND u.id=? AND u.role='guard'",
         b.site_id,
         guardId || "",
-      )
+      ))
     )
       fail("Choose an assigned guard", 403);
     const shiftId = p.shift_id;
     if (!shiftId) fail("Start a shift before messaging", 403);
     if (shiftId) {
-      const target = one("SELECT * FROM shifts WHERE id=?", shiftId);
+      const target = await one("SELECT * FROM shifts WHERE id=?", shiftId);
       if (!target || target.site_id !== b.site_id || target.user_id !== guardId)
         fail("Invalid conversation shift", 403);
       if (
@@ -401,10 +412,12 @@ app.post("/api/events", (req, res) => {
     };
   }
   if (
-    one(
-      "SELECT count(*) AS n FROM events WHERE user_id=? AND received_at>?",
-      u.id,
-      new Date(Date.now() - 86400000).toISOString(),
+    (
+      await one(
+        "SELECT count(*) AS n FROM events WHERE user_id=? AND received_at>?",
+        u.id,
+        new Date(Date.now() - 86400000).toISOString(),
+      )
     ).n >= 1000
   )
     fail("Daily pilot record limit reached", 429);
@@ -423,7 +436,10 @@ app.post("/api/events", (req, res) => {
   if (Math.abs(Date.parse(b.captured_at) - Date.now()) > 86400000)
     p.clock_review = "Device capture time differs by over a day; review";
   if (["scan", "sign_in_location"].includes(b.kind)) {
-    const ref = one("SELECT * FROM site_locations WHERE site_id=?", b.site_id);
+    const ref = await one(
+      "SELECT * FROM site_locations WHERE site_id=?",
+      b.site_id,
+    );
     p.location_review = !p.location
       ? "Location unavailable"
       : !ref
@@ -449,10 +465,9 @@ app.post("/api/events", (req, res) => {
           : "Within site area and reported accuracy";
     }
   }
-  db.exec("BEGIN IMMEDIATE");
   try {
     if (["incident", "alert", "note", "patrol_start"].includes(b.kind)) {
-      const duty = one(
+      const duty = await one(
         "SELECT * FROM shifts WHERE id=? AND user_id=? AND site_id=?",
         p.shift_id || "",
         u.id,
@@ -471,23 +486,24 @@ app.post("/api/events", (req, res) => {
     )
       fail("Invalid patrol start");
     if (b.kind === "patrol_start") {
-      const duty = one(
+      const duty = await one(
         "SELECT * FROM shifts WHERE id=? AND user_id=? AND site_id=?",
         p.shift_id,
         u.id,
         b.site_id,
       );
-      const records = all(
-        "SELECT * FROM events WHERE site_id=? AND user_id=?",
-        b.site_id,
-        u.id,
+      const records = (
+        await all(
+          "SELECT * FROM events WHERE site_id=? AND user_id=?",
+          b.site_id,
+          u.id,
+        )
       ).map((e) => ({ ...e, payload: JSON.parse(e.payload) }));
       const previousStarts = records.filter(
         (e) => e.kind === "patrol_start" && e.payload.shift_id === duty.id,
       );
-      const required = all(
-        "SELECT id FROM checkpoints WHERE site_id=?",
-        b.site_id,
+      const required = (
+        await all("SELECT id FROM checkpoints WHERE site_id=?", b.site_id)
       ).length;
       if (
         previousStarts.some(
@@ -505,7 +521,8 @@ app.post("/api/events", (req, res) => {
       )
         fail("Complete your current patrol before starting another", 409);
       const next = nextPatrol(
-        one("SELECT schedule FROM sites WHERE id=?", b.site_id).schedule,
+        (await one("SELECT schedule FROM sites WHERE id=?", b.site_id))
+          .schedule,
         duty,
         records,
         Date.parse(b.captured_at),
@@ -521,26 +538,29 @@ app.post("/api/events", (req, res) => {
             : null;
     }
     if (b.kind === "start") {
-      p.patrol_schedule = one(
-        "SELECT schedule FROM sites WHERE id=?",
-        b.site_id,
+      p.patrol_schedule = (
+        await one("SELECT schedule FROM sites WHERE id=?", b.site_id)
       ).schedule;
       p.instruction_audio =
-        one(
-          "SELECT id FROM instruction_versions WHERE site_id=? ORDER BY rowid DESC LIMIT 1",
-          b.site_id,
+        (
+          await one(
+            "SELECT id FROM instruction_versions WHERE site_id=? ORDER BY created_at DESC, id DESC LIMIT 1",
+            b.site_id,
+          )
         )?.id || null;
-      p.instructions = one(
-        "SELECT instructions FROM sites WHERE id=?",
-        b.site_id,
+      p.instructions = (
+        await one("SELECT instructions FROM sites WHERE id=?", b.site_id)
       ).instructions;
       if (
-        one("SELECT id FROM shifts WHERE user_id=? AND ended_at IS NULL", u.id)
+        await one(
+          "SELECT id FROM shifts WHERE user_id=? AND ended_at IS NULL",
+          u.id,
+        )
       )
         fail("You already have an active shift", 409);
       p.scheduled_end_at = scheduledEnd(
         b.captured_at,
-        all(
+        await all(
           "SELECT * FROM shift_plans WHERE guard_id=? AND site_id=?",
           u.id,
           b.site_id,
@@ -548,7 +568,7 @@ app.post("/api/events", (req, res) => {
         u.id,
         b.site_id,
       );
-      run(
+      await run(
         "INSERT INTO shifts VALUES(?,?,?,?,NULL)",
         b.id,
         b.site_id,
@@ -557,7 +577,7 @@ app.post("/api/events", (req, res) => {
       );
     }
     if (["end", "scan"].includes(b.kind)) {
-      let shift = one(
+      let shift = await one(
         "SELECT * FROM shifts WHERE id=? AND user_id=? AND site_id=? AND ended_at IS NULL",
         p.shift_id || "",
         u.id,
@@ -565,23 +585,25 @@ app.post("/api/events", (req, res) => {
       );
       if (!shift) fail("Start a shift first");
       if (b.kind === "end") {
-        const records = all(
-          "SELECT * FROM events WHERE site_id=? AND user_id=?",
-          b.site_id,
-          u.id,
+        const records = (
+          await all(
+            "SELECT * FROM events WHERE site_id=? AND user_id=?",
+            b.site_id,
+            u.id,
+          )
         ).map((e) => ({ ...e, payload: JSON.parse(e.payload) }));
         const entry = records.find(
           (e) => e.kind === "start" && e.id === shift.id,
         );
         const schedule = shiftPatrols(
           entry?.payload.patrol_schedule ??
-            one("SELECT schedule FROM sites WHERE id=?", b.site_id).schedule,
+            (await one("SELECT schedule FROM sites WHERE id=?", b.site_id))
+              .schedule,
           shift,
           entry?.payload.scheduled_end_at,
         );
-        const checkpoints = all(
-          "SELECT id FROM checkpoints WHERE site_id=?",
-          b.site_id,
+        const checkpoints = (
+          await all("SELECT id FROM checkpoints WHERE site_id=?", b.site_id)
         ).length;
         p.patrol_exceptions = schedule
           .filter((slot) => {
@@ -605,16 +627,20 @@ app.post("/api/events", (req, res) => {
             );
           })
           .map((s) => s.slot + " not completed before shift ended");
-        run("UPDATE shifts SET ended_at=? WHERE id=?", b.captured_at, shift.id);
+        await run(
+          "UPDATE shifts SET ended_at=? WHERE id=?",
+          b.captured_at,
+          shift.id,
+        );
       } else {
-        let cp = one(
+        let cp = await one(
           "SELECT * FROM checkpoints WHERE site_id=? AND code=?",
           b.site_id,
           p.code || "",
         );
         if (!cp) fail("Unknown checkpoint");
         if (!p.round_id || !p.slot) fail("Select a scheduled round");
-        const patrol = one(
+        const patrol = await one(
           "SELECT payload FROM events WHERE kind='patrol_start' AND user_id=? AND site_id=? AND json_extract(payload,'$.round_id')=?",
           u.id,
           b.site_id,
@@ -638,7 +664,7 @@ app.post("/api/events", (req, res) => {
             ? "Low GPS accuracy"
             : "Reviewable scan";
         if (
-          one(
+          await one(
             "SELECT id FROM events WHERE user_id=? AND kind='scan' AND json_extract(payload,'$.round_id')=? AND json_extract(payload,'$.checkpoint_id')=?",
             u.id,
             p.round_id,
@@ -653,7 +679,7 @@ app.post("/api/events", (req, res) => {
         fail("When did this happen? Approximate time or not known is accepted");
       if (!text(p.report) || !p.approved)
         fail("Review and approve the report before submitting");
-      run(
+      await run(
         "INSERT INTO incidents(id,site_id,user_id,captured_at,received_at,event_time,report,transcript) VALUES(?,?,?,?,?,?,?,?)",
         b.id,
         b.site_id,
@@ -664,7 +690,7 @@ app.post("/api/events", (req, res) => {
         text(p.report),
         text(p.transcript),
       );
-      run(
+      await run(
         "INSERT INTO revisions VALUES(?,?,?,?,?)",
         id(),
         b.id,
@@ -681,7 +707,7 @@ app.post("/api/events", (req, res) => {
         ? p.draft_history
         : []
       ).slice(0, 10)) {
-        run(
+        await run(
           "INSERT INTO revisions VALUES(?,?,?,?,?)",
           id(),
           b.id,
@@ -696,7 +722,7 @@ app.post("/api/events", (req, res) => {
         );
       }
     }
-    run(
+    await run(
       "INSERT INTO events VALUES(?,?,?,?,?,?,?)",
       b.id,
       b.site_id,
@@ -707,42 +733,40 @@ app.post("/api/events", (req, res) => {
       JSON.stringify(p),
     );
     if (b.kind === "message")
-      run(
+      await run(
         "INSERT INTO message_context VALUES(?,?,?)",
         b.id,
         p.guard_id,
         p.shift_id,
       );
-    run("UPDATE sites SET last_sync=? WHERE id=?", at, b.site_id);
+    await run("UPDATE sites SET last_sync=? WHERE id=?", at, b.site_id);
     if (["incident", "alert", "message"].includes(b.kind))
       for (let s of b.kind === "message" && u.role === "supervisor"
         ? [{ id: p.guard_id }]
-        : all(
+        : await all(
             "SELECT u.id FROM users u JOIN assignments a ON a.user_id=u.id WHERE a.site_id=? AND u.role='supervisor'",
             b.site_id,
           ))
-        run(
+        await run(
           "INSERT INTO notifications(id,site_id,event_id,recipient) VALUES(?,?,?,?)",
           id(),
           b.site_id,
           b.id,
           s.id,
         );
-    db.exec("COMMIT");
     res.json({ ok: true, id: b.id, received_at: at });
   } catch (e) {
-    db.exec("ROLLBACK");
     throw e;
   }
 });
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 12 * 1024 * 1024, files: 1 },
+  limits: { fileSize: maxUploadBytes, files: 1 },
 });
-const mediaIncident = (u, i) => {
-  let inc = one("SELECT * FROM incidents WHERE id=?", i);
+const mediaIncident = async (u, i) => {
+  let inc = await one("SELECT * FROM incidents WHERE id=?", i);
   if (!inc) fail("Not found", 404);
-  requireSite(u, inc.site_id);
+  await requireSite(u, inc.site_id);
   if (u.role === "guard" && inc.user_id !== u.id)
     fail("Private supporting media", 403);
   return inc;
@@ -762,41 +786,49 @@ function validateFile(f) {
     (m === "audio/wav" && b.subarray(0, 4).toString() === "RIFF");
   if (!valid) fail("Use JPEG/PNG photos or WebM/Ogg/MP4/WAV audio");
 }
-const mediaTarget = (u, target, uploading = false) => {
-  const event = one(
+const mediaTarget = async (u, target, uploading = false) => {
+  const event = await one(
     "SELECT * FROM events WHERE id=? AND kind='message'",
     target,
   );
   if (!event)
     return {
-      record: mediaIncident(u, target),
+      record: await mediaIncident(u, target),
       table: "media",
       column: "incident_id",
     };
-  requireSite(u, event.site_id);
+  await requireSite(u, event.site_id);
   if (
-    !one("SELECT shift_id FROM message_context WHERE event_id=?", event.id)
-      ?.shift_id
+    !(
+      await one(
+        "SELECT shift_id FROM message_context WHERE event_id=?",
+        event.id,
+      )
+    )?.shift_id
   )
     fail("Messages require a shift", 403);
   if (
     u.role !== "supervisor" &&
     !(
       u.role === "guard" &&
-      one("SELECT guard_id FROM message_context WHERE event_id=?", event.id)
-        ?.guard_id === u.id
+      (
+        await one(
+          "SELECT guard_id FROM message_context WHERE event_id=?",
+          event.id,
+        )
+      )?.guard_id === u.id
     )
   )
     fail("Private supervisor message", 403);
-  if (!uploading && !canReadMessage(u, event.id))
+  if (!uploading && !(await canReadMessage(u, event.id)))
     fail("Only your current shift conversation is available", 403);
   return { record: event, table: "message_media", column: "event_id" };
 };
-const findMedia = (id) =>
-  one("SELECT *,incident_id AS target FROM media WHERE id=?", id) ||
-  one("SELECT *,event_id AS target FROM message_media WHERE id=?", id);
-app.post("/api/media/:incident/:id", upload.single("file"), (req, res) => {
-  const { record, table, column } = mediaTarget(
+const findMedia = async (id) =>
+  (await one("SELECT *,incident_id AS target FROM media WHERE id=?", id)) ||
+  (await one("SELECT *,event_id AS target FROM message_media WHERE id=?", id));
+post("/api/media/:incident/:id", upload.single("file"), async (req, res) => {
+  const { record, table, column } = await mediaTarget(
     req.user,
     req.params.incident,
     true,
@@ -807,31 +839,38 @@ app.post("/api/media/:incident/:id", upload.single("file"), (req, res) => {
   )
     fail("Read only", 403);
   if (!/^[a-zA-Z0-9-]{8,80}$/.test(req.params.id)) fail("Invalid media ID");
-  const prev = findMedia(req.params.id);
+  const prev = await findMedia(req.params.id);
   if (prev) {
     if (prev.target !== req.params.incident) fail("Conflict", 409);
     return res.json({ ok: true, duplicate: true });
   }
   validateFile(req.file);
   const used =
-    one(
-      "SELECT COALESCE(sum(size),0) n FROM media m JOIN incidents i ON i.id=m.incident_id WHERE i.site_id=?",
-      record.site_id,
+    (
+      await one(
+        "SELECT COALESCE(sum(size),0) n FROM media m JOIN incidents i ON i.id=m.incident_id WHERE i.site_id=?",
+        record.site_id,
+      )
     ).n +
-    one(
-      "SELECT COALESCE(sum(size),0) n FROM message_media m JOIN events e ON e.id=m.event_id WHERE e.site_id=?",
-      record.site_id,
+    (
+      await one(
+        "SELECT COALESCE(sum(size),0) n FROM message_media m JOIN events e ON e.id=m.event_id WHERE e.site_id=?",
+        record.site_id,
+      )
     ).n;
   if (used + req.file.size > 1073741824)
     fail("Site pilot media quota reached (1 GB)", 429);
   if (
-    one(`SELECT count(*) n FROM ${table} WHERE ${column}=?`, record.id).n >=
-    (table === "message_media" ? 5 : 6)
+    (await one(`SELECT count(*) n FROM ${table} WHERE ${column}=?`, record.id))
+      .n >= (table === "message_media" ? 5 : 6)
   )
     fail("Attachment limit reached");
-  const file = path.join(dir, "media", req.params.id);
-  fs.writeFileSync(file, req.file.buffer);
-  run(
+  const file = await saveMedia(
+    req.params.id,
+    req.file.buffer,
+    req.file.mimetype,
+  );
+  await run(
     `INSERT INTO ${table} VALUES(?,?,?,?,?,?,?)`,
     req.params.id,
     record.id,
@@ -843,34 +882,35 @@ app.post("/api/media/:incident/:id", upload.single("file"), (req, res) => {
   );
   res.json({ ok: true });
 });
-const signing = randomBytes(32);
+if (process.env.VERCEL && !process.env.MEDIA_SIGNING_SECRET)
+  throw new Error("MEDIA_SIGNING_SECRET is required");
+const signing = process.env.MEDIA_SIGNING_SECRET || randomBytes(32);
 const sign = (s) => createHmac("sha256", signing).update(s).digest("hex");
-app.get("/api/media/:id/link", (req, res) => {
-  let m = findMedia(req.params.id);
+app.get("/api/media/:id/link", async (req, res) => {
+  let m = await findMedia(req.params.id);
   if (!m) fail("Not found", 404);
-  mediaTarget(req.user, m.target);
+  await mediaTarget(req.user, m.target);
   let expires = Date.now() + 120000,
     s = `${m.id}:${req.user.id}:${expires}`;
   res.json({ url: `/media/${m.id}?expires=${expires}&sig=${sign(s)}` });
 });
-app.get("/media/:id", (req, res) => {
-  let m = findMedia(req.params.id);
+app.get("/media/:id", async (req, res) => {
+  let m = await findMedia(req.params.id);
   if (!m) fail("Not found", 404);
-  mediaTarget(req.user, m.target);
+  await mediaTarget(req.user, m.target);
   let s = `${m.id}:${req.user.id}:${req.query.expires}`;
   if (Number(req.query.expires) < Date.now() || req.query.sig !== sign(s))
     fail("Link expired", 403);
-  res.type(m.mime).sendFile(m.path);
+  await serveMedia(req, res, m);
 });
-
-app.post("/api/instructions/:site", upload.single("file"), (req, res) => {
-  requireSite(req.user, req.params.site);
+post("/api/instructions/:site", upload.single("file"), async (req, res) => {
+  await requireSite(req.user, req.params.site);
   if (!["owner", "supervisor"].includes(req.user.role))
     fail("Owner or supervisor only", 403);
   const content = text(req.body.instructions);
   let source = null;
   if (req.body.keep_audio) {
-    source = one(
+    source = await one(
       "SELECT * FROM instruction_versions WHERE id=? AND site_id=?",
       req.body.keep_audio,
       req.params.site,
@@ -885,18 +925,21 @@ app.post("/api/instructions/:site", upload.single("file"), (req, res) => {
   if (!content && !req.file && !source?.path)
     fail("Add a recording or typed instructions");
   if (
-    one(
-      "SELECT COALESCE(sum(size),0) n FROM instruction_versions WHERE site_id=?",
-      req.params.site,
+    (
+      await one(
+        "SELECT COALESCE(sum(size),0) n FROM instruction_versions WHERE site_id=?",
+        req.params.site,
+      )
     ).n +
       (req.file?.size || 0) >
     100 * 1024 * 1024
   )
     fail("Instruction storage limit reached (100 MB)", 429);
   const version = id(),
-    file = req.file ? path.join(dir, "media", version) : source?.path || null;
-  if (req.file) fs.writeFileSync(file, req.file.buffer);
-  run(
+    file = req.file
+      ? await saveMedia(version, req.file.buffer, req.file.mimetype)
+      : source?.path || null;
+  await run(
     "INSERT INTO instruction_versions VALUES(?,?,?,?,?,?,?,?)",
     version,
     req.params.site,
@@ -907,17 +950,24 @@ app.post("/api/instructions/:site", upload.single("file"), (req, res) => {
     file,
     req.file?.size || 0,
   );
-  run("UPDATE sites SET instructions=? WHERE id=?", content, req.params.site);
-  audit(req.user, "instructions.published", {
+  await run(
+    "UPDATE sites SET instructions=? WHERE id=?",
+    content,
+    req.params.site,
+  );
+  await audit(req.user, "instructions.published", {
     site_id: req.params.site,
     version,
   });
   res.json({ id: version });
 });
-app.get("/api/instructions/:id/link", (req, res) => {
-  const m = one("SELECT * FROM instruction_versions WHERE id=?", req.params.id);
+app.get("/api/instructions/:id/link", async (req, res) => {
+  const m = await one(
+    "SELECT * FROM instruction_versions WHERE id=?",
+    req.params.id,
+  );
   if (!m) fail("Not found", 404);
-  requireSite(req.user, m.site_id);
+  await requireSite(req.user, m.site_id);
   if (!m.path) return res.json({ url: null });
   const expires = Date.now() + 120000;
   res.json({
@@ -930,18 +980,21 @@ app.get("/api/instructions/:id/link", (req, res) => {
       sign(m.id + ":" + req.user.id + ":" + expires),
   });
 });
-app.get("/media/instructions/:id", (req, res) => {
-  const m = one("SELECT * FROM instruction_versions WHERE id=?", req.params.id);
+app.get("/media/instructions/:id", async (req, res) => {
+  const m = await one(
+    "SELECT * FROM instruction_versions WHERE id=?",
+    req.params.id,
+  );
   if (!m?.path) fail("Not found", 404);
-  requireSite(req.user, m.site_id);
+  await requireSite(req.user, m.site_id);
   if (
     Number(req.query.expires) < Date.now() ||
     req.query.sig !== sign(m.id + ":" + req.user.id + ":" + req.query.expires)
   )
     fail("Link expired", 403);
-  res.set("Cache-Control", "private, no-store").type(m.mime).sendFile(m.path);
+  await serveMedia(req, res, m);
 });
-app.post("/api/ai", upload.single("file"), async (req, res) => {
+post("/api/ai", upload.single("file"), async (req, res) => {
   if (req.user.role !== "guard") fail("Guard only", 403);
   if (!process.env.OPENAI_API_KEY)
     fail(
@@ -950,20 +1003,15 @@ app.post("/api/ai", upload.single("file"), async (req, res) => {
     );
   validateFile(req.file);
   if (!req.file.mimetype.startsWith("audio/")) fail("Audio required");
-  let aiKey = "ai:" + req.user.id,
-    usage = limit.get(aiKey) || { n: 0, t: Date.now() };
-  if (Date.now() - usage.t > 3600000) usage = { n: 0, t: Date.now() };
-  if (++usage.n > 20) fail("Hourly AI pilot limit reached", 429);
-  limit.set(aiKey, usage);
   try {
     res.json(await transcribeAndDraft(req.file));
   } catch (e) {
     fail(e.message, 503);
   }
 });
-app.post("/api/incidents/:id/transition", (req, res) => {
+post("/api/incidents/:id/transition", async (req, res) => {
   supervisor(req.user);
-  let i = mediaIncident(req.user, req.params.id),
+  let i = await mediaIncident(req.user, req.params.id),
     b = req.body;
   let allowed = {
     Reported: ["Acknowledged"],
@@ -976,16 +1024,15 @@ app.post("/api/incidents/:id/transition", (req, res) => {
     fail("Responsible person and next action required");
   if (b.status === "Resolved" && !text(b.note))
     fail("Resolution note required");
-  db.exec("BEGIN");
   try {
-    run(
+    await run(
       "UPDATE incidents SET status=?,responsible=?,next_action=? WHERE id=?",
       b.status,
       text(b.responsible) || i.responsible,
       text(b.next_action) || i.next_action,
       i.id,
     );
-    run(
+    await run(
       "INSERT INTO transitions VALUES(?,?,?,?,?,?)",
       id(),
       i.id,
@@ -994,29 +1041,27 @@ app.post("/api/incidents/:id/transition", (req, res) => {
       b.status,
       text(b.note),
     );
-    audit(req.user, "incident transition", b);
-    db.exec("COMMIT");
+    await audit(req.user, "incident transition", b);
   } catch (e) {
-    db.exec("ROLLBACK");
     throw e;
   }
   res.json({ ok: true });
 });
-app.post("/api/notifications/:id/:action", (req, res) => {
-  let n = one(
+post("/api/notifications/:id/:action", async (req, res) => {
+  let n = await one(
     "SELECT * FROM notifications WHERE id=? AND recipient=?",
     req.params.id,
     req.user.id,
   );
   if (!n) fail("Not found", 404);
   if (req.params.action === "delivered")
-    run(
+    await run(
       "UPDATE notifications SET status=CASE WHEN acknowledged_at IS NULL THEN 'delivered' ELSE status END,delivered_at=COALESCE(delivered_at,?),attempts=attempts+1 WHERE id=?",
       now(),
       n.id,
     );
   else if (req.params.action === "acknowledge")
-    run(
+    await run(
       "UPDATE notifications SET status='acknowledged',acknowledged_at=? WHERE id=?",
       now(),
       n.id,
@@ -1024,13 +1069,13 @@ app.post("/api/notifications/:id/:action", (req, res) => {
   else fail("Invalid action");
   res.json({ ok: true });
 });
-function counts(site, day) {
-  let e = all(
+async function counts(site, day) {
+  let e = await all(
       "SELECT * FROM events WHERE site_id=? AND substr(captured_at,1,10)=?",
       site,
       day,
     ),
-    cps = all("SELECT id FROM checkpoints WHERE site_id=?", site),
+    cps = await all("SELECT id FROM checkpoints WHERE site_id=?", site),
     rounds = new Map();
   for (let x of e.filter((x) => x.kind === "scan")) {
     let p = JSON.parse(x.payload);
@@ -1043,44 +1088,50 @@ function counts(site, day) {
     completeRounds: [...rounds.values()].filter(
       (s) => cps.length && cps.every((c) => s.has(c.id)),
     ).length,
-    scheduledRounds: one("SELECT schedule FROM sites WHERE id=?", site)
-      .schedule.split(",")
+    scheduledRounds: (
+      await one("SELECT schedule FROM sites WHERE id=?", site)
+    ).schedule
+      .split(",")
       .filter(Boolean).length,
-    incidents: all(
-      "SELECT id FROM incidents WHERE site_id=? AND substr(captured_at,1,10)=?",
-      site,
-      day,
-    ).length,
-    sourceIds: [
-      ...e.filter((x) => x.kind !== "message").map((x) => x.id),
-      ...all(
+    incidents: (
+      await all(
         "SELECT id FROM incidents WHERE site_id=? AND substr(captured_at,1,10)=?",
         site,
         day,
+      )
+    ).length,
+    sourceIds: [
+      ...e.filter((x) => x.kind !== "message").map((x) => x.id),
+      ...(
+        await all(
+          "SELECT id FROM incidents WHERE site_id=? AND substr(captured_at,1,10)=?",
+          site,
+          day,
+        )
       ).map((i) => i.id),
     ],
   };
 }
-app.get("/api/summary/:site/:day", (req, res) => {
-  requireSite(req.user, req.params.site);
-  res.json(counts(req.params.site, req.params.day));
+app.get("/api/summary/:site/:day", async (req, res) => {
+  await requireSite(req.user, req.params.site);
+  res.json(await counts(req.params.site, req.params.day));
 });
-app.post("/api/summary/:site/:day", async (req, res) => {
+post("/api/summary/:site/:day", async (req, res) => {
   supervisor(req.user);
-  requireSite(req.user, req.params.site);
-  let c = counts(req.params.site, req.params.day),
+  await requireSite(req.user, req.params.site);
+  let c = await counts(req.params.site, req.params.day),
     n = `${c.shiftStarts} shift starts, ${c.completeRounds} complete rounds and ${c.incidents} incidents recorded. New records may be pending.`,
     sid = id();
   let draft = await draftSummary(
     c,
-    all(
+    await all(
       "SELECT report,event_time,status,next_action FROM incidents WHERE site_id=? AND substr(captured_at,1,10)=?",
       req.params.site,
       req.params.day,
     ),
   );
   n = draft.narrative;
-  run(
+  await run(
     "INSERT INTO summaries VALUES(?,?,?,?,?,?,?,?)",
     sid,
     req.params.site,
@@ -1093,29 +1144,29 @@ app.post("/api/summary/:site/:day", async (req, res) => {
   );
   res.json({ id: sid, counts: c, narrative: n, adapter: draft.adapter });
 });
-app.post("/api/summaries/:id/approve", (req, res) => {
+post("/api/summaries/:id/approve", async (req, res) => {
   supervisor(req.user);
-  let s = one("SELECT * FROM summaries WHERE id=?", req.params.id);
+  let s = await one("SELECT * FROM summaries WHERE id=?", req.params.id);
   if (!s) fail("Not found", 404);
-  requireSite(req.user, s.site_id);
+  await requireSite(req.user, s.site_id);
   if (s.status === "Approved") fail("Already approved", 409);
-  let current = counts(s.site_id, s.day);
+  let current = await counts(s.site_id, s.day);
   if (JSON.stringify(current) !== s.counts)
     fail("Source records changed. Generate a fresh draft", 409);
-  run(
+  await run(
     "UPDATE summaries SET status='Approved',narrative=?,actor=?,at=? WHERE id=?",
     text(req.body.narrative) || s.narrative,
     req.user.id,
     now(),
     s.id,
   );
-  audit(req.user, "summary approved", { id: s.id });
+  await audit(req.user, "summary approved", { id: s.id });
   res.json({ ok: true });
 });
-app.post("/api/site-location", (req, res) => {
+post("/api/site-location", async (req, res) => {
   if (!["owner", "supervisor"].includes(req.user.role))
     fail("Owner or supervisor only", 403);
-  requireSite(req.user, req.body.site_id);
+  await requireSite(req.user, req.body.site_id);
   const { site_id } = req.body,
     latitude = Number(req.body.latitude),
     longitude = Number(req.body.longitude),
@@ -1132,14 +1183,14 @@ app.post("/api/site-location", (req, res) => {
     radius > 5000
   )
     fail("Enter valid coordinates and radius (20–5000 metres)");
-  run(
+  await run(
     "INSERT INTO site_locations VALUES(?,?,?,?) ON CONFLICT(site_id) DO UPDATE SET latitude=excluded.latitude,longitude=excluded.longitude,radius_m=excluded.radius_m",
     site_id,
     latitude,
     longitude,
     radius,
   );
-  audit(req.user, "site location updated", {
+  await audit(req.user, "site location updated", {
     site_id,
     latitude,
     longitude,
@@ -1147,63 +1198,69 @@ app.post("/api/site-location", (req, res) => {
   });
   res.json({ ok: true });
 });
-app.post("/api/patrol-schedule", (req, res) => {
+post("/api/patrol-schedule", async (req, res) => {
   if (!["owner", "supervisor"].includes(req.user.role))
     fail("Owner or supervisor only", 403);
-  requireSite(req.user, req.body.site_id);
+  await requireSite(req.user, req.body.site_id);
   let schedule;
   try {
     schedule = patrolSchedule(req.body);
   } catch (e) {
     fail(e.message);
   }
-  const previous = one(
-    "SELECT schedule FROM sites WHERE id=?",
-    req.body.site_id,
+  const previous = (
+    await one("SELECT schedule FROM sites WHERE id=?", req.body.site_id)
   ).schedule;
-  run("UPDATE sites SET schedule=? WHERE id=?", schedule, req.body.site_id);
-  audit(req.user, "patrol schedule updated", {
+  await run(
+    "UPDATE sites SET schedule=? WHERE id=?",
+    schedule,
+    req.body.site_id,
+  );
+  await audit(req.user, "patrol schedule updated", {
     site_id: req.body.site_id,
     previous,
     schedule,
   });
   res.json({ ok: true, schedule });
 });
-app.post("/api/admin", (req, res) => {
+post("/api/admin", async (req, res) => {
   supervisor(req.user);
   let b = req.body,
     s = b.site_id;
   if (b.kind === "additional_site") {
-    let customer = one("SELECT customer_id FROM sites WHERE id=?", b.site_id);
-    requireSite(req.user, b.site_id);
+    let customer = await one(
+      "SELECT customer_id FROM sites WHERE id=?",
+      b.site_id,
+    );
+    await requireSite(req.user, b.site_id);
     let sid = id();
-    run(
+    await run(
       "INSERT INTO sites(id,customer_id,name) VALUES(?,?,?)",
       sid,
       customer.customer_id,
       text(b.name, 120),
     );
-    run("INSERT INTO assignments VALUES(?,?)", req.user.id, sid);
+    await run("INSERT INTO assignments VALUES(?,?)", req.user.id, sid);
   } else if (b.kind === "customer") {
     let cid = id();
-    run("INSERT INTO customers VALUES(?,?)", cid, text(b.name, 120));
+    await run("INSERT INTO customers VALUES(?,?)", cid, text(b.name, 120));
     let sid = id();
-    run(
+    await run(
       "INSERT INTO sites(id,customer_id,name) VALUES(?,?,?)",
       sid,
       cid,
       text(b.site_name, 120),
     );
-    run("INSERT INTO assignments VALUES(?,?)", req.user.id, sid);
+    await run("INSERT INTO assignments VALUES(?,?)", req.user.id, sid);
   } else {
-    requireSite(req.user, s);
+    await requireSite(req.user, s);
     if (b.kind === "shift_plan") {
       if (
-        !one(
+        !(await one(
           "SELECT 1 FROM assignments a JOIN users u ON a.user_id=u.id WHERE a.site_id=? AND u.id=? AND u.role='guard'",
           s,
           b.guard_id,
-        )
+        ))
       )
         fail("Choose an assigned guard");
       if (
@@ -1211,7 +1268,7 @@ app.post("/api/admin", (req, res) => {
         !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(b.end_time)
       )
         fail("Use valid shift times");
-      run(
+      await run(
         "INSERT INTO shift_plans VALUES(?,?,?,?,?,?,?)",
         id(),
         s,
@@ -1228,14 +1285,14 @@ app.post("/api/admin", (req, res) => {
         )
       )
         fail("Use comma-separated times HH:MM");
-      run(
+      await run(
         "UPDATE sites SET phone=?,schedule=? WHERE id=?",
         text(b.phone, 30),
         text(b.schedule, 2000),
         s,
       );
     } else if (b.kind === "checkpoint")
-      run(
+      await run(
         "INSERT INTO checkpoints VALUES(?,?,?,?)",
         id(),
         s,
@@ -1249,7 +1306,7 @@ app.post("/api/admin", (req, res) => {
       )
         fail("Role and password of at least 12 characters required");
       let uid = id();
-      run(
+      await run(
         "INSERT INTO users VALUES(?,?,?,?,?)",
         uid,
         text(b.name, 120),
@@ -1257,30 +1314,35 @@ app.post("/api/admin", (req, res) => {
         hash(b.password),
         b.role,
       );
-      run("INSERT INTO assignments VALUES(?,?)", uid, s);
+      await run("INSERT INTO assignments VALUES(?,?)", uid, s);
     } else if (b.kind === "assign") {
-      let user = one("SELECT id FROM users WHERE id=?", b.user_id);
+      let user = await one("SELECT id FROM users WHERE id=?", b.user_id);
       if (
         !user ||
-        !one(
+        !(await one(
           "SELECT 1 FROM assignments a JOIN assignments b ON a.site_id=b.site_id WHERE a.user_id=? AND b.user_id=?",
           req.user.id,
           user.id,
-        )
+        ))
       )
         fail("User outside assigned scope", 403);
-      run("INSERT OR IGNORE INTO assignments VALUES(?,?)", user.id, s);
+      await run(
+        "INSERT INTO assignments VALUES(?,?) ON CONFLICT DO NOTHING",
+        user.id,
+        s,
+      );
     } else fail("Unknown action");
   }
-  audit(req.user, "admin " + b.kind, { site: s, name: b.name });
+  await audit(req.user, "admin " + b.kind, { site: s, name: b.name });
   res.json({ ok: true });
 });
 app.get("/api/qr/:site", async (req, res) => {
   supervisor(req.user);
-  requireSite(req.user, req.params.site);
+  await requireSite(req.user, req.params.site);
   res.json(
     await Promise.all(
-      all("SELECT * FROM checkpoints WHERE site_id=?", req.params.site).map(
+      await mapAsync(
+        await all("SELECT * FROM checkpoints WHERE site_id=?", req.params.site),
         async (c) => ({ ...c, image: await QRCode.toDataURL(c.code) }),
       ),
     ),
@@ -1293,15 +1355,17 @@ app.use((err, req, res, next) => {
     error: err.status
       ? err.message
       : err.code === "LIMIT_FILE_SIZE"
-        ? "File exceeds 12 MB"
+        ? "File exceeds 4 MB"
         : "Request could not be completed",
   });
 });
-app.listen(
-  Number(process.env.PORT || 3000),
-  process.env.HOST || "127.0.0.1",
-  () =>
-    console.log(
-      `Guard Companion running at http://${process.env.HOST || "127.0.0.1"}:${process.env.PORT || 3000}`,
-    ),
-);
+if (!process.env.VERCEL)
+  app.listen(
+    Number(process.env.PORT || 3000),
+    process.env.HOST || "127.0.0.1",
+    () =>
+      console.log(
+        `Guard Companion running at http://${process.env.HOST || "127.0.0.1"}:${process.env.PORT || 3000}`,
+      ),
+  );
+export default app;

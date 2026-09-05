@@ -101,8 +101,10 @@ export async function lock(revoke = true) {
   db = null;
 }
 export async function fileData(file) {
-  if (file.size > 12 * 1024 * 1024)
-    throw new Error("Maximum file size is 12 MB");
+  if (file.size > 4 * 1024 * 1024)
+    throw new Error(
+      "This file is too large (4 MB maximum). Choose a smaller photo or record a shorter message.",
+    );
   return new Promise((resolve, reject) => {
     let r = new FileReader();
     r.onload = () =>

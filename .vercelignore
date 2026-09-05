@@ -1,0 +1,9 @@
+data
+tests
+docs
+.agents
+skills-lock.json
+.env*
+.git
+node_modules
+scripts
