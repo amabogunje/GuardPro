@@ -2,6 +2,8 @@
 
 **Provided by Integrated Systems and Devices Limited — ISDL.**
 
+**Hosted fictional demo:** https://guardpro-nine.vercel.app — use the demo accounts below. Shared demo credentials are displayed on sign-in; use fictional information only. Hosted release: `v0.2.0-vercel-demo`. [Deployment setup and limits](docs/VERCEL.md).
+
 A working guard-supervision MVP for existing guards. It records attendance, patrol activity, approved incident reports, handovers and follow-up. It does not replace CCTV, physical access control or emergency response. All seeded people, properties and events are fictional.
 
 ## Run locally
