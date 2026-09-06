@@ -1,29 +1,25 @@
+import { effectivePlans } from "./shift-plans.js";
 // Daily site shift windows use Nigerian local time (UTC+01:00).
 const DAY = 86400000;
 export function overviewShifts({ site, plans = [], day, now = Date.now() }) {
   const today = new Date(now + 3600000).toISOString().slice(0, 10);
   const localDay = day || today;
   const cutoff = Date.parse(localDay + "T00:00:00+01:00") + DAY;
-  const latest = new Map();
-  for (const p of plans
-    .filter(
-      (p) =>
-        p.site_id === site.id &&
-        (!p.created_at || Date.parse(p.created_at) < cutoff),
-    )
-    .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))))
-    latest.set(p.guard_id, p);
+  const latest = effectivePlans(plans.filter(p=>p.site_id===site.id),cutoff);
   const groups = new Map();
-  for (const p of latest.values()) {
-    const key = `${p.start_time}-${p.end_time}`;
+  for (const p of latest) {
+    const key = p.template_id || `${p.start_time}-${p.end_time}`;
     if (!groups.has(key))
       groups.set(key, {
         key,
         start_time: p.start_time,
         end_time: p.end_time,
+        schedule: p.schedule,
+        name: p.name,
+        anyGuard: p.any_guard || false,
         guardIds: [],
       });
-    groups.get(key).guardIds.push(p.guard_id);
+    if(p.guard_id) groups.get(key).guardIds.push(p.guard_id);
   }
   if (!groups.size)
     groups.set("default", {
@@ -81,7 +77,7 @@ export function supervisorStatus({
       .filter(
         (s) =>
           s.site_id === site.id &&
-          expected.has(s.user_id) &&
+          (window.anyGuard || expected.has(s.user_id)) &&
           Date.parse(s.started_at) < window.end &&
           Date.parse(s.ended_at || new Date(now).toISOString()) >=
             window.start &&
@@ -94,7 +90,7 @@ export function supervisorStatus({
   const slots = new Map();
   for (let base = window.start - DAY; base < window.end + DAY; base += DAY) {
     const date = new Date(base + 3600000).toISOString().slice(0, 10);
-    for (const slot of (site.schedule || "").split(",").filter(Boolean)) {
+    for (const slot of (window.schedule ?? site.schedule ?? "").split(",").filter(Boolean)) {
       const due = Date.parse(`${date}T${slot}:00+01:00`);
       if (due >= window.start && due < window.end)
         slots.set(new Date(due).toISOString(), due);
@@ -132,7 +128,7 @@ export function supervisorStatus({
   return [
     {
       label: "Guards checked in",
-      value: window.rosterUnknown ? "—" : `${checked.size} of ${expected.size}`,
+      value: window.rosterUnknown ? "—" : `${checked.size} of ${window.anyGuard ? checked.size : expected.size}`,
       qualifier: window.rosterUnknown ? "roster unavailable" : "expected",
       tone: checked.size < expected.size ? "attention" : "good",
     },

@@ -48,6 +48,7 @@ before(async () => {
         DATABASE_URL: "",
         BLOB_READ_WRITE_TOKEN: "",
         VERCEL: "",
+        ENABLE_MESSAGING: "true",
       },
       stdio: "pipe",
     });
@@ -109,8 +110,8 @@ test("customer account hierarchy restricts creation and assignments", async () =
     name: "New guard",
   });
   await req("/api/admin", supervisor, { ...payload, role: "owner" }, 403);
-  await req("/api/admin", supervisor, payload, 403);
-  await req("/api/admin", owner, { ...payload, role: "guard" }, 403);
+  await req("/api/admin", supervisor, {...payload,email:`peer-${randomUUID()}@demo.isdl`});
+  await req("/api/admin", owner, { ...payload, role: "guard",email:`owner-guard-${randomUUID()}@demo.isdl` });
   await req("/api/admin", other, payload, 403);
   await req(
     "/api/admin",
@@ -195,6 +196,9 @@ test("supervisor pages retain a mobile canvas on phone and desktop", async () =>
         );
         await p.locator("nav [data-page=message]").click();
         await p.getByText("Unread supervisor test", { exact: true }).waitFor();
+        assert.equal((await req("/api/state", supervisor)).notifications.find(n => n.event_id === messageId).status, "submitted");
+        await p.locator('[data-action="readSupervisorMessage"]').first().click();
+        await p.locator('[data-action="supervisorInbox"]').click();
         await p.locator(".greeting-row [data-page=home]").click();
         await p.locator(".supervisor-quick-start").waitFor();
         assert.equal(
@@ -204,7 +208,7 @@ test("supervisor pages retain a mobile canvas on phone and desktop", async () =>
       }
       assert.equal(await p.locator("[data-action=refresh]").count(), 0);
       assert.equal(await p.locator(".stats .stat").count(), 3);
-      const picker = p.locator(".overview-shift-picker");
+      const picker = p.locator(".overview-shift-picker:not(.attention-sort-picker)");
       await picker.locator("summary").click();
       assert.equal(await picker.locator("button").count(), 2);
       assert.ok(
@@ -217,12 +221,12 @@ test("supervisor pages retain a mobile canvas on phone and desktop", async () =>
       await other.click();
       assert.equal(
         await p
-          .locator('.overview-shift-picker [aria-pressed="true"]')
+          .locator('.overview-shift-picker:not(.attention-sort-picker) [aria-pressed="true"]')
           .getAttribute("data-shift"),
         chosen,
       );
       assert.equal(
-        await p.locator(".overview-shift-picker").getAttribute("open"),
+        await picker.getAttribute("open"),
         null,
       );
       assert.equal(
@@ -269,9 +273,11 @@ test("supervisor pages retain a mobile canvas on phone and desktop", async () =>
         "summaries",
         "admin",
       ]) {
-        if (["instructionSetup", "patrols", "admin"].includes(page))
+        if (["instructionSetup", "patrols", "admin"].includes(page)) {
           await p.locator('nav [data-page="setup"]').click();
-        await p.locator(`nav [data-page="${page}"]`).click();
+          await p.locator(`[data-tab="${{instructionSetup:"shifts",patrols:"checkpoints",admin:"team"}[page]}"]`).click();
+          await p.locator(page === "patrols" ? ".checkpoint-panel" : page === "admin" ? ".team-panel" : ".shifts-panel").first().waitFor();
+        } else await p.locator(`nav [data-page="${page}"]`).click();
         await p.locator(".greeting-row [data-page=home]").waitFor();
         const sizes = await p.evaluate(() => ({
           width: document
@@ -286,7 +292,8 @@ test("supervisor pages retain a mobile canvas on phone and desktop", async () =>
           `${page} overflows horizontally`,
         );
         if (page === "admin") {
-          assert.equal(await p.locator("select[name=role] option").count(), 1);
+          await p.locator('#add-member').click();
+          assert.equal(await p.locator("select[name=role] option").count(), 2);
           assert.equal(
             await p.locator("select[name=role]").inputValue(),
             "guard",
@@ -526,6 +533,154 @@ test("problem KPI and list agree for unresolved carry-over and drop resolved rep
 });
 
 
+test("supervisor single recipient and five-message inbox pagination and sorting", async () => {
+  const name = "recipient-" + randomUUID();
+  await req("/api/admin", supervisor, {kind:"user", site_id:"oak", role:"guard", name:"Second guard", email:name+"@demo.isdl", password:"Pilot-only-2026!"});
+  const second = await login(name);
+  const secondId = (await req("/api/state", second)).user.id;
+  const secondShift = randomUUID();
+  await req("/api/events", second, {id:secondShift, site_id:"oak", kind:"start", captured_at:new Date().toISOString(), payload:{}});
+  const incomingId = randomUUID();
+  await req("/api/events", second, {id:incomingId, site_id:"oak", kind:"message", captured_at:new Date().toISOString(), payload:{shift_id:secondShift,text:"Inbox detail example"}});
+  for (let i = 0; i < 5; i++)
+    await req("/api/events", second, {id:randomUUID(),site_id:"oak",kind:"message",captured_at:new Date().toISOString(),payload:{shift_id:secondShift,text:"Page fixture "+i}});
+  const browser = await chromium.launch({executablePath:process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe",headless:true});
+  try {
+    const ctx = await browser.newContext({viewport:{width:360,height:800}});
+    const p = await ctx.newPage();
+    await p.goto(base);
+    await p.locator("#email").fill("supervisor@demo.isdl");
+    await p.locator("#password").fill("Pilot-only-2026!");
+    await p.getByRole("button",{name:"Sign in",exact:true}).click();
+    await p.locator('nav [data-page="message"]').click();
+    await p.getByRole("heading",{name:"Send Message",exact:true}).waitFor();
+    await p.locator("#typedReport summary").click();
+    await p.locator("#report").fill("Team broadcast test");
+    assert.equal(await p.locator("#submitReport").isDisabled(),true);
+    assert.equal(await p.locator("#allMessageGuards,#inboxGuard").count(),0);
+    await p.getByLabel("Select recipient",{exact:true}).click();
+    await p.getByRole("button",{name:"Second guard",exact:true}).click();
+    await p.locator("#submitReport").click();
+    await p.waitForFunction(() => document.querySelector("#report")?.value === "");
+    const deadline = Date.now()+10000;
+    let messages;
+    do {
+      messages=(await req("/api/state",supervisor)).events.filter(e=>e.kind==="message" && e.payload.text==="Team broadcast test");
+      if(messages.length===1) break;
+      await new Promise(r=>setTimeout(r,100));
+    } while(Date.now()<deadline);
+    assert.equal(messages.length,1);
+    assert.equal(messages[0].payload.guard_id,secondId);
+    assert.equal((await req("/api/state",second)).events.filter(e=>e.payload.text==="Team broadcast test").length,1);
+    assert.equal((await req("/api/state",other)).events.filter(e=>e.payload.text==="Team broadcast test").length,0);
+    assert.equal(await p.locator(".inbox-row").count(),5);
+    assert.equal(await p.locator('[data-action="inboxPrevious"]').isDisabled(),true);
+    const firstPage = await p.locator(".inbox-row").evaluateAll(rows=>rows.map(r=>r.dataset.id));
+    await p.locator('[data-action="inboxNext"]').click();
+    assert.equal(await p.locator(".inbox-row").count(),2);
+    const lastPage = await p.locator(".inbox-row").evaluateAll(rows=>rows.map(r=>r.dataset.id));
+    assert.equal(new Set([...firstPage,...lastPage]).size,7);
+    assert.equal(await p.locator('[data-action="inboxNext"]').isDisabled(),true);
+    await p.getByLabel("Sort received messages",{exact:true}).click();
+    await p.getByRole("button",{name:"Oldest first",exact:true}).click();
+    const oldestFirst = await p.locator(".inbox-row").evaluateAll(rows=>rows.map(r=>r.dataset.id));
+    assert.equal(oldestFirst[0],lastPage.at(-1));
+    assert.equal(await p.locator('[data-action="inboxPrevious"]').isDisabled(),true);
+    assert.equal(await p.locator("#receivedMessages audio,#receivedMessages img").count(),0);
+    assert.equal((await req("/api/state",supervisor)).notifications.find(n=>n.event_id===incomingId).status,"submitted");
+    await p.locator('[data-action="readSupervisorMessage"][data-id="'+incomingId+'"]').click();
+    await p.locator(".received-detail").getByText("Inbox detail example",{exact:true}).waitFor();
+    await p.locator('[data-action="supervisorInbox"]').click();
+    await p.getByRole("heading",{name:"Received Messages",exact:true}).waitFor();
+    assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await p.screenshot({path:path.join(data,"supervisor-inbox.png"),fullPage:true});
+    await ctx.close();
+  } finally { await browser.close(); }
+});
+test("reported problems use compact outstanding and previous lists with detail navigation", async () => {
+  const s = await req("/api/state", guard);
+  const current = s.shifts.find(x => x.user_id === "bala" && !x.ended_at);
+  const reportId = randomUUID();
+  await req("/api/events",guard,{id:reportId,site_id:"oak",kind:"incident",captured_at:new Date().toISOString(),payload:{shift_id:current.id,report:"Compact problem list verification",typed_report:"Compact problem list verification",approved:true,event_time:"Just now"}});
+  const browser=await chromium.launch({executablePath:process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe",headless:true});
+  try {
+    const ctx=await browser.newContext({viewport:{width:360,height:800}});
+    const p=await ctx.newPage();
+    await p.goto(base);
+    await p.locator("#email").fill("supervisor@demo.isdl");
+    await p.locator("#password").fill("Pilot-only-2026!");
+    await p.getByRole("button",{name:"Sign in",exact:true}).click();
+    await p.locator('nav [data-page="incidents"]').click();
+    assert.equal(await p.locator('[data-action="refresh"],.supervisor-filters,.supervisor-mobile > .notice').count(),0);
+    await p.locator(".last-record-received").waitFor();
+    assert.equal(await p.locator(".problem-list").count(),2);
+    assert.equal(await p.locator(".problem-list .media,.problem-list .transition").count(),0);
+    await p.locator('[data-action="viewProblem"][data-id="'+reportId+'"]').click();
+    await p.getByRole("heading",{name:"Problem Details",exact:true}).waitFor();
+    await p.locator(".problem-detail .problemResolve").waitFor();
+    assert.equal(await p.locator('.problem-written').textContent(),"Compact problem list verification");
+    assert.equal(await p.locator(".problem-detail textarea").count(),1);
+    assert.equal(await p.locator("#problemComments").count(),1);
+    assert.equal(await p.locator(".problem-detail .transition,.problem-detail details").count(),0);
+    await req("/api/incidents/"+reportId+"/resolve",guard,{note:"Not allowed"},403);
+    await req("/api/incidents/"+reportId+"/resolve",other,{note:"Not allowed"},403);
+    await p.locator("#problemComments").fill("Addressed offline.");
+    await p.getByRole("button",{name:"Resolve Problem",exact:true}).click();
+    await p.locator(".problem-list").nth(1).locator('[data-id="'+reportId+'"]').waitFor();
+    await req("/api/incidents/"+reportId+"/resolve",supervisor,{note:"Duplicate"});
+    const resolved = (await req("/api/state",supervisor)).incidents.find(i=>i.id===reportId);
+    assert.equal(resolved.history.filter(h=>h.status==="Resolved").length,1);
+    assert.equal(resolved.history.find(h=>h.status==="Resolved").note,"Addressed offline.");
+    await p.reload();
+    await p.locator('.problem-list').nth(1).locator('[data-id="'+reportId+'"]').waitFor();
+    assert.equal(await p.locator('.problem-list').first().locator('[data-id="'+reportId+'"]').count(),0);
+    assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await p.screenshot({path:path.join(data,"supervisor-problems.png"),fullPage:true});
+    await ctx.close();
+  } finally { await browser.close(); }
+});
+test("supervisor views daily, monthly and custom activity reports and downloads CSV", async()=>{
+  const today=new Date(Date.now()+3600000).toISOString().slice(0,10);
+  const url="/api/activity-reports/oak?from="+today+"&to="+today;
+  const report=await req(url,supervisor);
+  assert.equal(report.counts.problemsReported,report.rows.filter(r=>r.kind==="incident").length);
+  const reportedIds=new Set(report.rows.filter(r=>r.kind==="incident").map(r=>r.id));
+  assert.equal(report.counts.problemsResolved,(await req("/api/state",supervisor)).incidents.filter(i=>reportedIds.has(i.id)&&i.status==="Resolved").length);
+  await req(url,other,null,403);
+  await req(url,guard,null,403);
+  await req("/api/activity-reports/oak?from=invalid&to="+today,supervisor,null,400);
+  const browser=await chromium.launch({executablePath:process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe",headless:true});
+  try {
+    const ctx=await browser.newContext({viewport:{width:360,height:800},acceptDownloads:true});
+    const p=await ctx.newPage();
+    await p.goto(base);
+    await p.locator("#email").fill("supervisor@demo.isdl");
+    await p.locator("#password").fill("Pilot-only-2026!");
+    await p.getByRole("button",{name:"Sign in",exact:true}).click();
+    await p.locator('nav [data-page="summaries"]').click();
+    assert.equal(await p.locator(".greeting-row h1").textContent(),"Reports");
+    assert.equal(await p.locator(".supervisor-mobile > .supervisor-heading").count(),0);
+    const buttonBoxes = await p.locator(".report-view-actions button").evaluateAll(buttons => buttons.map(b => ({height:b.getBoundingClientRect().height,top:b.getBoundingClientRect().top})));
+    assert.equal(buttonBoxes[0].height,buttonBoxes[1].height);
+    assert.equal(buttonBoxes[0].top,buttonBoxes[1].top);
+    assert.equal(await p.getByText("Approve for customer",{exact:true}).count(),0);
+    for(const period of ["Daily","Monthly","Custom dates"]) {
+      await p.getByLabel("Choose report period",{exact:true}).click();
+      await p.getByRole("button",{name:period,exact:true}).click();
+      await p.getByRole("button",{name:"View report",exact:true}).click();
+      await p.getByRole("heading",{name:"Activity report",exact:true}).waitFor();
+      assert.equal(await p.locator(".activity-counts > div").count(),5);
+    }
+    const download=p.waitForEvent("download");
+    await p.getByRole("button",{name:"Download CSV",exact:true}).click();
+    const file=await download;
+    const csv=fs.readFileSync(await file.path(),"utf8");
+    assert.ok(csv.includes("Africa/Lagos"));
+    assert.ok(csv.includes("Record ID"));
+    assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await ctx.close();
+  } finally { await browser.close(); }
+});
 test("optional user photos persist privately and reject invalid uploads", async () => {
   const photo = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl1sAAAAASUVORK5CYII=", "base64");
   const email = 'photo-' + randomUUID() + '@demo.isdl';

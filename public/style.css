@@ -1,5 +1,6 @@
 /* Material 3 Expressive: semantic roles, adaptive navigation and accessible states. */
 :root {
+  --container-radius: 0;
   font-family: Roboto, "Segoe UI", Arial, sans-serif;
   font-synthesis: none;
   color: #182c2a;
@@ -47,7 +48,7 @@ button,
   min-height: 48px;
   max-width: 100%;
   border: 1px solid var(--md-outline-variant);
-  border-radius: 100px;
+  border-radius: var(--container-radius);
   background: transparent;
   color: var(--md-primary);
   padding: 12px 22px;
@@ -74,7 +75,7 @@ button:hover,
 }
 button:active,
 .button:active {
-  border-radius: 16px;
+  border-radius: var(--container-radius);
   transform: scale(0.98);
   background: #006b5620;
 }
@@ -251,7 +252,7 @@ small {
 .topbar select {
   border: 0;
   background: var(--md-surface-container);
-  border-radius: 100px;
+  border-radius: var(--container-radius);
   padding-left: 22px;
 }
 .topbar .identity > div strong {
@@ -316,7 +317,7 @@ small {
 .card {
   background: #fff;
   border: 0;
-  border-radius: 28px;
+  border-radius: var(--container-radius);
   padding: 28px;
   min-width: 0;
   box-shadow: none;
@@ -345,7 +346,7 @@ small {
 .stat-symbol {
   width: 40px;
   height: 40px;
-  border-radius: 14px;
+  border-radius: var(--container-radius);
   background: #ffffff80;
   display: grid;
   place-items: center;
@@ -389,7 +390,7 @@ small {
   background: var(--md-secondary-container);
   color: #234638;
   padding: 6px 12px;
-  border-radius: 8px;
+  border-radius: var(--container-radius);
 }
 .pill::before {
   content: "";
@@ -412,7 +413,7 @@ small {
   background: #f8edda;
   color: #604916;
   border: 0;
-  border-radius: 16px;
+  border-radius: var(--container-radius);
   padding: 16px 20px;
   font-size: 13px;
   line-height: 1.6;
@@ -485,7 +486,7 @@ select {
   width: 100%;
   min-height: 56px;
   border: 1px solid var(--md-outline);
-  border-radius: 12px;
+  border-radius: var(--container-radius);
   background: transparent;
   padding: 15px 16px;
   color: var(--md-on-surface);
@@ -523,7 +524,7 @@ input[type="file"] {
 input::file-selector-button {
   border: 0;
   padding: 10px 14px;
-  border-radius: 100px;
+  border-radius: var(--container-radius);
   background: var(--md-secondary-container);
   color: var(--md-on-primary-container);
   margin-right: 10px;
@@ -561,7 +562,7 @@ form > button {
 .transition {
   padding: 4px 20px 24px;
   background: var(--md-surface-low);
-  border-radius: 20px;
+  border-radius: var(--container-radius);
   margin-top: 20px;
 }
 .media {
@@ -575,25 +576,25 @@ form > button {
 audio {
   width: 100%;
   margin: 16px 0;
-  border-radius: 28px;
+  border-radius: var(--container-radius);
 }
 img.photo {
   display: block;
   max-height: 320px;
   max-width: 100%;
-  border-radius: 20px;
+  border-radius: var(--container-radius);
   margin: 12px 0;
 }
 video {
   width: 100%;
-  border-radius: 20px;
+  border-radius: var(--container-radius);
 }
 progress {
   width: 100%;
   height: 12px;
   accent-color: var(--md-primary);
   border: 0;
-  border-radius: 99px;
+  border-radius: var(--container-radius);
   overflow: hidden;
   background: var(--md-secondary-container);
 }
@@ -602,7 +603,7 @@ progress::-webkit-progress-bar {
 }
 progress::-webkit-progress-value {
   background: var(--md-primary);
-  border-radius: 99px;
+  border-radius: var(--container-radius);
 }
 .guard {
   max-width: 600px;
@@ -618,7 +619,7 @@ progress::-webkit-progress-value {
 .guard > .row:first-of-type {
   background: var(--md-surface-container);
   padding: 8px 12px 8px 16px;
-  border-radius: 20px;
+  border-radius: var(--container-radius);
   margin-bottom: 28px;
   gap: 4px;
 }
@@ -636,7 +637,7 @@ progress::-webkit-progress-value {
 .guard > .row:nth-of-type(2) .avatar {
   width: 56px;
   height: 56px;
-  border-radius: 20px;
+  border-radius: var(--container-radius);
   background: var(--md-primary-container);
   font-size: 24px;
 }
@@ -652,7 +653,7 @@ progress::-webkit-progress-value {
   background: var(--md-primary-container);
   border: 0;
   color: var(--md-on-primary-container);
-  border-radius: 32px;
+  border-radius: var(--container-radius);
   padding: 28px;
 }
 .guard .shift h2 {
@@ -686,7 +687,7 @@ progress::-webkit-progress-value {
   justify-content: space-between;
   text-align: left;
   border: 0;
-  border-radius: 24px;
+  border-radius: var(--container-radius);
   padding: 24px;
   font-size: 18px;
   font-weight: 550;
@@ -698,25 +699,25 @@ progress::-webkit-progress-value {
 .guard .actions button[data-page="round"] {
   background: #dce7f4;
   color: #263e5c;
-  border-radius: 28px 28px 12px 28px;
+  border-radius: var(--container-radius);
 }
 .guard .actions button[data-page="report"] {
   background: #ffe0a3;
   color: #583b00;
-  border-radius: 28px 28px 28px 12px;
+  border-radius: var(--container-radius);
 }
 .guard .actions button[data-page="instructions"] {
   background: #e9ddff;
   color: #49316c;
-  border-radius: 28px 12px 28px 28px;
+  border-radius: var(--container-radius);
 }
 .guard .actions button.amber {
   background: var(--md-tertiary-container);
   color: #543c03;
-  border-radius: 12px 28px 28px 28px;
+  border-radius: var(--container-radius);
 }
 .guard .actions button:active {
-  border-radius: 16px;
+  border-radius: var(--container-radius);
 }
 .guard .actions .md-icon {
   width: 30px;
@@ -742,13 +743,13 @@ progress::-webkit-progress-value {
 .guard #record {
   min-height: 80px;
   font-size: 20px;
-  border-radius: 28px;
+  border-radius: var(--container-radius);
   margin: 20px 0 12px;
   user-select: none;
   -webkit-user-select: none;
 }
 .guard #record:active {
-  border-radius: 16px;
+  border-radius: var(--container-radius);
   background: var(--md-error);
 }
 .guard #record .md-icon {
@@ -802,7 +803,7 @@ progress::-webkit-progress-value {
   width: 216px;
   height: 180px;
   background: var(--md-primary-container);
-  border-radius: 80px 80px 28px 80px;
+  border-radius: var(--container-radius);
   display: grid;
   place-items: center;
   position: relative;
@@ -827,7 +828,7 @@ progress::-webkit-progress-value {
 .login > .card {
   background: white;
   padding: 24px;
-  border-radius: 32px;
+  border-radius: var(--container-radius);
 }
 .login .card h1 {
   font-size: 32px;
@@ -872,7 +873,7 @@ progress::-webkit-progress-value {
   background: white;
   text-align: center;
   border: 1px solid var(--md-outline-variant);
-  border-radius: 24px;
+  border-radius: var(--container-radius);
   padding: 32px;
 }
 .sheet img {
@@ -887,7 +888,7 @@ progress::-webkit-progress-value {
   color: var(--muted);
   font-size: 14px;
   text-align: center;
-  border-radius: 20px;
+  border-radius: var(--container-radius);
   background: var(--md-surface-low);
   margin: 16px 0;
 }
@@ -912,7 +913,7 @@ progress::-webkit-progress-value {
   background: var(--md-primary);
 }
 details {
-  border-radius: 16px;
+  border-radius: var(--container-radius);
 }
 details summary {
   cursor: pointer;
@@ -931,7 +932,7 @@ details p {
 pre {
   padding: 20px;
   background: var(--md-surface-low);
-  border-radius: 16px;
+  border-radius: var(--container-radius);
   font-size: 12px;
   line-height: 1.6;
   max-width: 100%;
@@ -949,7 +950,7 @@ a {
   max-width: min(560px, calc(100% - 32px));
   background: #253a33;
   color: #eff5ef;
-  border-radius: 12px;
+  border-radius: var(--container-radius);
   padding: 16px 24px;
   font-size: 14px;
   line-height: 1.5;
@@ -1000,7 +1001,7 @@ summary:focus-visible {
     padding: 8px 4px;
     flex-direction: column;
     gap: 6px;
-    border-radius: 20px;
+    border-radius: var(--container-radius);
     font-size: 11px;
     line-height: 16px;
   }
@@ -1010,7 +1011,7 @@ summary:focus-visible {
   .sidebar nav button .md-icon {
     box-sizing: content-box;
     padding: 8px 20px;
-    border-radius: 100px;
+    border-radius: var(--container-radius);
   }
   .sidebar nav button.active .md-icon {
     background: var(--md-primary-container);
@@ -1071,7 +1072,7 @@ summary:focus-visible {
     height: auto;
     flex-direction: column;
     gap: 4px;
-    border-radius: 16px;
+    border-radius: var(--container-radius);
     padding: 0 4px;
     font-size: 12px;
     line-height: 16px;
@@ -1081,7 +1082,7 @@ summary:focus-visible {
     box-sizing: content-box;
     width: 24px;
     height: 24px;
-    border-radius: 100px;
+    border-radius: var(--container-radius);
   }
   .sidebar nav button.active {
     background: transparent;
@@ -1192,7 +1193,7 @@ summary:focus-visible {
   .stat {
     padding: 18px;
     min-height: 184px;
-    border-radius: 24px;
+    border-radius: var(--container-radius);
   }
   .stat > span:first-of-type {
     font-size: 10px;
@@ -1356,13 +1357,13 @@ summary:focus-visible {
 }
 .guard .duty-card {
   padding: 28px;
-  border-radius: 32px;
+  border-radius: var(--container-radius);
 }
 .guard .duty-card h2 {
   max-width: 240px;
 }
 .guard .duty-card > button[data-action="shift"] {
-  background: #9c4146;
+  background: #263e5c;
   color: #ffffff;
 }
 .shift-facts {
@@ -1398,7 +1399,7 @@ summary:focus-visible {
 .guard .actions button[data-page="message"] {
   background: #bceee3;
   color: #124e43;
-  border-radius: 12px 28px 28px 28px;
+  border-radius: var(--container-radius);
 }
 
 .guard .actions #patrolCountdown {
@@ -1483,7 +1484,7 @@ summary:focus-visible {
   width: calc(100% - 32px);
   max-width: 390px;
   border: 0;
-  border-radius: 28px;
+  border-radius: var(--container-radius);
   padding: 24px;
   color: var(--md-on-surface);
 }
@@ -1505,7 +1506,7 @@ summary:focus-visible {
   text-align: left;
   padding: 20px;
   border: 0;
-  border-radius: 24px;
+  border-radius: var(--container-radius);
   font-size: 17px;
   line-height: 1.4;
   background: #dce7f4;
@@ -1551,13 +1552,13 @@ summary:focus-visible {
 .report-photo-actions button {
   min-height: 80px;
   padding: 16px 12px;
-  border-radius: 24px;
+  border-radius: var(--container-radius);
 }
 #photoDialog {
   width: calc(100% - 32px);
   max-width: 440px;
   border: 0;
-  border-radius: 28px;
+  border-radius: var(--container-radius);
   padding: 24px;
 }
 #photoDialog::backdrop {
@@ -1565,7 +1566,7 @@ summary:focus-visible {
 }
 #photoPreview {
   width: 100%;
-  border-radius: 16px;
+  border-radius: var(--container-radius);
   background: #102a25;
 }
 
@@ -1600,7 +1601,7 @@ summary:focus-visible {
   max-width: 390px;
   padding: 28px;
   border: 0;
-  border-radius: 28px;
+  border-radius: var(--container-radius);
   background: #fffdf5;
   color: var(--md-on-surface);
   box-shadow: 0 16px 48px #102a2533;
@@ -1665,7 +1666,7 @@ summary:focus-visible {
   overflow: auto;
   padding: 28px;
   border: 0;
-  border-radius: 28px;
+  border-radius: var(--container-radius);
   background: #fffdf5;
   color: var(--md-on-surface);
 }
@@ -1770,7 +1771,7 @@ summary:focus-visible {
   right: 10px;
   background: #ffdf9e;
   color: #3c2b00;
-  border-radius: 999px;
+  border-radius: var(--container-radius);
   padding: 4px 8px;
   font-size: 12px;
   font-weight: 700;
@@ -1901,7 +1902,7 @@ summary:focus-visible {
   color: var(--guard-on-navigation);
 }
 .guard:not(.supervisor-mobile) .actions button[data-page] {
-  border-radius: 24px;
+  border-radius: var(--container-radius);
 }
 .guard.off-duty .shift {
   background: var(--guard-navigation);
@@ -1922,7 +1923,7 @@ summary:focus-visible {
 .supervisor-mobile .report-photo-actions button {
   background: #dce7f4;
   color: #263e5c;
-  border-radius: 24px;
+  border-radius: var(--container-radius);
 }
 .supervisor-mobile .stat[data-tone] {
   background: #ccebd9;
@@ -1943,7 +1944,7 @@ summary:focus-visible {
   display: flex;
   flex-direction: column;
   padding: 14px 10px;
-  border-radius: 24px;
+  border-radius: var(--container-radius);
   min-height: 190px;
 }
 .supervisor-mobile .stats .stat strong {
@@ -2110,7 +2111,7 @@ summary:focus-visible {
   background: #fff;
   padding: 6px;
   border: 1px solid #cbd5de;
-  border-radius: 12px;
+  border-radius: var(--container-radius);
   box-shadow: 0 6px 18px #102a2520;
 }
 .shift-picker-options button {
@@ -2120,7 +2121,7 @@ summary:focus-visible {
   text-align: left;
   background: transparent;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--container-radius);
   font-size: 13px;
 }
 .shift-picker-options button[aria-pressed="true"] {
@@ -2169,7 +2170,7 @@ summary:focus-visible {
   padding: 16px;
   background: white;
   border: 1px solid #cbd5de;
-  border-radius: 12px;
+  border-radius: var(--container-radius);
   box-shadow: 0 6px 18px #102a2520;
 }
 .overview-calendar button {
@@ -2343,7 +2344,7 @@ summary:focus-visible {
 }
 .supervisor-home #dashboardPage > .grid > .card {
   padding: 16px;
-  border-radius: 20px;
+  border-radius: var(--container-radius);
 }
 .supervisor-home #dashboardPage > .grid h2 {
   margin: 0 0 12px;
@@ -2605,16 +2606,16 @@ summary:focus-visible {
   max-width: calc(100vw - 32px);
   padding: 12px;
   border: 1px solid #dce2df;
-  border-radius: 16px;
+  border-radius: var(--container-radius);
   box-shadow: 0 12px 32px #182c2a22;
   top: calc(100% + 4px);
 }
 .overview-calendar .calendar-month { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .overview-calendar .calendar-month strong { font-size: 15px; }
-.overview-calendar .calendar-month button { width: 44px; height: 44px; min-height: 44px; margin: 0; padding: 0; border: 0; border-radius: 8px; font-size: 26px; }
+.overview-calendar .calendar-month button { width: 44px; height: 44px; min-height: 44px; margin: 0; padding: 0; border: 0; border-radius: var(--container-radius); font-size: 26px; }
 .calendar-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .calendar-weekday { text-align: center; font-size: 11px; color: #63736e; padding: 6px 0; }
-.overview-calendar .calendar-days button { width: 100%; min-height: 40px; height: 40px; margin: 0; padding: 0; border: 0; border-radius: 8px; font-size: 13px; color: #263e5c; }
+.overview-calendar .calendar-days button { width: 100%; min-height: 40px; height: 40px; margin: 0; padding: 0; border: 0; border-radius: var(--container-radius); font-size: 13px; color: #263e5c; }
 .overview-calendar .calendar-days button[aria-current="date"] { box-shadow: inset 0 0 0 1px #006b56; }
 .overview-calendar .calendar-days button[aria-pressed="true"] { background: #006b56; color: #fff; }
 .calendar-footer { display: flex; align-items: end; justify-content: space-between; gap: 12px; border-top: 1px solid #e4e8e5; padding-top: 10px; margin-top: 10px; }
@@ -2644,4 +2645,219 @@ summary:focus-visible {
 .supervisor-home .attention-list .attention-report-row strong { grid-column: 2; }
 .supervisor-home .attention-list .attention-report-row small { grid-column: 2 / -1; }
 .supervisor-home .attention-list .attention-report-row .overview-row-action { grid-column: 3; }
-.supervisor-home .last-record-received { margin: 20px 0 8px; text-align: center; font-size: 12px; line-height: 18px; color: #526b80; }
+.supervisor-mobile .last-record-received { margin: 20px 0 8px; text-align: center; font-size: 12px; line-height: 18px; color: #526b80; }
+.problem-list + .problem-list { margin-top: 16px; }
+.problem-list h2 { font-size: 18px; margin: 0 0 8px; }
+.problem-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 64px; padding: 10px 0; text-align: left; border: 0; border-bottom: 1px solid #dde2e5; border-radius: 0; background: transparent; box-shadow: none; color: #263e5c; }
+.problem-row:last-child { border-bottom: 0; }
+.problem-file .md-icon { width: 30px; height: 30px; }
+.problem-overview { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.problem-overview strong, .problem-overview small { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.problem-overview small { font-weight: 400; font-size: 12px; color: #526b80; }
+.message-recipient { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0 16px; }
+.message-picker { min-width: 0; }
+.message-picker summary { min-height: 44px; }
+.inbox-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.inbox-heading h2 { margin: 0; font-size: 16px; }
+.inbox-heading .message-picker summary { font-size: 12px; gap: 2px; white-space: nowrap; }
+.inbox-pagination { display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
+.inbox-pagination button, .inbox-pagination button:hover, .inbox-pagination button:disabled { background: transparent !important; border: 0; border-radius: 0; box-shadow: none; min-height: 44px; padding: 8px 4px; font-size: 12px; }
+.inbox-pagination button:disabled { color: #78817e !important; cursor: default; }
+.received-inbox { margin-top: 20px; }
+.inbox-row { display: flex; width: 100%; align-items: center; gap: 12px; text-align: left; border: 0; border-bottom: 1px solid #dce2e5; border-radius: 0; background: transparent; padding: 12px 0; box-shadow: none; }
+.inbox-copy { min-width: 0; flex: 1; display: grid; gap: 3px; }
+.inbox-copy > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; }
+.inbox-copy small { font-weight: 400; color: #526b80; }
+.messaging-disabled .supervisor-home .supervisor-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.guard .actions .emergency-action, .guard .actions .emergency-action:hover { background: #b3261e; color: #fff; }
+.confirmation-actions .end-confirm { background: #263e5c; color: #fff; }
+
+/* Problems: consistent vertical rhythm and compact, clearly interactive rows. */
+.supervisor-problems .duty-identity { margin: 16px 0 24px; }
+.supervisor-problems .duty-identity .eyebrow { margin: 0 0 8px; font-size: 11px; letter-spacing: 1px; }
+.supervisor-problems .greeting-row h1 { font-size: 28px; line-height: 36px; font-weight: 600; letter-spacing: -.5px; }
+.supervisor-problems .problem-index { display: grid; gap: 16px; }
+.supervisor-problems .problem-list { padding: 16px; border-radius: var(--container-radius); }
+.supervisor-problems .problem-list + .problem-list { margin-top: 0; }
+.supervisor-problems .problem-list h2 { margin: 0 0 8px; color: #263e5c; font-size: 16px; line-height: 24px; font-weight: 600; }
+.problem-count { font-weight: 400; color: #526b80; }
+.supervisor-problems .problem-row { min-height: 64px; margin: 0; padding: 12px 0; gap: 8px; line-height: 20px; }
+.supervisor-problems .problem-row:hover { background: #f1f5f8; box-shadow: none; }
+.supervisor-problems .problem-row:active { transform: none; border-radius: 0; background: #e7eef5; }
+.supervisor-problems .problem-row:focus-visible { outline: 2px solid #006b56; outline-offset: 3px; }
+.supervisor-problems .problem-file { display: flex; align-items: center; justify-content: center; flex: 0 0 30px; color: #526b80; }
+.supervisor-problems .problem-overview { gap: 2px; }
+.supervisor-problems .problem-overview strong { font-size: 14px; line-height: 20px; font-weight: 600; }
+.supervisor-problems .problem-overview small { font-size: 12px; line-height: 18px; }
+.problem-chevron { width: 18px; height: 18px; flex: 0 0 18px; color: #526b80; }
+.supervisor-problems .problem-list .empty { margin: 0; padding: 12px 0 4px; text-align: left; font-size: 14px; line-height: 20px; color: #526b80; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+.supervisor-problems .problem-index .last-record-received { margin: 0; padding: 4px 8px 12px; }
+
+/* Shared signed-in header geometry: page content must not move the identity. */
+html { scrollbar-gutter: stable; }
+.guard { padding-top: 16px; }
+.guard > .topbar { box-sizing: border-box; height: 72px; min-height: 72px; padding: 0 0 16px; flex-wrap: nowrap; }
+.guard > .duty-identity, .guard > .off-duty-identity { margin: 16px 0 24px; }
+.guard > .duty-identity > .eyebrow, .guard > .off-duty-identity > .eyebrow { margin: 0 0 8px; font-size: 11px; line-height: 16px; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.guard .greeting-row { display: grid; grid-template-columns: minmax(0, 1fr) 104px; align-items: center; gap: 8px; height: 44px; }
+.guard .greeting-row h1 { margin: 0; font-size: 28px; line-height: 36px; font-weight: 600; letter-spacing: -.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.guard .greeting-row .back { justify-self: end; margin: 0; min-height: 44px; max-width: 104px; padding: 8px; white-space: nowrap; }
+.owner-page-identity { min-height: 88px; align-items: center; }
+.owner-page-identity .eyebrow { margin: 0 0 8px; }
+.owner-page-identity h1 { margin: 0; font-size: 28px; line-height: 36px; }
+.owner-page-title { margin: 20px 0 12px; }
+.problem-detail > .muted:first-child { margin: 0 0 16px; }
+.problem-written { margin: 12px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.problemResolve { margin-top: 20px; }
+.problemResolve .primary { margin-top: 16px; }
+.resolution-detail > .muted:first-child { margin: 0 0 16px; }
+.resolution-comments { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Reports and settings share the spacing and surfaces of the Problems journey. */
+.supervisor-standard > .supervisor-heading { margin: 0 0 16px; }
+.supervisor-standard > .supervisor-heading h2 { font-size: 20px; line-height: 28px; font-weight: 600; }
+.supervisor-standard #dashboardPage > .card, .supervisor-standard #dashboardPage > .grid { margin-top: 0 !important; }
+.supervisor-standard .card { padding: 16px; border-radius: var(--container-radius); }
+.supervisor-standard .card h2 { font-size: 18px; line-height: 26px; font-weight: 600; }
+.supervisor-standard .empty { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 12px 0; text-align: left; }
+.supervisor-standard .settings-index .actions { margin: 0; gap: 8px; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 92px; }
+.supervisor-standard .settings-index .actions button { display: grid; height: 92px; min-height: 92px; padding: 12px 4px; border: 0; border-radius: 0; grid-template-rows: 24px 32px; align-content: center; justify-items: center; gap: 6px; font-size: 12px; line-height: 16px; text-align: center; background: #dce7f4; color: #263e5c; box-shadow: none; }
+.supervisor-standard .settings-index .actions .button-label { align-self: start; line-height: 16px; text-align: center; }
+.supervisor-standard .settings-index .actions button { grid-template-columns: minmax(0, 1fr); justify-content: stretch; align-items: start; font-weight: 550; letter-spacing: 0; }
+.supervisor-standard .settings-index .actions .action-icon { display: grid; place-items: center; width: 24px; height: 24px; background: transparent; color: #263e5c; }
+.supervisor-standard .settings-index .actions button:hover { background: #cddded; }
+.supervisor-standard .settings-index .actions .md-icon { width: 24px; height: 24px; margin: 0; }
+.daily-reports-card > .row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.daily-reports-card > .row button { width: 100%; margin: 0; }
+.daily-reports-card > .item { padding: 16px 0; }
+.reports-date-picker > summary { font-size: 13px; min-height: 44px; gap: 4px; }
+.reports-date-options { position: absolute; right: 0; top: 100%; z-index: 10; background: #fff; border: 1px solid #dde2e5; border-radius: var(--container-radius); padding: 16px; box-shadow: 0 6px 20px #182c2a18; width: 240px; }
+.report-period { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.report-range, .report-view-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.report-view-actions { margin-top: 20px; }
+.report-view-actions button { padding: 12px 8px; font-size: 14px; }
+.guard .report-view-actions button { box-sizing: border-box; height: 52px; min-height: 52px; margin: 0; padding: 12px 8px; line-height: 20px; border-radius: var(--container-radius); align-self: stretch; }
+.report-period-note { font-size: 12px; line-height: 18px; color: #526b80; margin: 16px 0 0; }
+.activity-report { margin-top: 16px; }
+.activity-counts { margin: 16px 0; }
+.activity-counts > div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #dde2e5; }
+.activity-counts dd { margin: 0; font-weight: 600; }
+.activity-counts dd { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.activity-caution { display: inline-flex; color: #b3261e; }
+.activity-caution .md-icon { width: 18px; height: 18px; }
+.activity-record { padding: 12px 0; border-bottom: 1px solid #dde2e5; overflow-wrap: anywhere; }
+.activity-record small { display: block; margin-top: 4px; }
+.activity-report > small { display: block; margin-top: 16px; }
+/* Settings uses the same fixed-width action tiles as the supervisor home. */
+.supervisor-standard .settings-index .settings-tabs { margin: 0 0 20px; }
+.supervisor-standard .settings-index .settings-tabs button { grid-template-rows: 24px 20px; min-height: 84px; gap: 8px; }
+.supervisor-standard .settings-index .settings-tabs button[aria-selected="true"] { outline: 2px solid #183c62; outline-offset: -2px; background: #cbdcf0; }
+.supervisor-standard .settings-index .settings-tabs .button-label { font-size: 13px; line-height: 20px; }
+#settings-panel { display: grid; gap: 16px; min-width: 0; }
+#settings-panel .card { margin: 0; }
+#settings-panel .settings-fields { display: grid; gap: 14px; padding: 16px 0; min-width: 0; }
+#settings-panel label { display: grid; gap: 6px; font-size: 14px; font-weight: 600; min-width: 0; }
+#settings-panel input, #settings-panel select, #settings-panel textarea { width: 100%; min-width: 0; box-sizing: border-box; }
+#settings-panel small, #settings-panel .settings-helper { color: #596775; font-size: 12px; font-weight: 400; line-height: 1.5; }
+#settings-panel .settings-time-row, #settings-panel .settings-button-row { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+#settings-panel .settings-button-row button { margin: 0; min-height: 44px; font-size: 13px; }
+#settings-panel .settings-shift { border-bottom: 1px solid #e1e5e9; padding: 12px 0; }
+#settings-panel summary { font-weight: 600; cursor: pointer; padding: 8px 0; }
+#settings-panel summary small { margin-left: 8px; white-space: nowrap; }
+#settings-panel fieldset { border: 1px solid #e1e5e9; padding: 12px; border-radius: var(--container-radius); }
+#settings-panel .settings-check { display: flex; align-items: center; gap: 10px; min-height: 40px; font-weight: 400; }
+#settings-panel .settings-check input { width: 20px; height: 20px; }
+#settings-panel .settings-common .card { border: 0; padding: 8px 0; box-shadow: none; }
+#settings-panel .settings-status:empty { display: none; }
+#settings-panel .settings-status { font-size: 14px; margin: 12px 0 0; }
+#settings-panel .settings-section-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+#settings-panel .checkpoint-edit { border-bottom: 1px solid #e1e5e9; }
+.qr-print-frame { position: fixed; width: 1px; height: 1px; bottom: 0; border: 0; }
+#settings-panel .shift-editor-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+#settings-panel .shift-editor-heading h2 { margin: 0; }
+#settings-panel .shift-text-action { background: transparent; border: 0; box-shadow: none; border-radius: 0; color: #006b56; min-height: 44px; padding: 8px 0; margin: 0; font-size: 14px; }
+#settings-panel .settings-shift { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+#settings-panel .settings-shift + .settings-shift { border-top: 1px solid #e5e8eb; }
+#settings-panel .settings-shift > summary { box-sizing: border-box; min-height: 44px; margin: 0; padding: 12px 0; line-height: 20px; font-size: 14px; }
+#settings-panel .settings-shift .settings-fields { gap: 12px; padding: 6px 0 12px; }
+#settings-panel .settings-shift label { margin: 0; gap: 4px; }
+#settings-panel .settings-shift input:not([type="checkbox"]) { height: 48px; min-height: 48px; padding: 10px 12px; margin: 0; }
+#settings-panel .settings-shift textarea { height: 88px; min-height: 88px; margin: 0; padding: 10px 12px; }
+#settings-panel .settings-shift fieldset { border: 0; border-radius: 0; padding: 0; margin: 0; min-width: 0; }
+#settings-panel .settings-shift legend { padding: 0; margin-bottom: 2px; font-size: 14px; font-weight: 600; }
+#settings-panel .settings-shift .settings-check { min-height: 44px; }
+#settings-panel .settings-shift .settings-check input { margin: 0; }
+#settings-panel .shift-save-row { margin-top: 8px; }
+#settings-panel .shift-save-row button { width: 100%; min-height: 48px; margin: 0; }
+#settings-panel .shift-save-row button:disabled { background: #e6e8ea; color: #737a80; border-color: transparent; cursor: default; box-shadow: none; }
+#settings-panel .shift-draft { font-size: 11px; font-weight: 400; color: #805700; margin-left: 8px; }
+.checkpoint-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+#settings-panel .checkpoint-heading h2 { margin: 0; font-size: 20px; }
+.checkpoint-count { font-size: 14px; font-weight: 400; color: #596775; }
+#settings-panel .checkpoint-text-action { background: transparent; border: 0; box-shadow: none; padding: 8px 0; margin: 0; min-height: 44px; font-size: 14px; color: #006b56; }
+.checkpoint-tools { margin-bottom: 4px; }
+#settings-panel .checkpoint-search { margin: 0 0 12px; font-size: 13px; }
+#settings-panel .checkpoint-search input { margin: 0; min-height: 44px; padding: 10px 12px; }
+#settings-panel .checkpoint-list-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 10px 0; margin: 0; text-align: left; color: #263e5c; border: 0; border-bottom: 1px solid #e2e6ea; background: transparent; box-shadow: none; }
+#settings-panel .checkpoint-list-row:last-child { border-bottom: 0; }
+#settings-panel .checkpoint-list-row:hover { background: #f2f5f8; }
+.checkpoint-symbol { display: flex; flex: 0 0 24px; color: #526b80; }
+.checkpoint-symbol .md-icon { width: 24px; height: 24px; }
+.checkpoint-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 500; }
+.checkpoint-chevron { font-size: 24px; font-weight: 400; color: #526b80; }
+#settings-panel .checkpoint-empty { font-size: 14px; line-height: 1.5; margin: 12px 0 4px; color: #596775; }
+#settings-panel .checkpoint-status { font-size: 13px; line-height: 1.5; margin: 12px 0 0; }
+.checkpoint-status:empty { display: none; }
+#settings-panel #checkpoint-editor { gap: 12px; padding: 12px 0; }
+#settings-panel #checkpoint-editor input { margin: 0; height: 48px; padding: 10px 12px; }
+#settings-panel #checkpoint-editor button { min-height: 48px; margin: 0; }
+#settings-panel #checkpoint-save:disabled { background: #e6e8ea; color: #737a80; cursor: default; border-color: transparent; }
+.checkpoint-tag-section { border-top: 1px solid #e2e6ea; padding-top: 16px; margin-top: 4px; }
+.checkpoint-tag-section h3 { font-size: 16px; margin: 0 0 12px; }
+.checkpoint-qr { display: flex; justify-content: center; min-height: 136px; align-items: center; font-size: 13px; }
+.checkpoint-qr img { width: 136px; height: 136px; }
+.checkpoint-code { text-align: center; margin: 8px 0 16px; font-size: 12px; overflow-wrap: anywhere; }
+.checkpoint-code span { color: #596775; display: block; margin-bottom: 4px; }
+.team-avatar { position: relative; display: grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; background: #e4edf6; color: #526b80; overflow: hidden; }
+.team-avatar .md-icon { width: 24px; height: 24px; }
+.team-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.team-row-text { display: grid; flex: 1; min-width: 0; gap: 3px; }
+#settings-panel .team-row-text small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; }
+#settings-panel .team-row { min-height: 64px; }
+#settings-panel #team-editor { gap: 12px; padding: 12px 0 0; }
+#settings-panel #team-editor input,#settings-panel #team-editor select { margin: 0; min-height: 48px; padding: 10px 12px; }
+#settings-panel #team-save { margin: 0; min-height: 48px; }
+#settings-panel #team-save:disabled { background: #e6e8ea; color: #737a80; cursor: default; border-color: transparent; }
+#settings-panel .shifts-panel #save-shifts { min-height: 48px; width: 100%; margin: 0; }
+#settings-panel .shifts-panel #save-shifts:disabled { background: #e6e8ea; color: #737a80; border-color: transparent; cursor: default; }
+#settings-panel .shifts-panel .settings-fields { padding-bottom: 0; }
+.gps-record { padding: 16px 0; border-bottom: 1px solid #dde2e5; }
+.gps-record h3 { font-size: 16px; margin: 0 0 8px; }
+.gps-record small { display: block; line-height: 1.5; color: #596775; }
+.property-editor { margin-bottom: 20px; }
+.property-editor form,.property-editor label { display: grid; gap: 8px; }
+.property-editor form { gap: 12px; }
+.property-editor iframe { width: 100%; height: 260px; border: 1px solid #dde2e5; }
+.property-editor .property-confirm { display: flex; align-items: center; }
+.property-confirm input { width: 22px; flex: 0 0 22px; }
+.property-editor small { color: #596775; line-height: 1.5; }
+.attention-footer > .checkpoint-text-action { background: transparent; border: 0; font-size: 12px; padding: 8px 0; min-height: 44px; color: #006b56; }
+#qr-print-preview { width: min(720px,94vw); max-height: 90vh; overflow: auto; padding: 20px; }
+.qr-preview-toolbar h2 { margin: 0 0 12px; }
+.qr-preview-toolbar p { font-size: 13px; line-height: 1.5; }
+.qr-preview-toolbar > div { display: flex; gap: 12px; }
+.qr-print-sheet { display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 16px; }
+.qr-print-sheet article { text-align: center; border: 1px dashed #aeb6bd; padding: 16px; break-inside: avoid; }
+.qr-print-sheet article h2 { font-size: 18px; }
+.qr-print-sheet img { display: block; width: 160px; height: 160px; margin: 0 auto 8px; }
+.qr-print-sheet code { display: block; overflow-wrap: anywhere; }
+#settings-panel .checkpoint-delete { margin: 16px 0 0; padding: 10px 0; background: transparent; border: 0; color: #a3352b; min-height: 44px; }
+.checkpoint-delete-dialog .settings-button-row { display: flex; gap: 12px; }
+@media print {
+  body:has(#qr-print-preview) > :not(#qr-print-preview) { display: none !important; }
+  body:has(#qr-print-preview) { background: white; overflow: visible; }
+  #qr-print-preview[open] { position: static; display: block; width: 100%; max-width: none; height: auto; max-height: none; overflow: visible; margin: 0; padding: 0; border: 0; box-shadow: none; }
+  #qr-print-preview::backdrop, .qr-preview-toolbar { display: none; }
+  .qr-print-sheet { display: block; }
+  .qr-print-sheet article { display: inline-block; vertical-align: top; width: 46%; margin: 1%; box-sizing: border-box; color: black; }
+}

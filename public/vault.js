@@ -1,3 +1,4 @@
+import { loginId } from './login-id.js';
 let db, key, account;
 const enc = new TextEncoder(),
   dec = new TextDecoder();
@@ -28,9 +29,10 @@ function write(k, v) {
     t.onabort = () => reject(t.error || new Error("Device storage full"));
   });
 }
-export async function unlock(email, password) {
+export async function unlock(email, password, canonical) {
   await open();
-  account = email.toLowerCase();
+  const alias=loginId(email);
+  account = canonical || (await read('login-alias:'+alias)) || alias;
   let existing = await read(account),
     salt = existing?.salt || crypto.getRandomValues(new Uint8Array(16)),
     base = await crypto.subtle.importKey(
@@ -49,7 +51,7 @@ export async function unlock(email, password) {
   );
   if (existing?.data) {
     try {
-      return JSON.parse(
+      const value = JSON.parse(
         dec.decode(
           await crypto.subtle.decrypt(
             { name: "AES-GCM", iv: existing.iv },
@@ -58,6 +60,8 @@ export async function unlock(email, password) {
           ),
         ),
       );
+      if(canonical) await write('login-alias:'+alias,account);
+      return value;
     } catch {
       throw new Error(
         "Cannot unlock saved work. Use the original password; do not clear browser data.",
@@ -65,6 +69,7 @@ export async function unlock(email, password) {
     }
   }
   await write(account, { salt });
+  if(canonical) await write('login-alias:'+alias,account);
   return { state: null, queue: [], draft: null };
 }
 let saving = Promise.resolve();

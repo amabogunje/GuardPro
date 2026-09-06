@@ -1,4 +1,10 @@
 let overviewDate = null;
+import { locationGroups, gpsReview } from './gps-review.js';
+import { propertyEditor } from './property-location.js';
+let selectedLocationShift=null;
+import { renderSettings, resetSettings } from "./settings.js";
+import { closeCheckpoints } from "./checkpoints.js";
+import { currentPlan } from "./shift-plans.js";
 let attentionPage = 0, attentionOrder = "newest", attentionScope = "";
 let selectedOverviewShift = null;
 import {
@@ -14,6 +20,103 @@ import {
 } from "./instructions.js";
 let selectedReportId = null,
   reportMediaUrls = [];
+let selectedProblemId = null;
+let activityPeriod = "daily";
+function renderActivityReports(target) {
+  const today = new Date(Date.now()+3600000).toISOString().slice(0,10);
+  target.innerHTML = `<section class="card activity-report-controls"><div class="report-period"><span>Report period</span>${messagePicker("Choose report period","activityPeriod",[{value:"daily",label:"Daily"},{value:"monthly",label:"Monthly"},{value:"custom",label:"Custom dates"}],activityPeriod,"Daily")}</div><form id="activityReportForm">${activityPeriod === "daily" ? `<label class="label" for="activityDay">Date</label><input id="activityDay" name="date" type="date" required max="${today}" value="${today}">` : activityPeriod === "monthly" ? `<label class="label" for="activityMonth">Month</label><input id="activityMonth" name="month" type="month" required max="${today.slice(0,7)}" value="${today.slice(0,7)}">` : `<div class="report-range"><label>From<input name="from" type="date" required max="${today}" value="${today}"></label><label>To<input name="to" type="date" required max="${today}" value="${today}"></label></div>`}<div class="report-view-actions"><button class="primary" name="intent" value="view">View report</button><button name="intent" value="download">Download CSV</button></div></form><p class="report-period-note">Dates use Nigerian time. Today and the current month show activity so far.</p></section><div id="activityReportResult" aria-live="polite"></div>`;
+}
+async function viewActivityReport(form, download) {
+  const values = Object.fromEntries(new FormData(form));
+  let from = values.from, to = values.to;
+  if (activityPeriod === "daily") from = to = values.date;
+  if (activityPeriod === "monthly") {
+    from = values.month+"-01";
+    const start = new Date(from+"T12:00:00Z");
+    to = new Date(Date.UTC(start.getUTCFullYear(),start.getUTCMonth()+1,0)).toISOString().slice(0,10);
+    const today = new Date(Date.now()+3600000).toISOString().slice(0,10);
+    if (to > today) to = today;
+  }
+  const report = await api("/api/activity-reports/"+encodeURIComponent(siteId)+"?"+new URLSearchParams({from,to}));
+  const labels = {shiftStarts:"Shift starts",shiftEnds:"Shift ends",patrolStarts:"Patrols started",checkpointScans:"Checkpoint scans",problemsResolved:"Problems resolved"};
+  const denominator = key => key === "problemsResolved" ? report.counts.problemsReported : report.expected?.[key];
+  const metric = key => {
+    const expected = denominator(key), actual = report.counts[key];
+    const concern = expected == null || (key === "problemsResolved" ? actual < expected : actual !== expected);
+    return `<dd>${concern ? '<span class="activity-caution" aria-label="Needs checking">' + icon("incidents") + '</span>' : ''}${actual} of ${expected == null ? '<span title="No historical schedule snapshot available">—</span>' : expected}</dd>`;
+  };
+  const localTime = at => new Date(at).toLocaleString("en-GB",{timeZone:"Africa/Lagos",dateStyle:"medium",timeStyle:"short"});
+  $("#activityReportResult").innerHTML = `<section class="card activity-report"><h2>Activity report</h2><p>${esc(report.from)} to ${esc(report.to)}</p><dl class="activity-counts">${Object.entries(labels).map(([key,label])=>`<div><dt>${label}</dt>${metric(key)}</div>`).join("")}</dl><p class="muted">Actual of expected, for activity due by now. Problems resolved shows the current resolution status of problems reported in this period. New records may still be waiting to upload.${Object.values(report.expected || {}).some(v=>v==null) ? ' — means the historical schedule was not saved, so the expectation cannot be confirmed.' : ''}</p><details><summary>Activity records (${report.rows.length})</summary>${report.rows.map(r=>`<article class="activity-record"><strong>${esc(r.type)}</strong><small>${esc(r.person)} · ${esc(localTime(r.at))}</small>${r.details?'<p>'+esc(r.details)+'</p>':''}</article>`).join("") || '<p>No activity recorded in this period.</p>'}</details><small>Prepared ${esc(localTime(report.generatedAt))}</small></section>`;
+  if (download) {
+    const cell = value => '"' + String(value ?? "").replace(/^[=+@-]/,"'$&").replace(/"/g,'""') + '"';
+    const rows = [["Activity report",report.site.name],["From",report.from],["To",report.to],["Timezone",report.timeZone],["Prepared",localTime(report.generatedAt)],["Expected activity due by now; uploads may be pending. Problems resolved uses current status of reports filed in the period."],[],["Metric","Actual","Expected / reported"],...Object.entries(labels).map(([key,label])=>[label,report.counts[key],denominator(key)??"Unknown — historical schedule unavailable"]),[],["Time (Nigeria)","Person","Activity","Details","Record ID","Server received"]];
+    rows.push(...report.rows.map(r=>[localTime(r.at),r.person,r.type,r.details,r.id,r.received_at?localTime(r.received_at):""]));
+    const url = URL.createObjectURL(new Blob(["\uFEFF"+rows.map(row=>row.map(cell).join(",")).join("\r\n")],{type:"text/csv;charset=utf-8"}));
+    const link=document.createElement("a"); link.href=url; link.download="GuardPro-"+from+"-to-"+to+".csv"; link.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+}
+function renderSupervisorProblems(target, reports) {
+  target.closest("main").classList.add("supervisor-problems");
+  document.querySelector('.supervisor-heading [data-action="refresh"]')?.remove();
+  document.querySelector(".supervisor-filters")?.remove();
+  document.querySelector(".supervisor-mobile > .notice")?.remove();
+  const selected = reports.find(i => i.id === selectedProblemId);
+  target.classList.toggle("problem-index", !selected);
+  if (selected) {
+    document.querySelector(".supervisor-heading h2").textContent = "Problem Details";
+    const back = document.querySelector(".greeting-row .back");
+    back.removeAttribute("data-page");
+    back.dataset.action = "problemList";
+    back.textContent = "Problems";
+    const event = eventList().find(e => e.id === selected.id);
+    const audioOnly = event?.payload.report_format === "audio" || selected.report === "Voice report — listen to the attached recording.";
+    const written = event?.payload.typed_report ?? (audioOnly ? "" : selected.report || "");
+    target.innerHTML = `<section class="card problem-detail" id="incident-${esc(selected.id)}"><p class="muted">Received on ${esc(date(selected.received_at))}<br>Reported by ${esc(guardName(selected.user_id))}</p><div id="problemAudio"></div>${written.trim() ? '<p class="problem-written">' + esc(written) + '</p>' : ''}<div id="problemPhotos"></div>${selected.status !== "Resolved" ? `<form class="problemResolve" data-id="${esc(selected.id)}"><label class="label" for="problemComments">Supervisor comments</label><textarea id="problemComments" name="note" maxlength="5000"></textarea><button class="primary wide">Resolve Problem</button></form>` : ""}</section>`;
+    if (selected.status === "Resolved") {
+      target.insertAdjacentHTML("beforeend", '<div class="supervisor-heading"><h2 id="resolutionHeading">Resolution Details</h2></div><section class="card resolution-detail" aria-labelledby="resolutionHeading">' +
+        selected.history.filter(h => h.status === "Resolved").map(h => `<p class="muted">Resolved on ${esc(date(h.at))}<br>Resolved by ${esc(h.name)}</p><p class="resolution-comments"><strong>Supervisor comments:</strong><br>${esc(h.note || "")}</p>`).join("") + '</section>');
+    }
+    for (const media of selected.media) renderProblemAttachment(target, media);
+  } else {
+    selectedProblemId = null;
+    document.querySelector(".supervisor-heading")?.remove();
+    const sorted = [...reports].sort((a,b) => b.captured_at.localeCompare(a.captured_at));
+    const section = (title, items, empty) => `<section class="card problem-list"><h2>${title} <span class="problem-count">(${items.length})</span></h2><div>${items.map(i => `<button type="button" data-md="true" class="problem-row" data-action="viewProblem" data-id="${esc(i.id)}" title="${esc(i.report || "Voice report")}"><span class="problem-file" aria-hidden="true">${icon("incidents")}</span><span class="problem-overview"><strong>${esc(i.report || "Voice report")}</strong><small>Reported by ${esc(guardName(i.user_id))} · ${esc(reportDateTime(i.captured_at))}</small></span><svg class="problem-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>`).join("") || '<p class="empty">' + empty + '</p>'}</div></section>`;
+    target.innerHTML = section("Outstanding Problems", sorted.filter(i => i.status !== "Resolved"), "No outstanding problems.") +
+      section("Resolved Problems", sorted.filter(i => i.status === "Resolved"), "No resolved problems.");
+  }
+  const footer = document.createElement("p");
+  footer.className = "last-record-received";
+  footer.textContent = "Last record received: " + date(site().last_sync);
+  target.append(footer);
+}
+function renderProblemAttachment(target, media) {
+  const audio = media.mime.startsWith("audio/");
+  if (!audio && !media.mime.startsWith("image/")) return;
+  const frame = document.createElement("div");
+  frame.className = "saved-attachment";
+  const element = document.createElement(audio ? "audio" : "img");
+  if (audio) { element.controls = true; element.preload = "metadata"; element.setAttribute("aria-label", "Problem recording"); }
+  else { element.className = "photo"; element.alt = "Attached problem photo"; }
+  const status = document.createElement("p");
+  status.className = "muted";
+  frame.append(element, status);
+  target.querySelector(audio ? "#problemAudio" : "#problemPhotos").append(frame);
+  const retry = document.createElement("button");
+  retry.type = "button"; retry.textContent = "Retry attachment";
+  async function load() {
+    retry.remove(); status.textContent = audio ? "Loading recording…" : "Loading photo…";
+    try {
+      const {url} = await api("/api/media/" + media.id + "/link");
+      if (frame.isConnected) element.src = url;
+    } catch { failed(); }
+  }
+  function failed() { status.textContent = "Attachment unavailable. Connect and try again."; frame.append(retry); }
+  retry.onclick = load;
+  element.addEventListener("error", failed);
+  element.addEventListener(audio ? "loadedmetadata" : "load", () => { status.textContent = ""; retry.remove(); });
+  load();
+}
 let reportSubmitting = false;
 let signingOut = false;
 let recordingPlaybackUrl = null;
@@ -123,7 +226,7 @@ const persist = () => save(vault),
     `<div class="brand"><img src="/icon.svg" alt=""><div><strong>Guard Companion</strong></div></div>`;
 watchMaterial(root);
 function login() {
-  root.innerHTML = `<main class="login">${brand()}<div class="card"><span class="eyebrow">Professional guard supervision</span><h1>Welcome back</h1><p class="muted">Sign in to access your security workspace.</p><form id="login"><label class="label" for="email">Email</label><input id="email" name="email" type="email" autocomplete="username" required value="bala@demo.isdl"><label class="label" for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required><button class="primary wide">Sign in</button></form><details><summary>Fictional pilot accounts</summary><p>Guard: bala@demo.isdl<br>Owner: owner@demo.isdl<br>Supervisor: supervisor@demo.isdl<br>Separate customer: other@demo.isdl</p><p>Password: <code>Pilot-only-2026!</code></p></details></div><footer>Provided by Integrated Systems and Devices Limited — ISDL<br>Guard supervision. For emergencies, use your normal telephone contacts.</footer></main>`;
+  root.innerHTML = `<main class="login">${brand()}<div class="card"><span class="eyebrow">Professional guard supervision</span><h1>Welcome back</h1><p class="muted">Sign in to access your security workspace.</p><form id="login"><label class="label" for="email">Email or WhatsApp number</label><input id="email" name="email" type="text" autocomplete="username" required value="bala@demo.isdl"><label class="label" for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required><button class="primary wide">Sign in</button></form><details><summary>Fictional pilot accounts</summary><p>Guard: bala@demo.isdl<br>Owner: owner@demo.isdl<br>Supervisor: supervisor@demo.isdl<br>Separate customer: other@demo.isdl</p><p>Password: <code>Pilot-only-2026!</code></p></details></div><footer>Provided by Integrated Systems and Devices Limited — ISDL<br>Guard supervision. For emergencies, use your normal telephone contacts.</footer></main>`;
 }
 async function refresh() {
   state = await api("/api/state");
@@ -179,7 +282,11 @@ function shift() {
 }
 const scopedIncidents = () =>
     state.incidents.filter((i) => i.site_id === siteId),
-  cps = () => state.checkpoints.filter((c) => c.site_id === siteId);
+  cps = () => {
+    const shift=state.shifts.find(s=>s.site_id===siteId && s.user_id===user.id && !s.ended_at);
+    const ids=shift && eventList().find(e=>e.id===shift.id)?.payload.checkpoint_ids;
+    return state.checkpoints.filter(c=>c.site_id===siteId && (user.role==='guard' && ids ? ids.includes(c.id) : !c.retired_at));
+  };
 function eventList() {
   let e = state.events.filter((e) => e.site_id === siteId);
   return [
@@ -190,11 +297,13 @@ function eventList() {
   ].filter(
     (e) =>
       e.kind !== "message" ||
-      (e.payload.shift_id &&
+      (state.features?.messaging && e.payload.shift_id &&
         (user.role !== "guard" || e.payload.shift_id === shift()?.id)),
   );
 }
 function render() {
+  closeCheckpoints();
+  if (!state?.features?.messaging && page === "message") page = "home";
   if (user) {
     try {
       rememberView({ page, siteId, selectedChat, selectedReportId });
@@ -215,6 +324,41 @@ function render() {
   }
   if (user.role === "guard") renderGuard();
   else renderDashboard();
+  if(user.role==='supervisor' && page==='home' && locationGroups(eventList(),state.locationReviews||[],siteId).length) {
+    const link=document.createElement('button');link.className='checkpoint-text-action';link.dataset.action='locationHistory';link.textContent='Location review history';root.querySelector('.attention-footer')?.append(link);
+  }
+  if (user.role === "supervisor" && page !== "home") {
+    const titles = {gps:"Location review",summaries:"Reports",incidents:selectedProblemId ? "Problem Details" : "Problems",setup:"Settings",instructionSetup:"Shift instructions",patrols:"Patrol schedule",admin:"Manage team",message:"Messages"};
+    root.querySelector(".greeting-row h1").textContent = titles[page] || "Your team";
+    root.querySelector(".supervisor-mobile > .supervisor-heading")?.remove();
+  }
+  // Reserve the same greeting row even when Home has no back control.
+  const offDutyIdentity = root.querySelector(".off-duty-identity");
+  if (offDutyIdentity && !offDutyIdentity.querySelector(".greeting-row")) {
+    const row = document.createElement("div");
+    row.className = "greeting-row";
+    row.append(offDutyIdentity.querySelector("h1"));
+    offDutyIdentity.append(row);
+  }
+  const ownerIdentity = root.querySelector(".workspace .content > .row:first-child");
+  if (ownerIdentity) {
+    ownerIdentity.classList.add("owner-page-identity");
+    const title = ownerIdentity.querySelector("h1");
+    const pageTitle = document.createElement("h2");
+    pageTitle.className = "owner-page-title";
+    pageTitle.textContent = title.textContent;
+    title.textContent = "Hello, " + user.name + ".";
+    ownerIdentity.querySelector(".eyebrow").textContent = site().name;
+    ownerIdentity.querySelector(".muted")?.remove();
+    ownerIdentity.after(pageTitle);
+  }
+  root.classList.toggle("messaging-disabled", !state.features?.messaging);
+  if (!state.features?.messaging) {
+    root.querySelectorAll('[data-page="message"],[data-action="openChat"],.message-unread').forEach(el => el.remove());
+    root.querySelectorAll("section").forEach(el => {
+      if (el.querySelector("h2")?.textContent === "Supervisor inbox") el.remove();
+    });
+  }
   loadMessageMedia();
   updatePatrolReminder();
 }
@@ -232,6 +376,58 @@ function shiftInstructions() {
   );
 }
 let selectedChat = null;
+let supervisorMessageId = null, inboxPage = 0, inboxOrder = "newest", inboxSite = null;
+function messagePicker(label, action, options, selected, placeholder) {
+  const current = options.find(o => o.value === selected);
+  return `<details class="overview-shift-picker message-picker"><summary aria-label="${esc(label)}"><span>${esc(current?.label || placeholder)}</span><svg class="shift-picker-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="shift-picker-options">${options.map(o => `<button type="button" data-md="true" data-action="${action}" data-value="${esc(o.value)}" aria-pressed="${o.value === selected}">${esc(o.label)}</button>`).join("")}</div></details>`;
+}
+function messageRecipients() {
+  return chatThreads().filter(t => !t.ended);
+}
+function supervisorInbox() {
+  return eventList().filter(e => e.kind === "message" && e.site_id === siteId &&
+    state.users.some(u => u.id === e.user_id && u.role === "guard"))
+    .sort((a,b) => (inboxOrder === "newest" ? -1 : 1) * (a.captured_at.localeCompare(b.captured_at) || a.id.localeCompare(b.id)));
+}
+function updateSupervisorInbox() {
+  const host = $("#receivedMessages");
+  if (!host) return;
+  if (inboxSite !== siteId) { inboxPage = 0; inboxSite = siteId; }
+  const messages = supervisorInbox();
+  inboxPage = Math.min(inboxPage, Math.max(0, Math.ceil(messages.length / 5) - 1));
+  const offset = inboxPage * 5;
+  host.innerHTML = messages.slice(offset, offset + 5).map(e => {
+    const unread = state.notifications.some(n => n.event_id === e.id && n.status === "submitted" && !vault.readMessages?.[n.id]);
+    return `<button type="button" class="inbox-row" data-action="readSupervisorMessage" data-id="${esc(e.id)}"><span class="inbox-copy"><strong>${esc(e.sender_name || guardName(e.user_id))}${unread ? ' · New' : ''}</strong><span>${esc(e.payload.text || (e.payload.has_audio ? "Voice message" : "Photo message"))}</span><small>${esc(reportDateTime(e.captured_at))}</small></span><span aria-hidden="true">›</span></button>`;
+  }).join("") || '<p class="empty">No received messages.</p>';
+  $("#inboxPagination").innerHTML = messages.length > 5 ? `<button data-md="true" data-action="inboxPrevious" ${inboxPage === 0 ? "disabled" : ""}>Previous</button><span>${offset + 1}–${Math.min(offset + 5, messages.length)} of ${messages.length}</span><button data-md="true" data-action="inboxNext" ${offset + 5 >= messages.length ? "disabled" : ""}>Next</button>` : "";
+}
+function renderSupervisorMessages(target) {
+  document.querySelector(".supervisor-heading")?.remove();
+  document.querySelector(".supervisor-filters")?.remove();
+  document.querySelector(".supervisor-mobile > .notice")?.remove();
+  if (supervisorMessageId) {
+    const e = eventList().find(e => e.id === supervisorMessageId && e.site_id === siteId && e.kind === "message");
+    if (e) {
+      target.innerHTML = `<section class="card received-detail"><h2>From ${esc(e.sender_name || guardName(e.user_id))}</h2><p class="muted">${esc(reportDateTime(e.captured_at))}</p>${e.payload.text ? '<p class="chat-text">' + esc(e.payload.text) + '</p>' : ''}<div data-message-media="${esc(e.id)}"></div></section>`;
+      const back = document.querySelector(".greeting-row .back");
+      if (back) { back.removeAttribute("data-page"); back.dataset.action = "supervisorInbox"; back.textContent = "Messages"; }
+      loadMessageMedia();
+      markConversationRead([e]);
+      return;
+    }
+    supervisorMessageId = null;
+  }
+  target.innerHTML = '<div id="chatComposer"></div><section class="card received-inbox"><div class="inbox-heading"><h2>Received Messages</h2>' +
+    messagePicker("Sort received messages", "inboxSort", [{value:"newest",label:"Newest first"},{value:"oldest",label:"Oldest first"}], inboxOrder, "Newest first") +
+    '</div><div id="receivedMessages"></div><nav id="inboxPagination" class="inbox-pagination" aria-label="Received message pages"></nav></section>';
+  renderReport($("#chatComposer"), true);
+  $("#chatComposer h2").textContent = "Send Message";
+  const recipients = messageRecipients(), chosen = vault[draftKey()]?.recipient || "";
+  $("#chatComposer h2").insertAdjacentHTML("afterend", '<div class="message-recipient"><span>Recipient</span>' + (recipients.length ? messagePicker("Select recipient", "messageRecipient", recipients.map(t => ({value:t.key,label:guardName(t.guard_id)})), chosen, "Select guard") : '<small>No guards are on duty.</small>') + '</div>');
+  updateReportSubmit();
+  updateSupervisorInbox();
+}
 function chatThreads() {
   const shifts = state.shifts.filter(
     (s) =>
@@ -267,13 +463,14 @@ function chatContext() {
 }
 const draftKey = () =>
   page === "message"
-    ? "chatDraft:" + siteId + ":" + (chatContext()?.key || "none")
+    ? user.role === "supervisor" ? "supervisorDraft:" + siteId : "chatDraft:" + siteId + ":" + (chatContext()?.key || "none")
     : "draft";
 function renderMessage() {
   root.innerHTML = `<main class="guard message-page"><header class="topbar">${brand()}<button data-action="logout">Sign out</button></header><div class="duty-identity"><p class="eyebrow">${esc(site().name)}</p><div class="greeting-row"><h1>Hello, ${esc(user.name)}.</h1><button class="back" data-page="home">Home</button></div></div><div id="chatPage"></div></main>`;
   renderChat($("#chatPage"));
 }
 function renderChat(target) {
+  if (user.role === "supervisor") return renderSupervisorMessages(target);
   const context = chatContext();
   if (!context) {
     target.innerHTML =
@@ -316,6 +513,7 @@ function conversationMessages() {
     );
 }
 function updateChatMessages() {
+  if (user.role === "supervisor") { updateSupervisorInbox(); return; }
   const host = $("#chatMessages");
   if (!host) return;
   const messages = conversationMessages();
@@ -390,6 +588,7 @@ function renderGuard() {
         timeStyle: "short",
       });
     target.innerHTML = `<section class="card shift duty-card"><div class="row"><h2>You are on duty</h2>${pill("On duty")}</div><div class="shift-facts"><div><span>Shift started</span><strong>${esc(localDate(s.started_at))}</strong></div><div class="elapsed"><span>Time on duty</span><strong id="shiftTimer" role="timer" aria-label="Time on duty" data-started="${s.started_at}">${elapsedShift(s.started_at)}</strong></div><div><span>Shift ends</span><strong>${end ? esc(localDate(end)) : "Not scheduled — ask your supervisor"}</strong></div></div><button class="primary" data-action="shift">End shift</button></section><div class="actions"><button data-page="round" data-md="true" id="patrolButton" aria-label="Start patrol">${icon("round")}<span class="button-label">Start patrol</span><small id="patrolCountdown"></small></button><button data-page="report">Report a problem</button><button data-page="instructions">Hear instructions</button><button id="messageSupervisorButton" data-page="message" data-md="true" aria-label="Message supervisor" ${unread ? 'aria-describedby="unreadMessages"' : ""}>${icon("message")}<span class="button-label">Message supervisor</span>${unread ? `<span class="message-unread" id="unreadMessages" role="status" aria-label="${unread} unread messages">${unread} new</span>` : ""}</button></div>`;
+    target.querySelector(".actions").insertAdjacentHTML("beforeend", '<button class="emergency-action" data-action="emergencyPlaceholder" data-md="true">' + icon("incidents") + '<span class="button-label">Emergency</span></button>');
   } else if (page === "shift")
     target.innerHTML = `<section class="card"><h2>End your shift</h2><form id="shiftForm"><p>Ready to finish your shift?</p><label class="label">Handover notes (optional)</label><textarea name="note" placeholder="Anything the next guard should know?"></textarea><button class="primary wide">Confirm end shift</button></form></section>`;
   else if (page === "round") {
@@ -552,6 +751,8 @@ function renderDashboard() {
         )
         .join("") || '<p class="muted">No notifications in your inbox.</p>'
     }<p class="source">In-app delivery only. No SMS or police dispatch. Delivery means a supervisor’s app displayed the notification.</p></section></div>`;
+  else if (page === "incidents" && mobileSupervisor)
+    renderSupervisorProblems(t, inc);
   else if (page === "incidents")
     t.innerHTML = `<div class="stack" style="margin-top:20px">${
       inc
@@ -597,10 +798,25 @@ function renderDashboard() {
       esc,
     );
   else if (page === "setup" && mobileSupervisor) {
-    t.innerHTML = `<nav class="actions supervisor-actions" aria-label="Settings options"><button data-page="instructionSetup">Shift instructions</button><button data-page="patrols">Patrol schedule</button><button data-page="admin">Manage team</button></nav>`;
+    renderSettings(t,{site:site(),state,api,esc,icon,done:async()=>{await refresh();render();toast("Settings saved.");}});
     document.querySelector(".supervisor-filters")?.remove();
     document.querySelector(".supervisor-mobile > .notice")?.remove();
-  } else if (page === "admin") renderAdmin(t);
+  } else if (page === "admin") {
+    renderAdmin(t);
+    if(user.role==='owner') {
+      t.querySelector('input[value="additional_site"]')?.closest('section')?.remove();
+      const existing=document.createElement('div'),create=document.createElement('div');t.prepend(existing);t.append(create);
+      const options={site:site(),state,api,esc,done:async()=>{await refresh();render();toast('Property saved.');}};
+      propertyEditor(existing,options);propertyEditor(create,{...options,create:true});
+    }
+  }
+  if(page==='gps') {
+    root.querySelector('.supervisor-filters')?.remove();root.querySelector('.supervisor-mobile > .notice')?.remove();
+    const groups=locationGroups(eventList(),state.locationReviews||[],siteId);
+    if(selectedLocationShift)gpsReview(t,{group:groups.find(g=>g.shiftId===selectedLocationShift),reviews:state.locationReviews||[],guardName,esc,api,done:async()=>{await refresh();render();toast('Location records marked reviewed.');}});
+    else t.innerHTML=`<section class="card"><h2>Location review history</h2>${groups.map(g=>`<button class="checkpoint-list-row" data-action="reviewLocation" data-shift="${esc(g.shiftId)}"><span>${esc(guardName(g.guardId))} · ${date(g.events[0].captured_at)}<small>${g.pending.length} records need review</small></span></button>`).join('')||'<p>No location exceptions have been recorded.</p>'}</section>`;
+  }
+  if (page === "summaries") renderActivityReports(t);
   if (mobileSupervisor && page === "home") {
     const windows = overviewShifts({
       day,
@@ -687,6 +903,7 @@ function renderDashboard() {
         Date.parse(e.captured_at) < selected.end,
     );
     const attention = [
+      ...locationGroups(eventList(),state.locationReviews||[],siteId,selected.end).filter(g=>g.pending.length).map(g=>({at:Math.max(...g.pending.map(e=>Date.parse(e.captured_at))),html:`<div class="overview-row attention-report-row"><span class="attention-report-icon" aria-hidden="true">${icon('location')}</span><div><strong>${esc(guardName(g.guardId))} · ${g.pending.some(e=>e.payload.location_assessment.status==='outside')?'Location outside property area':'Location could not be confirmed'}</strong><small>${g.pending.length} record${g.pending.length===1?'':'s'} · ${date(g.pending.at(-1).captured_at)}</small></div><button data-action="reviewLocation" data-shift="${esc(g.shiftId)}" data-md="true" class="overview-row-action">Review →</button></div>`})),
       ...details.problems.map(
         (i) =>
           ({ at: Date.parse(i.captured_at), html: `<div class="overview-row attention-report-row"><span class="attention-report-icon" aria-hidden="true">${icon("summaries")}</span><div><strong>${esc(i.report || "Voice report")}</strong><small>Reported by ${esc(guardName(i.user_id))} on ${esc(new Date(i.captured_at).toLocaleString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Africa/Lagos" }))}</small></div><button data-page="incidents" data-md="true" class="overview-row-action">Review <span aria-hidden="true">→</span></button></div>` }),
@@ -737,6 +954,22 @@ function renderDashboard() {
       lastReceived.textContent = "Last record received: " + date(site().last_sync);
       t.append(lastReceived);
     }
+  }
+  if (mobileSupervisor && ["summaries", "setup", "instructionSetup", "patrols", "admin"].includes(page)) {
+    const main = t.closest("main");
+    main.classList.add("supervisor-standard");
+    const heading = main.querySelector(".supervisor-heading");
+    heading.querySelector('[data-action="refresh"]')?.remove();
+    main.querySelector(".supervisor-filters")?.remove();
+    main.querySelector(":scope > .notice")?.remove();
+    if (page === "summaries") {
+      heading.querySelector("h2").textContent = "Reports";
+    }
+    if (page === "setup") t.classList.add("settings-index");
+    const footer = document.createElement("p");
+    footer.className = "last-record-received";
+    footer.textContent = "Last record received: " + date(site().last_sync);
+    t.append(footer);
   }
   if (page === "home" && navigator.onLine)
     for (let n of state.notifications.filter(
@@ -802,6 +1035,8 @@ async function locate() {
   });
 }
 async function enqueue(kind, payload, media = []) {
+  if (kind === "message" && !state.features?.messaging)
+    throw new Error("In-app messaging is not available in this MVP.");
   if (kind === "start" && shift())
     throw new Error("You already have an active or pending shift.");
   if (["incident", "alert", "scan", "note", "patrol_start"].includes(kind)) {
@@ -819,7 +1054,12 @@ async function enqueue(kind, payload, media = []) {
     media,
     status: "pending",
   };
-  if (kind === "start") q.payload.patrol_schedule = site().schedule;
+  if (kind === "start") {
+    const plan=currentPlan(state.shiftPlans||[],user.id,siteId,q.captured_at);
+    q.payload.patrol_schedule=plan?.schedule ?? site().schedule;
+    q.payload.instructions=[site().instructions,plan?.instructions].filter(Boolean).join("\n\n");
+    if(plan?.template_id) {q.payload.shift_template_id=plan.template_id;q.payload.shift_plan_version_id=plan.id;}
+  }
   if (kind === "start")
     q.payload.scheduled_end_at = scheduledEnd(
       q.captured_at,
@@ -845,6 +1085,7 @@ async function sync() {
   busy = true;
   try {
     for (let q of pending()) {
+      if (q.kind === "message" && !state.features?.messaging) continue;
       q.status = "uploading";
       q.error = "";
       await persist();
@@ -1113,14 +1354,16 @@ document.addEventListener("submit", async (e) => {
     btn = e.submitter || f.querySelector("button");
   if (btn) btn.disabled = true;
   try {
-    if (f.id === "login") {
+    if (f.id === "activityReportForm") {
+      await viewActivityReport(f, e.submitter?.value === "download");
+    } else if (f.id === "login") {
       let online;
       try {
         online = await api("/api/login", b);
       } catch (err) {
         if (navigator.onLine) throw err;
       }
-      vault = await unlock(b.email, b.password);
+      vault = await unlock(b.email, b.password, online?.vaultAccount);
       roundId = vault.roundId || null;
       slot = vault.slot || null;
       if (online) {
@@ -1198,6 +1441,24 @@ document.addEventListener("submit", async (e) => {
         throw new Error("Record or type what happened.");
       }
       if (page === "message") {
+        if (user.role === "supervisor") {
+          const recipient = messageRecipients().find(t => t.key === d.recipient);
+          if (!recipient)
+            throw new Error("Select an on-duty guard before sending. The selected shift may have ended.");
+          const previousQueue = vault.queue.slice();
+          const media = [...(d.audio ? [d.audio] : []), ...(d.photos || [])];
+          vault.queue.push({
+            id: uuid(), kind: "message", site_id: siteId, captured_at: new Date().toISOString(),
+            payload: { guard_id: recipient.guard_id, shift_id: recipient.shift_id, text: d.report?.trim() || "", has_audio: !!d.audio, attachment_count: media.length },
+            media, status: "pending",
+          });
+          vault[draftKey()] = null;
+          try { await persist(); } catch (error) { vault.queue = previousQueue; vault[draftKey()] = d; throw error; }
+          render();
+          toast("Saved for " + guardName(recipient.guard_id) + ". Waiting to upload.");
+          await sync();
+          return;
+        }
         if (
           !chatContext()?.shift_id ||
           (user.role === "guard" && chatContext().shift_id !== shift()?.id)
@@ -1247,6 +1508,12 @@ document.addEventListener("submit", async (e) => {
       page = "home";
       render();
       await sync();
+    } else if (f.classList.contains("problemResolve")) {
+      await api(`/api/incidents/${f.dataset.id}/resolve`, {note:b.note || ""});
+      selectedProblemId = null;
+      await refresh();
+      render();
+      toast("Problem resolved.");
     } else if (f.classList.contains("transition")) {
       let file = new FormData(f).get("resolution");
       if (file?.size) {
@@ -1415,7 +1682,9 @@ document.addEventListener("click", async (e) => {
       scanStream?.getTracks().forEach((t) => t.stop());
       scanStream = null;
       nfcController?.abort();
-      if (b.dataset.page === "message") selectedChat = null;
+      if (b.dataset.page === "message") { selectedChat = null; supervisorMessageId = null; }
+      if (b.dataset.page === "incidents") selectedProblemId = null;
+      if(b.dataset.page === "setup" && page !== "setup") resetSettings();
       page = b.dataset.page;
       if (["report", "message"].includes(page) && vault[draftKey()]?.site_id)
         siteId = vault[draftKey()].site_id;
@@ -1423,6 +1692,55 @@ document.addEventListener("click", async (e) => {
       return;
     }
     let a = b.dataset.action;
+    if (a === "activityPeriod") {
+      activityPeriod = ["daily","monthly","custom"].includes(b.dataset.value) ? b.dataset.value : "daily";
+      render(); return;
+    }
+    if(a==='reviewLocation'||a==='locationHistory') {selectedLocationShift=a==='reviewLocation'?b.dataset.shift:null;page='gps';render();return;}
+    if (a === "viewProblem" || a === "problemList") {
+      selectedProblemId = a === "viewProblem" ? b.dataset.id : null;
+      page = "incidents";
+      render(); return;
+    }
+    if (a === "emergencyPlaceholder") {
+      const dialog = document.createElement("dialog");
+      dialog.className = "confirmation-dialog";
+      dialog.id = "confirmationDialog";
+      dialog.setAttribute("aria-labelledby", "emergencyTitle");
+      dialog.innerHTML = '<h2 id="emergencyTitle">Emergency alarm not yet implemented</h2><p>No alert or notification has been sent. Contact your supervisor by phone or WhatsApp.</p><div class="confirmation-actions"><button type="button" class="primary" autofocus>OK</button></div>';
+      document.body.append(dialog);
+      dialog.querySelector("button").onclick = () => dialog.close();
+      dialog.addEventListener("close", () => dialog.remove(), {once:true});
+      dialog.showModal();
+      return;
+    }
+    if (a === "messageRecipient") {
+      vault[draftKey()] ||= {};
+      vault[draftKey()].recipient = b.dataset.value;
+      delete vault[draftKey()].recipients;
+      await persist();
+      const picker = b.closest("details");
+      picker.querySelector("summary span").textContent = b.textContent;
+      picker.querySelectorAll("button").forEach(o => o.setAttribute("aria-pressed", String(o === b)));
+      picker.open = false;
+      updateReportSubmit(); return;
+    }
+    if (a === "inboxSort" || a === "inboxPrevious" || a === "inboxNext") {
+      if (a === "inboxSort") {
+        inboxOrder = b.dataset.value === "oldest" ? "oldest" : "newest"; inboxPage = 0;
+        const picker = b.closest("details");
+        picker.querySelector("summary span").textContent = b.textContent;
+        picker.querySelectorAll("button").forEach(o => o.setAttribute("aria-pressed", String(o === b)));
+        picker.open = false;
+      } else inboxPage = Math.max(0, inboxPage + (a === "inboxNext" ? 1 : -1));
+      updateSupervisorInbox(); return;
+    }
+    if (a === "readSupervisorMessage" || a === "supervisorInbox") {
+      if (holding || recordingSaving || openingMicrophone) throw new Error("Finish recording first.");
+      await saveDraftFromForm();
+      supervisorMessageId = a === "readSupervisorMessage" ? b.dataset.id : null;
+      render(); return;
+    }
     if (a === "calendarMonth") {
       const month = new Date(b.dataset.month + "-01T12:00:00Z");
       month.setUTCMonth(month.getUTCMonth() + Number(b.dataset.step));
@@ -1449,6 +1767,7 @@ document.addEventListener("click", async (e) => {
         throw new Error("Finish recording first.");
       await saveDraftFromForm();
       const message = eventList().find((e) => e.id === b.dataset.messageId);
+      if (user.role === "supervisor") supervisorMessageId = message?.id || null;
       selectedChat = b.dataset.chat || message?.payload.shift_id;
       page = "message";
       render();
@@ -1789,16 +2108,7 @@ async function startNfc() {
 }
 
 function locationReview() {
-  const ref = state.siteLocations?.find((s) => s.site_id === siteId);
-  return `<details><summary>Location checks</summary><p>GPS is supporting evidence, not proof of presence. Missing or inaccurate readings need review.</p><form id="siteLocationForm"><label class="label">Site latitude</label><input name="latitude" type="number" step="any" min="-90" max="90" required value="${ref?.latitude ?? ""}"><label class="label">Site longitude</label><input name="longitude" type="number" step="any" min="-180" max="180" required value="${ref?.longitude ?? ""}"><label class="label">Site radius (metres)</label><input name="radius_m" type="number" min="20" max="5000" required value="${ref?.radius_m ?? 100}"><button>Save site reference</button></form>${eventList()
-    .filter((e) => ["scan", "sign_in_location"].includes(e.kind))
-    .slice(-20)
-    .reverse()
-    .map(
-      (e) =>
-        `<div class="item">${esc(guardName(e.user_id))} · ${e.kind === "scan" ? "Checkpoint" : "Sign-in"} · ${date(e.captured_at)}<p>${esc(e.payload.location_review || e.payload.flag || "Location unavailable")}${e.payload.method === "manual" ? " · Manual code exception" : ""}</p>${e.payload.location ? `<small>${e.payload.location.latitude}, ${e.payload.location.longitude} · accuracy ±${Math.round(e.payload.location.accuracy)} m${e.payload.distance_m != null ? " · " + e.payload.distance_m + " m from site reference" : ""}</small>` : ""}</div>`,
-    )
-    .join("")}</details>`;
+  return user.role==='owner'?'<p>Property address and map position are managed in Site management.</p>':'';
 }
 
 function closePhotoCamera() {
@@ -1910,6 +2220,7 @@ function updateReportSubmit() {
     holding ||
     recordingSaving ||
     recorder?.state === "recording" ||
+    (page === "message" && user.role === "supervisor" && !messageRecipients().some(t => t.key === vault[draftKey()]?.recipient)) ||
     (!text.trim() && !vault[draftKey()]?.audio);
 }
 
@@ -2098,6 +2409,7 @@ setInterval(() => {
 }, 5000);
 
 function unreadMessageCount() {
+  if (!state.features?.messaging) return 0;
   const current = shift();
   if (user.role === "supervisor") {
     const incoming = new Set(

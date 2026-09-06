@@ -4,6 +4,10 @@ import {
   shiftPatrols,
 } from "./public/patrol-time.js";
 import { scheduledEnd } from "./public/shift-time.js";
+import { currentPlan, effectivePlans } from "./public/shift-plans.js";
+import { settingsRoutes } from "./settings.js";
+import { phoneNumber, loginId } from "./public/login-id.js";
+import { assessLocation, propertyInput } from './location-checks.js';
 import { transcribeAndDraft, draftSummary } from "./ai.js";
 import express from "express";
 import multer from "multer";
@@ -18,6 +22,7 @@ import {
 } from "./database.js";
 import { saveMedia, serveMedia, maxUploadBytes } from "./storage.js";
 import { migrate } from "./migrate.js";
+import { activityReport, reportWindow } from "./activity-reports.js";
 import {
   randomUUID,
   randomBytes,
@@ -26,6 +31,7 @@ import {
   createHmac,
 } from "node:crypto";
 if (!postgres) await migrate();
+const messagingEnabled = process.env.ENABLE_MESSAGING === "true";
 const now = () => new Date().toISOString(),
   id = () => randomUUID();
 const hash = (p) => {
@@ -81,7 +87,7 @@ app.use((req, res, next) => {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
     "Content-Security-Policy":
-      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'",
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; frame-src 'self' https://www.openstreetmap.org; object-src 'none'; frame-ancestors 'none'",
   });
   if (req.path.startsWith("/api") || req.path.startsWith("/media"))
     res.set("Cache-Control", "no-store");
@@ -129,11 +135,12 @@ async function rate(key, duration, maximum) {
 }
 post("/api/login", async (req, res) => {
   let u = await one(
-    "SELECT * FROM users WHERE email=?",
-    String(req.body.email || "").toLowerCase(),
+    "SELECT u.* FROM users u LEFT JOIN user_contacts c ON c.user_id=u.id WHERE (u.email=? AND COALESCE(c.email_missing,0)=0) OR c.whatsapp=?",
+    loginId(req.body.email),
+    phoneNumber(req.body.email),
   );
-  if (!u || !verify(String(req.body.password || ""), u.password))
-    fail("Incorrect email or password", 401);
+  if (!u || (await one("SELECT 1 FROM disabled_users WHERE user_id=?",u.id)) || !verify(String(req.body.password || ""), u.password))
+    fail("Incorrect sign-in details", 401);
   let token = randomBytes(32).toString("hex"),
     expiresAt = Date.now() + 12 * 3600000;
   await run("INSERT INTO sessions VALUES(?,?,?)", token, u.id, expiresAt);
@@ -143,7 +150,8 @@ post("/api/login", async (req, res) => {
     secure: process.env.COOKIE_SECURE === "true",
     maxAge: 43200000,
   });
-  res.json({ id: u.id, name: u.name, role: u.role, proof: token, expiresAt });
+  const contact=await one("SELECT vault_key FROM user_contacts WHERE user_id=?",u.id);
+  res.json({ id: u.id, name: u.name, role: u.role, proof: token, expiresAt, vaultAccount:contact?.vault_key || u.email });
 });
 app.use(["/api", "/media"], async (req, res, next) => {
   let token = (req.headers.cookie || "")
@@ -156,7 +164,7 @@ app.use(["/api", "/media"], async (req, res, next) => {
     token || "",
     Date.now(),
   );
-  if (!req.user) return res.status(401).json({ error: "Sign in required" });
+  if (!req.user || await one("SELECT 1 FROM disabled_users WHERE user_id=?",req.user.id)) return res.status(401).json({ error: "Sign in required" });
   if (req.baseUrl === "/api" && req.headers["x-session-proof"] !== token)
     return res.status(401).json({ error: "Unlock your account to continue" });
   req.token = token;
@@ -213,9 +221,9 @@ app.get("/api/state", async (req, res) => {
       "SELECT s.* FROM sites s JOIN assignments a ON a.site_id=s.id WHERE a.user_id=?",
       u.id,
     ),
-    scoped("shift_plans"),
+    Promise.all([scoped("shift_plans"),scoped("shift_templates")]).then(parts=>parts.flat()),
     scoped("site_locations"),
-    scoped("checkpoints"),
+    all("SELECT c.*,(SELECT at FROM retired_checkpoints WHERE checkpoint_id=c.id) AS retired_at FROM checkpoints c JOIN assignments a ON a.site_id=c.site_id WHERE a.user_id=?",u.id),
     scoped("shifts"),
     scoped("events"),
     scoped("incidents"),
@@ -246,13 +254,14 @@ app.get("/api/state", async (req, res) => {
       u.id,
     ),
     all(
-      "SELECT DISTINCT u.id,u.name,u.role,a.site_id,(SELECT user_id FROM user_photos WHERE user_id=u.id) AS photo_id FROM users u JOIN assignments a ON a.user_id=u.id WHERE a.site_id IN (SELECT site_id FROM assignments WHERE user_id=?)",
+      "SELECT DISTINCT u.id,u.name,u.role,a.site_id,(SELECT user_id FROM disabled_users WHERE user_id=u.id) AS disabled,(SELECT user_id FROM user_photos WHERE user_id=u.id) AS photo_id FROM users u JOIN assignments a ON a.user_id=u.id WHERE a.site_id IN (SELECT site_id FROM assignments WHERE user_id=?)",
       u.id,
     ),
   ]);
   const byContext = new Map(contexts.map((c) => [c.event_id, c]));
   const byEvent = new Map(events.map((e) => [e.id, e]));
   const readableMessage = (id) => {
+    if (!messagingEnabled) return false;
     const c = byContext.get(id);
     return Boolean(
       c?.shift_id &&
@@ -275,22 +284,23 @@ app.get("/api/state", async (req, res) => {
     size: m.size,
   });
   res.json({
+    propertyLocations: await scoped('property_locations'),
+    locationReviews: u.role==='guard'?[]:await all('SELECT r.*,u.name AS actor_name FROM location_reviews r JOIN users u ON u.id=r.actor JOIN assignments a ON a.site_id=r.site_id WHERE a.user_id=?',u.id),
     user: u,
+    features: { messaging: messagingEnabled },
     sites: sites.map((s) => ({
       ...s,
       ...(u.role !== "guard"
         ? {
             guard_ids: names
-              .filter((n) => n.site_id === s.id && n.role === "guard")
+              .filter((n) => n.site_id === s.id && n.role === "guard" && !n.disabled)
               .map((n) => n.id),
           }
         : {}),
       instruction_audio:
         instructions.find((v) => v.site_id === s.id)?.id || null,
     })),
-    shiftPlans: shiftPlans.filter(
-      (p) => u.role !== "guard" || p.guard_id === u.id,
-    ),
+    shiftPlans: u.role === "guard" ? sites.flatMap(s=>effectivePlans(shiftPlans.filter(p=>p.site_id===s.id)).filter(p=>p.guard_id===u.id||p.any_guard).map(p=>p.template_id?{...p,guard_ids:JSON.stringify(p.any_guard?["*"]:[u.id])}:p)) : shiftPlans,
     siteLocations,
     checkpoints,
     shifts: shifts.filter((s) => u.role !== "guard" || s.user_id === u.id),
@@ -362,6 +372,8 @@ const text = (x, max = 5000) =>
 post("/api/events", async (req, res) => {
   let u = req.user,
     b = req.body;
+  if (b.kind === "message" && !messagingEnabled)
+    fail("In-app messaging is not available in this MVP", 403);
   await requireSite(u, b.site_id);
   if (u.role !== "guard" && !(u.role === "supervisor" && b.kind === "message"))
     fail("Guard only", 403);
@@ -452,7 +464,7 @@ post("/api/events", async (req, res) => {
     delete p.location;
   if (Math.abs(Date.parse(b.captured_at) - Date.now()) > 86400000)
     p.clock_review = "Device capture time differs by over a day; review";
-  if (["scan", "sign_in_location"].includes(b.kind)) {
+  if (["scan", "start", "sign_in_location"].includes(b.kind)) {
     const ref = await one(
       "SELECT * FROM site_locations WHERE site_id=?",
       b.site_id,
@@ -482,6 +494,10 @@ post("/api/events", async (req, res) => {
           : "Within site area and reported accuracy";
     }
   }
+  if(['start','scan'].includes(b.kind)) {
+    const reference=await one('SELECT * FROM property_locations WHERE site_id=? AND created_at<=? ORDER BY created_at DESC,id DESC LIMIT 1',b.site_id,b.captured_at);
+    p.location_assessment=assessLocation(p.location,reference);
+  } else delete p.location_assessment;
   try {
     if (["incident", "alert", "note", "patrol_start"].includes(b.kind)) {
       const duty = await one(
@@ -519,9 +535,7 @@ post("/api/events", async (req, res) => {
       const previousStarts = records.filter(
         (e) => e.kind === "patrol_start" && e.payload.shift_id === duty.id,
       );
-      const required = (
-        await all("SELECT id FROM checkpoints WHERE site_id=?", b.site_id)
-      ).length;
+      const required = records.find(e=>e.id===duty.id)?.payload.checkpoint_ids?.length ?? (await all("SELECT id FROM checkpoints WHERE site_id=? AND id NOT IN (SELECT checkpoint_id FROM retired_checkpoints)",b.site_id)).length;
       if (
         previousStarts.some(
           (e) =>
@@ -555,9 +569,14 @@ post("/api/events", async (req, res) => {
             : null;
     }
     if (b.kind === "start") {
+      const plans = [...await all("SELECT * FROM shift_plans WHERE site_id=?",b.site_id),...await all("SELECT * FROM shift_templates WHERE site_id=?",b.site_id)];
+      const plan = p.shift_plan_version_id ? plans.find(v=>v.id===p.shift_plan_version_id && v.template_id && JSON.parse(v.guard_ids).some(g=>g===u.id||g==="*")) : currentPlan(plans,u.id,b.site_id,at);
+      if(p.shift_plan_version_id && !plan) fail("Invalid shift settings version",403);
+      p.checkpoint_ids = (await all("SELECT id FROM checkpoints WHERE site_id=? AND id NOT IN (SELECT checkpoint_id FROM retired_checkpoints)", b.site_id)).map(c => c.id);
       p.patrol_schedule = (
         await one("SELECT schedule FROM sites WHERE id=?", b.site_id)
       ).schedule;
+      if (plan?.template_id) {p.patrol_schedule=plan.schedule;p.shift_template_id=plan.template_id;p.shift_plan_version_id=plan.id;}
       p.instruction_audio =
         (
           await one(
@@ -568,6 +587,7 @@ post("/api/events", async (req, res) => {
       p.instructions = (
         await one("SELECT instructions FROM sites WHERE id=?", b.site_id)
       ).instructions;
+      if (plan?.instructions) p.instructions = [p.instructions,plan.instructions].filter(Boolean).join("\n\n");
       if (
         await one(
           "SELECT id FROM shifts WHERE user_id=? AND ended_at IS NULL",
@@ -577,11 +597,7 @@ post("/api/events", async (req, res) => {
         fail("You already have an active shift", 409);
       p.scheduled_end_at = scheduledEnd(
         b.captured_at,
-        await all(
-          "SELECT * FROM shift_plans WHERE guard_id=? AND site_id=?",
-          u.id,
-          b.site_id,
-        ),
+        plan ? [{...plan,created_at:"1970-01-01T00:00:00.000Z"}] : plans,
         u.id,
         b.site_id,
       );
@@ -619,9 +635,7 @@ post("/api/events", async (req, res) => {
           shift,
           entry?.payload.scheduled_end_at,
         );
-        const checkpoints = (
-          await all("SELECT id FROM checkpoints WHERE site_id=?", b.site_id)
-        ).length;
+        const checkpoints = entry?.payload.checkpoint_ids?.length ?? (await all("SELECT id FROM checkpoints WHERE site_id=? AND id NOT IN (SELECT checkpoint_id FROM retired_checkpoints)", b.site_id)).length;
         p.patrol_exceptions = schedule
           .filter((slot) => {
             const start = records.find(
@@ -656,6 +670,11 @@ post("/api/events", async (req, res) => {
           p.code || "",
         );
         if (!cp) fail("Unknown checkpoint");
+        const retired=await one("SELECT at FROM retired_checkpoints WHERE checkpoint_id=?",cp.id);
+        if(retired) {
+          const start=await one("SELECT payload,captured_at FROM events WHERE id=? AND kind='start'",p.shift_id);
+          if(!start || !(JSON.parse(start.payload).checkpoint_ids?.includes(cp.id) ?? (start.captured_at<retired.at))) fail("This checkpoint is no longer on this shift’s route",409);
+        }
         if (!p.round_id || !p.slot) fail("Select a scheduled round");
         const patrol = await one(
           "SELECT payload FROM events WHERE kind='patrol_start' AND user_id=? AND site_id=? AND json_extract(payload,'$.round_id')=?",
@@ -1026,6 +1045,19 @@ post("/api/ai", upload.single("file"), async (req, res) => {
     fail(e.message, 503);
   }
 });
+post("/api/incidents/:id/resolve", async (req, res) => {
+  supervisor(req.user);
+  await transaction(async () => {
+    const incident = await mediaIncident(req.user, req.params.id);
+    if (incident.status === "Resolved") return;
+    const changed = await run("UPDATE incidents SET status='Resolved' WHERE id=? AND status<>'Resolved'", incident.id);
+    if (!changed) return;
+    const note = text(req.body.note, 5000);
+    await run("INSERT INTO transitions VALUES(?,?,?,?,?,?)", id(), incident.id, req.user.id, now(), "Resolved", note);
+    await audit(req.user, "problem resolved", {incident_id:incident.id,note});
+  });
+  res.json({ok:true});
+});
 post("/api/incidents/:id/transition", async (req, res) => {
   supervisor(req.user);
   let i = await mediaIncident(req.user, req.params.id),
@@ -1129,6 +1161,23 @@ async function counts(site, day) {
     ],
   };
 }
+app.get("/api/activity-reports/:site", async (req,res) => {
+  if (!["supervisor","owner"].includes(req.user.role)) fail("Supervisor or owner only",403);
+  await requireSite(req.user,req.params.site);
+  const {from,to}=req.query;
+  try { reportWindow(from,to); } catch(e) { fail(e.message); }
+  const siteId=req.params.site;
+  const [site,events,incidents,resolutions,users,checkpoints,plans]=await Promise.all([
+    one("SELECT * FROM sites WHERE id=?",siteId),
+    all("SELECT * FROM events WHERE site_id=?",siteId),
+    all("SELECT * FROM incidents WHERE site_id=?",siteId),
+    all("SELECT t.* FROM transitions t JOIN incidents i ON i.id=t.incident_id WHERE i.site_id=?",siteId),
+    all("SELECT DISTINCT u.id,u.name,u.role FROM users u JOIN assignments a ON a.user_id=u.id WHERE a.site_id=?",siteId),
+    all("SELECT c.id,c.name,(SELECT at FROM retired_checkpoints WHERE checkpoint_id=c.id) AS retired_at FROM checkpoints c WHERE site_id=?",siteId),
+    Promise.all([all("SELECT * FROM shift_plans WHERE site_id=?",siteId),all("SELECT * FROM shift_templates WHERE site_id=?",siteId)]).then(parts=>parts.flat()),
+  ]);
+  res.json(activityReport({from,to,site,events,incidents,resolutions,users,checkpoints,plans}));
+});
 app.get("/api/summary/:site/:day", async (req, res) => {
   await requireSite(req.user, req.params.site);
   res.json(await counts(req.params.site, req.params.day));
@@ -1181,9 +1230,9 @@ post("/api/summaries/:id/approve", async (req, res) => {
   res.json({ ok: true });
 });
 post("/api/site-location", async (req, res) => {
-  if (!["owner", "supervisor"].includes(req.user.role))
-    fail("Owner or supervisor only", 403);
+  if (req.user.role!=='owner') fail("Owner only",403);
   await requireSite(req.user, req.body.site_id);
+  const property=propertyInput(req.body);
   const { site_id } = req.body,
     latitude = Number(req.body.latitude),
     longitude = Number(req.body.longitude),
@@ -1207,13 +1256,31 @@ post("/api/site-location", async (req, res) => {
     longitude,
     radius,
   );
+  await run('INSERT INTO property_locations VALUES(?,?,?,?,?,?,?,?)',id(),site_id,property.address,latitude,longitude,radius,req.user.id,now());
   await audit(req.user, "site location updated", {
+    address:property.address,
     site_id,
     latitude,
     longitude,
     radius,
   });
   res.json({ ok: true });
+});
+post('/api/location-review',async(req,res)=>{
+  if(!['supervisor','owner'].includes(req.user.role))fail('Supervisor or owner only',403);
+  const b=req.body;await requireSite(req.user,b.site_id);
+  const shift=await one('SELECT * FROM shifts WHERE id=? AND site_id=?',b.shift_id,b.site_id);
+  if(!shift)fail('Shift not found',404);
+  if(!Array.isArray(b.event_ids)||!b.event_ids.length||b.event_ids.length>2000)fail('Choose the location records to review');
+  const ids=[...new Set(b.event_ids)];
+  for(const eid of ids){
+    const e=await one('SELECT * FROM events WHERE id=? AND site_id=? AND user_id=?',eid,b.site_id,shift.user_id);
+    if(!e)fail('Record outside this shift',403);
+    const p=JSON.parse(e.payload);
+    if(!((e.kind==='start'&&e.id===shift.id)||(e.kind==='scan'&&p.shift_id===shift.id))||!['outside','unconfirmed'].includes(p.location_assessment?.status))fail('Invalid location exception');
+  }
+  await run('INSERT INTO location_reviews VALUES(?,?,?,?,?,?,?,?)',id(),b.site_id,shift.user_id,shift.id,JSON.stringify(ids),req.user.id,now(),text(b.comment,3000));
+  await audit(req.user,'location.reviewed',{site:b.site_id,shift:shift.id,event_ids:ids});res.json({ok:true});
 });
 post("/api/patrol-schedule", async (req, res) => {
   if (!["owner", "supervisor"].includes(req.user.role))
@@ -1240,6 +1307,19 @@ post("/api/patrol-schedule", async (req, res) => {
   });
   res.json({ ok: true, schedule });
 });
+async function teamContact(b,userId,previous) {
+  const email=String(b.email||'').trim().toLowerCase();
+  const prior=previous && await one('SELECT * FROM user_contacts WHERE user_id=?',userId);
+  const raw=b.whatsapp===undefined ? prior?.whatsapp || '' : String(b.whatsapp).trim();
+  const phone=raw?phoneNumber(raw):null;
+  if(!String(b.name||'').trim() || (email && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.endsWith('@no-email.invalid'))) || (raw&&!phone) || (!email&&!phone)) fail('Enter a name and a valid email or WhatsApp number');
+  const duplicate=await one('SELECT user_id FROM user_contacts WHERE whatsapp=? AND user_id<>?',phone,userId);
+  if(duplicate) fail('This WhatsApp number is already used by an account',409);
+  return {email:email||userId+'@no-email.invalid',phone,vaultKey:prior?.vault_key||previous?.email||'user:'+userId,missing:email?0:1};
+}
+async function saveTeamContact(userId,contact) {
+  await run('INSERT INTO user_contacts VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET whatsapp=excluded.whatsapp,email_missing=excluded.email_missing',userId,contact.phone,contact.vaultKey,contact.missing);
+}
 post("/api/admin", upload.single("profile_photo"), async (req, res) => {
   if (!["owner", "supervisor"].includes(req.user.role))
     fail("Customer management only", 403);
@@ -1251,10 +1331,11 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
     fail("Owner only", 403);
   if (
     b.kind === "user" &&
-    b.role !== (req.user.role === "owner" ? "supervisor" : "guard")
+    !["supervisor","guard"].includes(b.role)
   )
-    fail("Owners create supervisors; supervisors create guards", 403);
+    fail("Only guards and supervisors can be managed here", 403);
   if (b.kind === "additional_site") {
+    const property=propertyInput(b);
     let customer = await one(
       "SELECT customer_id FROM sites WHERE id=?",
       b.site_id,
@@ -1268,6 +1349,8 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
       text(b.name, 120),
     );
     await run("INSERT INTO assignments VALUES(?,?)", req.user.id, sid);
+    await run('INSERT INTO site_locations VALUES(?,?,?,?)',sid,property.latitude,property.longitude,property.radius_m);
+    await run('INSERT INTO property_locations VALUES(?,?,?,?,?,?,?,?)',id(),sid,property.address,property.latitude,property.longitude,property.radius_m,req.user.id,now());
   } else {
     await requireSite(req.user, s);
     if (b.kind === "shift_plan") {
@@ -1294,6 +1377,47 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
         req.user.id,
         now(),
       );
+    } else if (b.kind === "update_user") {
+      const target = await one("SELECT u.* FROM users u JOIN assignments a ON a.user_id=u.id WHERE u.id=? AND a.site_id=?",b.user_id,s);
+      if(!target || target.role === "owner" || !["guard","supervisor"].includes(b.role)) fail("Only assigned guards and supervisors can be managed",403);
+      if(target.id===req.user.id && (b.disabled === "true" || b.role!==target.role)) fail("You cannot deactivate yourself or change your own role",403);
+      const contact=await teamContact(b,target.id,target);
+      if(b.password && b.password.length<12) fail("Use a password of at least 12 characters");
+      if(req.file) {
+        if(!["image/jpeg","image/png"].includes(req.file.mimetype)||req.file.size>2*1024*1024) fail("Profile photos must be JPEG or PNG, up to 2 MB");
+        validateFile(req.file);
+      }
+      if((b.disabled === "true" || b.role !== target.role) && await one("SELECT 1 FROM shifts WHERE user_id=? AND ended_at IS NULL",target.id)) fail("End this guard’s active shift before deactivating or changing their role",409);
+      await run("UPDATE users SET name=?,email=?,role=?,password=? WHERE id=?",text(b.name,120),contact.email,b.role,b.password?hash(b.password):target.password,target.id);
+      await saveTeamContact(target.id,contact);
+      if(b.disabled === "true") await run("INSERT INTO disabled_users VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET actor=excluded.actor,at=excluded.at",target.id,req.user.id,now());
+      else await run("DELETE FROM disabled_users WHERE user_id=?",target.id);
+      if(b.disabled === "true" || b.password || b.role !== target.role) await run("DELETE FROM sessions WHERE user_id=?",target.id);
+      if(b.disabled === "true" || b.role !== "guard") {
+        const assignedSites=await all("SELECT site_id FROM assignments WHERE user_id=?",target.id);
+        for(const assigned of assignedSites) {
+          const versions=await all("SELECT * FROM shift_templates WHERE site_id=? ORDER BY created_at",assigned.site_id);
+          const latest=new Map(versions.map(p=>[p.template_id,p]));
+          if(!latest.size && target.role === "guard") {
+            const legacy=effectivePlans(await all("SELECT * FROM shift_plans WHERE site_id=?",assigned.site_id));
+            const siteRow=await one("SELECT schedule FROM sites WHERE id=?",assigned.site_id);
+            for(const p of legacy) {
+              const key="legacy-"+p.start_time+"-"+p.end_time;
+              if(!latest.has(key)) latest.set(key,{template_id:key,site_id:assigned.site_id,name:"Shift "+(latest.size+1),start_time:p.start_time,end_time:p.end_time,instructions:"",schedule:siteRow.schedule,guard_ids:"[]",legacy:true});
+              const entry=latest.get(key),ids=JSON.parse(entry.guard_ids);ids.push(p.guard_id);entry.guard_ids=JSON.stringify(ids);
+            }
+          }
+          for(const p of latest.values()) {
+            const guards=JSON.parse(p.guard_ids);
+            if(guards.includes(target.id)||p.legacy) await run("INSERT INTO shift_templates VALUES(?,?,?,?,?,?,?,?,?,?,?)",id(),p.template_id,p.site_id,p.name,p.start_time,p.end_time,p.instructions,p.schedule,JSON.stringify(guards.filter(g=>g!==target.id)),req.user.id,now());
+          }
+        }
+      }
+      if(req.file) {
+        const location=await saveMedia("profiles/"+target.id+"/"+id(),req.file.buffer,req.file.mimetype);
+        await run("INSERT INTO user_photos VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET path=excluded.path,mime=excluded.mime,created_at=excluded.created_at",target.id,location,req.file.mimetype,now());
+      }
+      await audit(req.user,"team.updated",{site:s,user_id:target.id,disabled:b.disabled === "true",role:b.role});
     } else if (b.kind === "site") {
       if (
         !/^([01][0-9]|2[0-3]):[0-5][0-9](,([01][0-9]|2[0-3]):[0-5][0-9])*$/.test(
@@ -1326,22 +1450,24 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
         validateFile(req.file);
       }
       let uid = id();
+      const contact=await teamContact(b,uid);
       await run(
         "INSERT INTO users VALUES(?,?,?,?,?)",
         uid,
         text(b.name, 120),
-        text(b.email, 200).toLowerCase(),
+        contact.email,
         hash(b.password),
         b.role,
       );
       await run("INSERT INTO assignments VALUES(?,?)", uid, s);
+      await saveTeamContact(uid,contact);
       if (req.file) {
         const photoPath = await saveMedia("profiles/" + uid, req.file.buffer, req.file.mimetype);
         await run("INSERT INTO user_photos VALUES(?,?,?,?)", uid, photoPath, req.file.mimetype, now());
       }
     } else if (b.kind === "assign") {
       let user = await one("SELECT id,role FROM users WHERE id=?", b.user_id);
-      if (user?.role !== (req.user.role === "owner" ? "supervisor" : "guard"))
+      if (!["supervisor","guard"].includes(user?.role))
         fail("You can only assign team members you manage", 403);
       if (
         !user ||
@@ -1362,6 +1488,7 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
   await audit(req.user, "admin " + b.kind, { site: s, name: b.name });
   res.json({ ok: true });
 });
+settingsRoutes({app,post,all,one,run,requireSite,fail,id,now,audit});
 app.get("/media/profile/:user", async (req, res) => {
   if (req.user.id !== req.params.user) {
     if (req.user.role === "guard" || !(await one("SELECT 1 FROM assignments a JOIN assignments b ON a.site_id=b.site_id WHERE a.user_id=? AND b.user_id=?", req.user.id, req.params.user))) fail("Photo outside assigned scope", 403);
@@ -1378,7 +1505,7 @@ app.get("/api/qr/:site", async (req, res) => {
   res.json(
     await Promise.all(
       await mapAsync(
-        await all("SELECT * FROM checkpoints WHERE site_id=?", req.params.site),
+        await all("SELECT * FROM checkpoints WHERE site_id=? AND id NOT IN (SELECT checkpoint_id FROM retired_checkpoints)", req.params.site),
         async (c) => ({ ...c, image: await QRCode.toDataURL(c.code) }),
       ),
     ),

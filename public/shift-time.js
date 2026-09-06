@@ -1,10 +1,7 @@
+import { currentPlan } from "./shift-plans.js";
 // Daily site schedules are Nigerian local time (UTC+01:00).
 export function scheduledEnd(startedAt, plans, guardId, siteId) {
-  const plan = plans
-    .filter((p) => p.guard_id === guardId && p.site_id === siteId)
-    .sort((a, b) =>
-      String(b.created_at).localeCompare(String(a.created_at)),
-    )[0];
+  const plan = currentPlan(plans, guardId, siteId, startedAt);
   if (!plan) return null;
   const started = Date.parse(startedAt),
     localDay = new Date(started + 3600000).toISOString().slice(0, 10);

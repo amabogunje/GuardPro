@@ -69,6 +69,7 @@ before(async () => {
         DATABASE_URL: "",
         BLOB_READ_WRITE_TOKEN: "",
         VERCEL: "",
+        ENABLE_MESSAGING: "true",
       },
       stdio: "pipe",
     });
@@ -497,17 +498,12 @@ test("voice recording, permission fallbacks, owner mobile and supervisor adminis
       fullPage: true,
     });
     await p.getByRole("button", { name: "Settings", exact: true }).click();
+    await p.locator('[data-tab="checkpoints"]').click();
+    await p.getByRole("button", { name: "Print all QR labels" }).click();
     await p
-      .getByRole("button", { name: /^(Site management|Manage team)$/ })
-      .click();
-    await p
-      .getByRole("heading", { name: "Shift schedule", exact: true })
+      .getByRole("button", { name: "Print", exact: true })
       .waitFor();
-    await p.getByRole("button", { name: "Print QR checkpoint sheet" }).click();
-    await p
-      .getByRole("button", { name: "Print labels", exact: true })
-      .waitFor();
-    assert.equal(await p.locator(".sheet img").count(), 4);
+    assert.equal(await p.locator(".qr-print-sheet img").count(), 4);
     assert.deepEqual(errors, []);
     await ctx.close();
   } finally {
@@ -564,12 +560,14 @@ test("Material layouts: every page at compact, medium and expanded widths", asyn
               ["admin", "instructionSetup", "patrols"].includes(target)
             )
               await p.locator('nav [data-page="setup"]').click();
-            if (role !== "supervisor" || target !== "home")
+            if (role !== "supervisor" || !["home", "admin"].includes(target))
               await p.locator(`nav [data-page="${target}"]`).click();
-            if (screen === "qr")
-              await p
-                .getByRole("button", { name: "Print QR checkpoint sheet" })
-                .click();
+            if (screen === "qr") {
+              await p.locator('[data-tab="checkpoints"]').click();
+              await p.getByRole("button", { name: "Print all QR labels" }).click();
+              await p.locator('#qr-print-now').waitFor();
+              await p.locator('#qr-print-close').click();
+            }
           }
           await p.locator("[data-md]").first().waitFor();
           const overflow = await p.evaluate(() => ({
@@ -765,7 +763,7 @@ test("shift timing handles Nigerian day and overnight schedules, elapsed time an
     scheduledEnd("2026-09-05T17:50:00+01:00", [night], "bala", "oak"),
     "2026-09-06T05:00:00.000Z",
   );
-  assert.equal(scheduledEnd("2026-09-05T06:00:00Z", [], "bala", "oak"), null);
+  assert.equal(scheduledEnd("2026-09-05T06:00:00Z", [], "bala", "oak"), "2026-09-05T23:00:00.000Z");
   assert.equal(
     elapsedShift("2026-09-05T00:00:00Z", Date.parse("2026-09-06T01:02:03Z")),
     "25:02:03",
@@ -1091,6 +1089,8 @@ test("sequential patrol enforcement, checkpoint mismatch and GPS review", async 
   );
   const reference = {
     site_id: "oak",
+    address: "Fictional test property, Ikeja, Lagos",
+    confirmed: true,
     latitude: 6.5,
     longitude: 3.3,
     radius_m: 100,
@@ -1724,10 +1724,9 @@ test("recorded shift instructions: owner publishes, scoped private playback, off
       };
     });
     await d.goto(base);
-    await d.locator("#email").fill("supervisor@demo.isdl");
+    await d.locator("#email").fill("owner@demo.isdl");
     await d.locator("#password").fill("Pilot-only-2026!");
     await d.getByRole("button", { name: "Sign in", exact: true }).click();
-    await d.getByRole("button", { name: "Settings", exact: true }).click();
     await d
       .getByRole("button", { name: "Shift instructions", exact: true })
       .click();
