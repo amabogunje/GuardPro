@@ -83,10 +83,20 @@ function renderSupervisorProblems(target, reports) {
     const event = eventList().find(e => e.id === selected.id);
     const audioOnly = event?.payload.report_format === "audio" || selected.report === "Voice report — listen to the attached recording.";
     const written = event?.payload.typed_report ?? (audioOnly ? "" : selected.report || "");
-    target.innerHTML = `<section class="card problem-detail" id="incident-${esc(selected.id)}"><p class="muted">Received on ${esc(date(selected.received_at))}<br>Reported by ${esc(guardName(selected.user_id))}</p><div id="problemAudio"></div>${written.trim() ? '<p class="problem-written">' + esc(written) + '</p>' : ''}<div id="problemPhotos"></div>${selected.status !== "Resolved" ? `<form class="problemResolve" data-id="${esc(selected.id)}"><label class="label" for="problemComments">Supervisor comments</label><textarea id="problemComments" name="note" maxlength="5000"></textarea><button class="primary wide">Resolve Problem</button></form>` : ""}</section>`;
+    target.innerHTML = `<section class="card problem-detail" id="incident-${esc(selected.id)}"><p class="muted">Received on ${esc(date(selected.received_at))}<br>Reported by ${esc(guardName(selected.user_id))}</p><div id="problemAudio"></div>${written.trim() ? '<p class="problem-written">' + esc(written) + '</p>' : ''}<div id="problemPhotos"></div>${selected.status !== "Resolved" ? `<form class="problemResolve" data-id="${esc(selected.id)}"><label class="label" for="problemCategory">Category</label><select id="problemCategory" name="category" required><option value="">Choose category</option><option value="security">Security</option><option value="maintenance">Maintenance</option><option value="other">Other</option></select><div id="problemPriorityField" hidden><label class="label" for="problemPriority">Security priority</label><select id="problemPriority" name="priority" disabled><option value="">Choose priority</option><option value="P1">P1 — High</option><option value="P2">P2 — Medium</option><option value="P3">P3 — Low</option></select></div><label class="label" for="problemComments">Supervisor comments</label><textarea id="problemComments" name="note" maxlength="5000"></textarea><button class="primary wide">Resolve Problem</button></form>` : ""}</section>`;
+    const category=target.querySelector('#problemCategory');
+    if(category)category.onchange=()=>{
+      const security=category.value==='security',priority=target.querySelector('#problemPriority');
+      target.querySelector('#problemPriorityField').hidden=!security;
+      priority.disabled=!security;priority.required=security;if(!security)priority.value='';
+    };
     if (selected.status === "Resolved") {
       target.insertAdjacentHTML("beforeend", '<div class="supervisor-heading"><h2 id="resolutionHeading">Resolution Details</h2></div><section class="card resolution-detail" aria-labelledby="resolutionHeading">' +
         selected.history.filter(h => h.status === "Resolved").map(h => `<p class="muted">Resolved on ${esc(date(h.at))}<br>Resolved by ${esc(h.name)}</p><p class="resolution-comments"><strong>Supervisor comments:</strong><br>${esc(h.note || "")}</p>`).join("") + '</section>');
+    }
+    if(selected.status==='Resolved') {
+      const classification=selected.classification;
+      target.querySelector('.resolution-detail')?.insertAdjacentHTML('beforeend',`<p class="resolution-classification"><strong>Category:</strong> ${classification?esc(classification.category[0].toUpperCase()+classification.category.slice(1)):'Not classified'}${classification?.priority?` · <strong>Priority:</strong> ${esc(classification.priority)}`:''}</p>`);
     }
     for (const media of selected.media) renderProblemAttachment(target, media);
   } else {
@@ -1540,7 +1550,7 @@ document.addEventListener("submit", async (e) => {
       render();
       await sync();
     } else if (f.classList.contains("problemResolve")) {
-      await api(`/api/incidents/${f.dataset.id}/resolve`, {note:b.note || ""});
+      await api(`/api/incidents/${f.dataset.id}/resolve`, {note:b.note || "",category:b.category,priority:b.priority || null});
       selectedProblemId = null;
       await refresh();
       render();

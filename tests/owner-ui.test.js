@@ -17,7 +17,7 @@ after(async()=>{await browser?.close();server?.kill();});
 async function signedIn(width){
  const context=await browser.newContext({viewport:{width,height:900}}),p=await context.newPage();
  await p.route('https://www.openstreetmap.org/**',route=>route.fulfill({contentType:'text/html',body:'Map fixture'}));
- await p.goto(base);await p.locator('#email').fill('owner@demo.isdl');await p.locator('#password').fill('Pilot-only-2026!');await p.getByRole('button',{name:'Sign in',exact:true}).click();await p.locator('.owner-confidence').waitFor();
+ await p.goto(base);await p.locator('#email').fill('owner@demo.isdl');await p.locator('#password').fill('Pilot-only-2026!');await p.getByRole('button',{name:'Sign in',exact:true}).click();await p.locator('.owner-health').waitFor();
  return {context,p};
 }
 async function geometry(p){
@@ -40,16 +40,15 @@ test('owner mobile setup, supervisor creation and honest subscription screen',as
   await p.screenshot({path:path.join(data,'owner-subscription-mobile.png'),fullPage:true});assert.deepEqual(errors,[]);
  } finally {await context.close();}
 });
-test('owner evidence stays read-only and supervisor mode persists without changing identity',async()=>{
+test('owner KPIs are display-only and supervisor mode persists without changing identity',async()=>{
  const {context,p}=await signedIn(1440),errors=[];p.on('pageerror',e=>errors.push(e.message));
  try {
+  assert.equal(await p.locator('.owner-kpi').count(),3);assert.equal(await p.locator('.owner-kpi details, .owner-kpi summary, .owner-kpi button, .owner-kpi a').count(),0);await p.getByText('Last seven days',{exact:true}).waitFor();
   await geometry(p);await p.screenshot({path:path.join(data,'owner-home-desktop.png'),fullPage:true});
-  await p.getByRole('button',{name:/Problems and responses/}).click();await p.locator('[data-action="viewProblem"]').first().click();await p.getByRole('heading',{name:'Problem Details',exact:false}).waitFor();assert.equal(await p.locator('.problemResolve').count(),0);await p.locator('[data-action=problemList]').click();
-  await p.getByRole('button',{name:'Home',exact:true}).click();await p.getByRole('button',{name:/Activity reports/}).click();await p.getByRole('button',{name:'View report',exact:true}).click();await p.locator('.activity-report').waitFor();await geometry(p);
   await p.getByRole('button',{name:'Act as supervisor',exact:true}).click();await p.getByRole('button',{name:'Settings',exact:true}).waitFor();const stateResponse=p.waitForResponse(r=>r.url().endsWith('/api/state')&&r.status()===200);await p.reload();await p.getByRole('button',{name:'Return to owner view',exact:true}).waitFor();await p.getByRole('button',{name:'Settings',exact:true}).waitFor();
   const state=await (await stateResponse).json();assert.equal(state.user.role,'owner');
   await p.getByRole('button',{name:'Problems',exact:true}).click();await p.locator('[data-action="viewProblem"]').first().click();await p.locator('.problemResolve').waitFor();await geometry(p);
-  await p.getByRole('button',{name:'Return to owner view',exact:true}).click();await p.locator('.owner-confidence').waitFor();await p.reload();await p.locator('.owner-confidence').waitFor();await p.getByRole('button',{name:'Property',exact:true}).waitFor();assert.deepEqual(errors,[]);
+  await p.getByRole('button',{name:'Return to owner view',exact:true}).click();await p.locator('.owner-health').waitFor();await p.reload();await p.locator('.owner-health').waitFor();await p.getByRole('button',{name:'Property',exact:true}).waitFor();assert.deepEqual(errors,[]);
  } finally {await context.close();}
 });
 

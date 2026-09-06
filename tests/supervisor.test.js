@@ -625,6 +625,8 @@ test("reported problems use compact outstanding and previous lists with detail n
     await req("/api/incidents/"+reportId+"/resolve",guard,{note:"Not allowed"},403);
     await req("/api/incidents/"+reportId+"/resolve",other,{note:"Not allowed"},403);
     await p.locator("#problemComments").fill("Addressed offline.");
+    await p.locator('#problemCategory').selectOption('security');
+    await p.locator('#problemPriority').selectOption('P2');
     await p.getByRole("button",{name:"Resolve Problem",exact:true}).click();
     await p.locator(".problem-list").nth(1).locator('[data-id="'+reportId+'"]').waitFor();
     await req("/api/incidents/"+reportId+"/resolve",supervisor,{note:"Duplicate"});

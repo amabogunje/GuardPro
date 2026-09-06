@@ -18,10 +18,12 @@ test('owner acting as supervisor resolves scoped problems retaining actual ident
  const state=await req('/api/state',owner),incident=state.incidents.find(i=>i.site_id==='oak'&&i.status!=='Resolved');assert.ok(incident);
  await req('/api/incidents/'+incident.id+'/resolve',other,{note:'No access'},403);
  await req('/api/incidents/'+incident.id+'/resolve',guard,{note:'No access'},403);
- await req('/api/incidents/'+incident.id+'/resolve',owner,{note:'Owner checked and addressed this.'});
+ await req('/api/incidents/'+incident.id+'/resolve',owner,{note:'Missing category'},400);
+ await req('/api/incidents/'+incident.id+'/resolve',owner,{category:'security'},400);
+ await req('/api/incidents/'+incident.id+'/resolve',owner,{note:'Owner checked and addressed this.',category:'security',priority:'P1'});
  const updated=await req('/api/owner-overview/oak',owner),resolved=updated.problems.recentResolved.find(i=>i.id===incident.id);
  assert.equal(resolved.comment,'Owner checked and addressed this.');assert.ok(resolved.resolvedBy);
- const history=(await req('/api/state',owner)).incidents.find(i=>i.id===incident.id).history;assert.equal(history.find(t=>t.status==='Resolved').actor,state.user.id);
+ const saved=(await req('/api/state',owner)).incidents.find(i=>i.id===incident.id);assert.equal(saved.classification.category,'security');assert.equal(saved.classification.priority,'P1');assert.equal(saved.history.find(t=>t.status==='Resolved').actor,state.user.id);
 });
 test('old offline captures received now remain unconfirmed; Any does not invent staffing expectations',()=>{
  const now=Date.parse('2026-09-06T12:00:00Z');

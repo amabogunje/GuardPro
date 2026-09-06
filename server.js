@@ -24,6 +24,7 @@ import { saveMedia, serveMedia, maxUploadBytes } from "./storage.js";
 import { migrate } from "./migrate.js";
 import { activityReport, reportWindow } from "./activity-reports.js";
 import { ownerOverview } from './owner-overview.js';
+import { ownerHealth, classificationInput } from './owner-health.js';
 import {
   randomUUID,
   randomBytes,
@@ -206,7 +207,8 @@ app.get('/api/owner-overview/:site', async (req,res) => {
     scoped('property_locations'),scoped('location_reviews'),
     all('SELECT t.*,u.name AS actor_name FROM transitions t JOIN users u ON u.id=t.actor JOIN incidents i ON i.id=t.incident_id WHERE i.site_id=?',site.id)
   ]);
-  res.json(ownerOverview({site,users,supervisors,plans,shifts,events:events.map(e=>({...e,payload:JSON.parse(e.payload)})),incidents,checkpoints,locations,reviews,resolutions}));
+  const input={site,users,supervisors,plans,shifts,events:events.map(e=>({...e,payload:JSON.parse(e.payload)})),incidents,checkpoints,locations,reviews,resolutions};
+  res.json({...ownerOverview(input),health:ownerHealth({...input,classifications:await scoped('incident_classifications')})});
 });
 app.get("/api/state", async (req, res) => {
   const u = req.user;
@@ -299,6 +301,7 @@ app.get("/api/state", async (req, res) => {
     source: m.source,
     size: m.size,
   });
+  const classifications=await scoped('incident_classifications');
   res.json({
     propertyLocations: await scoped('property_locations'),
     locationReviews: u.role==='guard'?[]:await all('SELECT r.*,u.name AS actor_name FROM location_reviews r JOIN users u ON u.id=r.actor JOIN assignments a ON a.site_id=r.site_id WHERE a.user_id=?',u.id),
@@ -353,6 +356,7 @@ app.get("/api/state", async (req, res) => {
       )
       .map((i) => ({
         ...i,
+        classification: classifications.find(c=>c.incident_id===i.id)||null,
         media: media.filter((m) => m.incident_id === i.id).map(displayMedia),
         history: history.filter((h) => h.incident_id === i.id),
         revisions: revisions.filter((r) => r.incident_id === i.id),
@@ -1066,11 +1070,14 @@ post("/api/incidents/:id/resolve", async (req, res) => {
   await transaction(async () => {
     const incident = await mediaIncident(req.user, req.params.id);
     if (incident.status === "Resolved") return;
+    let classification;
+    try {classification=classificationInput(req.body);}catch(e){fail(e.message);}
     const changed = await run("UPDATE incidents SET status='Resolved' WHERE id=? AND status<>'Resolved'", incident.id);
     if (!changed) return;
     const note = text(req.body.note, 5000);
+    await run('INSERT INTO incident_classifications VALUES(?,?,?,?,?,?)',incident.id,incident.site_id,classification.category,classification.priority,req.user.id,now());
     await run("INSERT INTO transitions VALUES(?,?,?,?,?,?)", id(), incident.id, req.user.id, now(), "Resolved", note);
-    await audit(req.user, "problem resolved", {incident_id:incident.id,note,actor_role:req.user.role});
+    await audit(req.user, "problem resolved", {incident_id:incident.id,note,actor_role:req.user.role,...classification});
   });
   res.json({ok:true});
 });
@@ -1089,7 +1096,12 @@ post("/api/incidents/:id/transition", async (req, res) => {
     fail("Responsible person and next action required");
   if (b.status === "Resolved" && !text(b.note))
     fail("Resolution note required");
+  let classification;
+  if(b.status==='Resolved') {
+    try {classification=classificationInput(b);}catch(e){fail(e.message);}
+  }
   try {
+    if(classification)await run('INSERT INTO incident_classifications VALUES(?,?,?,?,?,?)',i.id,i.site_id,classification.category,classification.priority,req.user.id,now());
     await run(
       "UPDATE incidents SET status=?,responsible=?,next_action=? WHERE id=?",
       b.status,

@@ -130,6 +130,7 @@ for (const [id, bytes] of [
 for (const status of ["Acknowledged", "Assigned", "Resolved"])
   await api("/api/incidents/" + report.id + "/transition", "supervisor", {
     status,
+    ...(status === "Resolved" ? {category: "other"} : {}),
     responsible: "ISDL demo verification",
     next_action: "Complete deployment check",
     note: "Synthetic deployment check complete; no real incident.",

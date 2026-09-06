@@ -2895,3 +2895,20 @@ html { scrollbar-gutter: stable; }
 .owner-mobile #ownerPropertyEditor:empty { display:none; }
 .owner-mobile #ownerSupervisors { margin-top:16px; }
 .owner-account .greeting-row h1 { overflow-wrap:anywhere; }
+.owner-health .owner-kpi { margin:16px 0 0; border:1px solid #e3e8e9; padding:0; border-radius:0; background:white; }
+.owner-kpi .health-summary { display:grid; grid-template-columns:56px minmax(0,1fr); gap:8px 12px; padding:16px 12px; }
+.health-icon { width:56px; height:56px; display:grid; place-items:center; border-radius:50%; background:#e7f4f2; color:#087e70; align-self:center; }
+.health-icon svg { width:34px; height:34px; }
+.health-main { display:grid; gap:5px; min-width:0; }
+.health-main > strong { font-size:15px; line-height:20px; font-weight:600; }
+.health-main > small { font-size:12px; line-height:18px; color:#586772; font-weight:400; }
+.health-value { font-size:36px; line-height:1.15; font-weight:650; letter-spacing:-.8px; }
+.health-value.risk-value { font-size:25px; letter-spacing:-.3px; }
+.health-value.health-empty { font-size:21px; line-height:1.25; letter-spacing:0; color:#586772; }
+.health-main .health-value { overflow-wrap:anywhere; }
+.health-bar { grid-column:1/-1; display:flex; height:7px; background:#e9eef0; overflow:hidden; margin-top:5px; }
+.health-bar span { height:100%; }
+.health-caption { grid-column:1/-1; font-size:12px; color:#586772; line-height:18px; font-weight:400; }
+.owner-mobile .health-period { font-size:12px; color:#586772; }
+.health-description { grid-column:1/-1; color:#586772; font-size:13px; line-height:19px; font-weight:400; }
+.problemResolve select { width:100%; margin-bottom:12px; }

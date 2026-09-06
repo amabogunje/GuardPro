@@ -256,6 +256,7 @@ test("supervisor state machine, notification receipt and summary approval", asyn
   await req(`/api/incidents/${incident}/transition`, supervisor, {
     status: "Resolved",
     note: "Lock replaced and tested",
+    category: "maintenance",
   });
   s = await req("/api/state", supervisor);
   assert.equal(s.incidents.find((i) => i.id === incident).history.length, 3);
@@ -463,7 +464,7 @@ test("voice recording, permission fallbacks, owner mobile and supervisor adminis
     await p.getByRole("button", { name: "Sign in" }).click();
     await p
       .getByRole("heading", {
-        name: /A clearer picture of every shift\.|Your team today/,
+        name: "At a glance",
       })
       .waitFor();
     assert.equal(
@@ -476,7 +477,8 @@ test("voice recording, permission fallbacks, owner mobile and supervisor adminis
       path: path.join(data, "owner-mobile.png"),
       fullPage: true,
     });
-    await p.getByRole("button", { name: "Incidents", exact: true }).click();
+    await p.locator('[data-health="risk"] > summary').click();
+    await p.getByRole("button", { name: "View all problems", exact: true }).click();
     await p
       .getByText(
         "Voice UI test. The lock is damaged. I called the supervisor.",
@@ -531,7 +533,7 @@ test("Material layouts: every page at compact, medium and expanded widths", asyn
       await p.locator("#email").fill(role + "@demo.isdl");
       await p.locator("#password").fill("Pilot-only-2026!");
       await p.getByRole("button", { name: "Sign in" }).click();
-      await p.locator(role === "owner" ? ".workspace" : ".guard").waitFor();
+      await p.locator(".guard").waitFor();
       const screens =
         role === "bala"
           ? ["home", "shift", "round", "report", "instructions"]
@@ -548,6 +550,13 @@ test("Material layouts: every page at compact, medium and expanded widths", asyn
               await p.locator('[data-action="shift"]').click();
             else if (screen !== "home")
               await p.locator(`[data-page="${screen}"]`).first().click();
+          } else if (role === "owner") {
+            if (await p.locator('.greeting-row .back').count())
+              await p.locator('.greeting-row .back').click();
+            if (screen !== "home") {
+              await p.locator(`[data-health="${screen === 'incidents' ? 'risk' : 'guard'}"] > summary`).click();
+              await p.getByRole('button', {name: screen === 'incidents' ? 'View all problems' : 'View activity reports', exact:true}).first().click();
+            }
           } else {
             const target = screen === "qr" ? "admin" : screen;
             if (
