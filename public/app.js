@@ -1,4 +1,16 @@
 let overviewDate = null;
+import { ownerPage } from './owner.js';
+const ownerSupervisorView = () => user?.role === 'owner' && Boolean(vault?.ownerSupervisorView);
+const supervisorView = () => user?.role === 'supervisor' || ownerSupervisorView();
+async function setOwnerMode(supervisor) {
+  if(user?.role!=='owner')return;
+  if(supervisor&&!site()){page='property';render();return;}
+  vault.ownerSupervisorView=supervisor;page='home';selectedProblemId=null;selectedLocationShift=null;
+  resetSettings();await persist();render();
+}
+function renderOwnerPage() {
+  ownerPage(root,{page,site:site(),user,state,api,esc,icon,brand,siteSelect,done:async()=>{await refresh();render();toast('Saved.');},supervise:()=>setOwnerMode(true)});
+}
 import { locationGroups, gpsReview } from './gps-review.js';
 import { propertyEditor } from './property-location.js';
 let selectedLocationShift=null;
@@ -318,19 +330,34 @@ function render() {
     recordingPlaybackUrl = null;
   }
   if (!user) return login();
-  if (!site()) {
+  if (!site() && user.role !== 'owner') {
     root.innerHTML = `<main class="login">${brand()}<p>No assigned properties. Ask your supervisor to assign a site.</p><button data-action="logout">Sign out</button></main>`;
     return;
   }
   if (user.role === "guard") renderGuard();
   else renderDashboard();
-  if(user.role==='supervisor' && page==='home' && locationGroups(eventList(),state.locationReviews||[],siteId).length) {
+  if(supervisorView() && page==='home' && locationGroups(eventList(),state.locationReviews||[],siteId).length) {
     const link=document.createElement('button');link.className='checkpoint-text-action';link.dataset.action='locationHistory';link.textContent='Location review history';root.querySelector('.attention-footer')?.append(link);
   }
-  if (user.role === "supervisor" && page !== "home") {
+  if (user.role !== "guard" && page !== "home" && root.querySelector('.supervisor-heading')) {
     const titles = {gps:"Location review",summaries:"Reports",incidents:selectedProblemId ? "Problem Details" : "Problems",setup:"Settings",instructionSetup:"Shift instructions",patrols:"Patrol schedule",admin:"Manage team",message:"Messages"};
     root.querySelector(".greeting-row h1").textContent = titles[page] || "Your team";
     root.querySelector(".supervisor-mobile > .supervisor-heading")?.remove();
+  }
+  if(user.role==='owner') {
+    const mode=document.createElement('div');mode.className='owner-mode';
+    mode.innerHTML=`<span>${ownerSupervisorView()?'Supervisor view':'Owner view'}</span><button type="button" class="owner-mode-switch" data-action="ownerMode">${ownerSupervisorView()?'Return to owner view':'Act as supervisor'}</button>`;
+    root.querySelector('.duty-identity')?.after(mode);
+    root.querySelector('main')?.classList.add('owner-account');
+    const identity=root.querySelector('.duty-identity > .eyebrow');
+    if(identity) {
+      if(ownerSupervisorView())identity.textContent=site()?.name||'Your property';
+      else identity.remove();
+    }
+    if(!ownerSupervisorView()) {
+      const form=root.querySelector('.problemResolve');
+      if(form)form.outerHTML='<p class="owner-resolution-hint">Use the supervisor view if you need to address this problem yourself.</p>';
+    }
   }
   // Reserve the same greeting row even when Home has no back control.
   const offDutyIdentity = root.querySelector(".off-duty-identity");
@@ -682,7 +709,11 @@ function siteSelect() {
   return `<select id="siteSelect" aria-label="Property">${state.sites.map((s) => `<option value="${s.id}" ${s.id === siteId ? "selected" : ""}>${esc(s.name)}</option>`).join("")}</select>`;
 }
 function renderDashboard() {
-  if (user.role === "supervisor" && page === "home")
+  if(user.role==='owner'&&!ownerSupervisorView()) {
+    if(page==='admin')page='property';
+    if(['home','property','supervisors','subscription'].includes(page)||!site()){if(!site()&&!['home','property','subscription'].includes(page))page='home';renderOwnerPage();return;}
+  }
+  if (supervisorView() && page === "home")
     day =
       overviewDate || new Date(Date.now() + 3600000).toISOString().slice(0, 10);
   let inc = scopedIncidents(),
@@ -697,7 +728,7 @@ function renderDashboard() {
   let complete = [...rounds.values()].filter(
     (r) => cps().length && cps().every((c) => r.has(c.id)),
   ).length;
-  const mobileSupervisor = user.role === "supervisor";
+  const mobileSupervisor = user.role === "supervisor" || user.role === 'owner';
   if (mobileSupervisor) {
     root.innerHTML = `<main class="guard supervisor-mobile ${page === "home" ? "supervisor-home" : ""}"><header class="topbar">${brand()}<button data-action="logout">Sign out</button></header><div class="duty-identity"><p class="eyebrow">${esc(site().name)} · Supervisor</p><div class="greeting-row"><h1>Hello, ${esc(user.name)}.</h1>${page !== "home" ? '<button class="back" data-page="home">Home</button>' : ""}</div></div>${state.sites.length > 1 ? siteSelect() : ""}${page === "home" ? `<nav class="actions supervisor-actions" aria-label="Supervisor pages"><button data-page="message" data-md="true" aria-label="Messages"><span class="action-icon">${icon("message")}</span><span class="button-label">Messages</span>${unreadMessageCount() ? `<span class="message-unread" role="status" aria-label="${unreadMessageCount()} unread messages">${unreadMessageCount()} new</span>` : ""}</button><button data-page="incidents" data-md="true" aria-label="Problems"><span class="action-icon">${icon("incidents")}</span><span class="button-label">Problems</span></button><button data-page="summaries" data-md="true" aria-label="Reports"><span class="action-icon">${icon("summaries")}</span><span class="button-label">Reports</span></button><button data-page="setup" data-md="true" aria-label="Settings"><span class="action-icon">${icon("admin")}</span><span class="button-label">Settings</span></button></nav>` : ""}<div class="supervisor-heading"><h2>${{ home: "Today’s overview", setup: "Settings", incidents: "Reported problems", summaries: "Daily reports", admin: "Manage your team", instructionSetup: "Shift instructions", message: "Messages", patrols: "Patrol schedule" }[page] || "Your team"}</h2>${page === "home" ? "" : '<button data-action="refresh">Refresh</button>'}</div><details class="supervisor-filters"><summary>Date & synchronization</summary><label class="label" for="day">Reporting date · UTC</label><input id="day" type="date" value="${day}"><p>Last record received: ${date(site().last_sync)}</p></details><p class="notice">New records may be pending. Current activity is unconfirmed between uploads.</p><div id="dashboardPage"></div></main>`;
   } else {
@@ -1692,6 +1723,7 @@ document.addEventListener("click", async (e) => {
       return;
     }
     let a = b.dataset.action;
+    if(a==='ownerMode'){await setOwnerMode(!ownerSupervisorView());return;}
     if (a === "activityPeriod") {
       activityPeriod = ["daily","monthly","custom"].includes(b.dataset.value) ? b.dataset.value : "daily";
       render(); return;
@@ -2517,6 +2549,10 @@ async function initialize() {
             "admin",
             "patrols",
             "setup",
+            "property",
+            "supervisors",
+            "subscription",
+            "gps",
           ];
     page = allowed.includes(restored.view.page) ? restored.view.page : "home";
     if (navigator.onLine) {

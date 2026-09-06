@@ -23,6 +23,7 @@ import {
 import { saveMedia, serveMedia, maxUploadBytes } from "./storage.js";
 import { migrate } from "./migrate.js";
 import { activityReport, reportWindow } from "./activity-reports.js";
+import { ownerOverview } from './owner-overview.js';
 import {
   randomUUID,
   randomBytes,
@@ -192,6 +193,21 @@ async function canReadMessage(u, eventId) {
     ))
   );
 }
+app.get('/api/owner-overview/:site', async (req,res) => {
+  if(req.user.role!=='owner') fail('Owner only',403);
+  await requireSite(req.user,req.params.site);
+  const site=await one('SELECT * FROM sites WHERE id=?',req.params.site);
+  const scoped=t=>all(`SELECT * FROM ${t} WHERE site_id=?`,site.id);
+  const [users,supervisors,plans,shifts,events,incidents,checkpoints,locations,reviews,resolutions]=await Promise.all([
+    all('SELECT u.id,u.name,u.role FROM users u JOIN assignments a ON a.user_id=u.id WHERE a.site_id=? AND NOT EXISTS (SELECT 1 FROM disabled_users d WHERE d.user_id=u.id)',site.id),
+    all("SELECT u.id,u.name,CASE WHEN c.email_missing=1 THEN '' ELSE u.email END AS email,c.whatsapp FROM users u JOIN assignments a ON a.user_id=u.id LEFT JOIN user_contacts c ON c.user_id=u.id WHERE a.site_id=? AND u.role='supervisor' AND NOT EXISTS (SELECT 1 FROM disabled_users d WHERE d.user_id=u.id)",site.id),
+    Promise.all([scoped('shift_plans'),scoped('shift_templates')]).then(p=>p.flat()),scoped('shifts'),scoped('events'),scoped('incidents'),
+    all('SELECT c.* FROM checkpoints c WHERE c.site_id=? AND NOT EXISTS (SELECT 1 FROM retired_checkpoints r WHERE r.checkpoint_id=c.id)',site.id),
+    scoped('property_locations'),scoped('location_reviews'),
+    all('SELECT t.*,u.name AS actor_name FROM transitions t JOIN users u ON u.id=t.actor JOIN incidents i ON i.id=t.incident_id WHERE i.site_id=?',site.id)
+  ]);
+  res.json(ownerOverview({site,users,supervisors,plans,shifts,events:events.map(e=>({...e,payload:JSON.parse(e.payload)})),incidents,checkpoints,locations,reviews,resolutions}));
+});
 app.get("/api/state", async (req, res) => {
   const u = req.user;
   const scoped = (t) =>
@@ -1046,7 +1062,7 @@ post("/api/ai", upload.single("file"), async (req, res) => {
   }
 });
 post("/api/incidents/:id/resolve", async (req, res) => {
-  supervisor(req.user);
+  if(!['owner','supervisor'].includes(req.user.role)) fail('Supervisor or owner only',403);
   await transaction(async () => {
     const incident = await mediaIncident(req.user, req.params.id);
     if (incident.status === "Resolved") return;
@@ -1054,7 +1070,7 @@ post("/api/incidents/:id/resolve", async (req, res) => {
     if (!changed) return;
     const note = text(req.body.note, 5000);
     await run("INSERT INTO transitions VALUES(?,?,?,?,?,?)", id(), incident.id, req.user.id, now(), "Resolved", note);
-    await audit(req.user, "problem resolved", {incident_id:incident.id,note});
+    await audit(req.user, "problem resolved", {incident_id:incident.id,note,actor_role:req.user.role});
   });
   res.json({ok:true});
 });

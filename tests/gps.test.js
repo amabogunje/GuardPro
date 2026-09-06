@@ -53,7 +53,7 @@ test('supervisor reviews grouped GPS flags without changing problems',async()=>{
 test('owner property form saves an address and confirmed map position',async()=>{
  const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
  try {const p=await browser.newPage();await p.route('https://www.openstreetmap.org/**',route=>route.fulfill({contentType:'text/html',body:'Map test fixture'}));
- await p.goto(base);await p.locator('#email').fill('owner@demo.isdl');await p.locator('#password').fill('Pilot-only-2026!');await p.getByRole('button',{name:'Sign in',exact:true}).click();await p.locator('.sidebar [data-page="admin"]').click();
+ await p.goto(base);await p.locator('#email').fill('owner@demo.isdl');await p.locator('#password').fill('Pilot-only-2026!');await p.getByRole('button',{name:'Sign in',exact:true}).click();await p.getByRole('button',{name:'Property',exact:true}).click();await p.getByRole('button',{name:'Edit property location',exact:true}).click();
  const form=p.locator('.property-editor form').first();
  await p.evaluate(()=>{navigator.geolocation.getCurrentPosition=(success)=>setTimeout(()=>success({coords:{latitude:6.62,longitude:3.36,accuracy:20}}),100);});
  await form.getByRole('button',{name:'Use my position',exact:true}).click();
@@ -69,7 +69,7 @@ test('owner property form saves an address and confirmed map position',async()=>
  await form.getByText(/accuracy approximately 200 metres/).waitFor();
  assert.equal(await form.locator('[name="latitude"]').inputValue(),'6.63');
  await form.locator('[name="address"]').fill('3 Owner Test Close, Fictional Estate, Lagos');await form.locator('[name="longitude"]').fill('3.351');await form.locator('[name="confirmed"]').check();await form.getByRole('button',{name:'Save property location'}).click();
- await p.waitForFunction(()=>document.querySelector('.property-editor textarea')?.value==='3 Owner Test Close, Fictional Estate, Lagos' && !document.querySelector('.property-editor input[name="confirmed"]')?.checked);
+ await p.getByText('3 Owner Test Close, Fictional Estate, Lagos',{exact:true}).waitFor();
  assert.equal((await req('/api/state',owner)).propertyLocations.at(-1).address,'3 Owner Test Close, Fictional Estate, Lagos');
  } finally {await browser.close();}
 });

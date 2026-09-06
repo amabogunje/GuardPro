@@ -1,5 +1,6 @@
 // Framework-independent Material presentation. Icons work offline.
 const paths = {
+  payment: "M3 5h18v14H3zM3 9h18M6 15h4",
   location: "M12 22s8-8 8-14a8 8 0 0 0-16 0c0 6 8 14 8 14ZM12 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z",
   shifts: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l3 2",
   nfc: "M5 9a5 5 0 0 1 0 6M9 6a10 10 0 0 1 0 12M13 3a15 15 0 0 1 0 18M2 12h.01",

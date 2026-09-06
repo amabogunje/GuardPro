@@ -100,7 +100,17 @@ SQLite migration **010** runs on local startup. For PostgreSQL, run the existing
 
 Targeted verification: `node --test tests/settings.test.js tests/supervisor.test.js tests/activity-reports.test.js tests/messaging-disabled.test.js`. These use isolated local databases; browser tests cover 360px and desktop widths, tab selection, checkpoint editing, NFC fallback, and unchanged header placement.
 
-### Property location and GPS review
+### Owner mobile experience
+
+The owner now has a narrow mobile layout at every screen size. **Property**, **Supervisors** and **Subscription** are the three main actions. The home overview comes from the owner-only `/api/owner-overview/:site` endpoint: unresolved problems, recorded guard coverage, recent supervisor resolutions, and freshness of received evidence. Old uploads do not imply current activity. Any-guard rosters have no invented headcount target.
+
+Use **Property** to confirm an address/map position or add another property. Use **Supervisors** to create an assigned supervisor with email or phone sign-in. **Act as supervisor** opens the existing operational view; **Return to owner view** restores the owner overview. This preference survives refresh in the encrypted account vault. It never changes the authenticated role or impersonates another user. Owner resolutions retain the owner's actor ID and role in the audit history. Owner-mode problem details are read-only; switch views to act.
+
+**Subscription** is an honest unconfigured screen. There are no prices, active subscription claims, invoices, checkout or payment processing. Service terms and a payment-provider integration are still required before payments can be managed. The existing MVP boundary remains in force.
+
+Verification: `node --test tests/owner-overview.test.js tests/owner-ui.test.js`. Tests cover tenant permissions, actual-versus-expected coverage, stale data, owner attribution, property/supervisor creation, evidence access, mobile/desktop width and view switching. No deployment is performed by these changes.
+
+### Property setup details
 
 Owners configure **Site management → Property address & location**: full address, confirmed coordinates, and allowed radius (20–5000 metres). New properties require these fields. OpenStreetMap lookup opens the address search; the owner manually confirms the map position and enters coordinates, or uses their position while physically at the property. Automatic address geocoding is not implemented. No real Oak House address is guessed or seeded. Guards and supervisors cannot change these fields; server permissions enforce this.
 
