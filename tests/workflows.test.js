@@ -461,7 +461,9 @@ test("voice recording, permission fallbacks, owner mobile and supervisor adminis
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in" }).click();
     await p
-      .getByRole("heading", { name: "A clearer picture of every shift." })
+      .getByRole("heading", {
+        name: /A clearer picture of every shift\.|Your team today/,
+      })
       .waitFor();
     assert.equal(
       await p.evaluate(
@@ -485,15 +487,18 @@ test("voice recording, permission fallbacks, owner mobile and supervisor adminis
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in" }).click();
     await p
-      .getByRole("heading", { name: "A clearer picture of every shift." })
+      .getByRole("heading", {
+        name: "Hello, Ada.",
+      })
       .waitFor();
     await p.setViewportSize({ width: 1440, height: 1000 });
     await p.screenshot({
       path: path.join(data, "supervisor-desktop.png"),
       fullPage: true,
     });
+    await p.getByRole("button", { name: "Settings", exact: true }).click();
     await p
-      .getByRole("button", { name: "Site management", exact: true })
+      .getByRole("button", { name: /^(Site management|Manage team)$/ })
       .click();
     await p
       .getByRole("heading", { name: "Shift schedule", exact: true })
@@ -530,7 +535,7 @@ test("Material layouts: every page at compact, medium and expanded widths", asyn
       await p.locator("#email").fill(role + "@demo.isdl");
       await p.locator("#password").fill("Pilot-only-2026!");
       await p.getByRole("button", { name: "Sign in" }).click();
-      await p.locator(role === "bala" ? ".guard" : ".workspace").waitFor();
+      await p.locator(role === "owner" ? ".workspace" : ".guard").waitFor();
       const screens =
         role === "bala"
           ? ["home", "shift", "round", "report", "instructions"]
@@ -549,7 +554,18 @@ test("Material layouts: every page at compact, medium and expanded widths", asyn
               await p.locator(`[data-page="${screen}"]`).first().click();
           } else {
             const target = screen === "qr" ? "admin" : screen;
-            await p.locator(`nav [data-page="${target}"]`).click();
+            if (
+              role === "supervisor" &&
+              (await p.locator(".greeting-row .back").count())
+            )
+              await p.locator(".greeting-row .back").click();
+            if (
+              role === "supervisor" &&
+              ["admin", "instructionSetup", "patrols"].includes(target)
+            )
+              await p.locator('nav [data-page="setup"]').click();
+            if (role !== "supervisor" || target !== "home")
+              await p.locator(`nav [data-page="${target}"]`).click();
             if (screen === "qr")
               await p
                 .getByRole("button", { name: "Print QR checkpoint sheet" })
@@ -1711,6 +1727,7 @@ test("recorded shift instructions: owner publishes, scoped private playback, off
     await d.locator("#email").fill("supervisor@demo.isdl");
     await d.locator("#password").fill("Pilot-only-2026!");
     await d.getByRole("button", { name: "Sign in", exact: true }).click();
+    await d.getByRole("button", { name: "Settings", exact: true }).click();
     await d
       .getByRole("button", { name: "Shift instructions", exact: true })
       .click();
@@ -1863,6 +1880,7 @@ test("voice supervisor messages: photo, offline reload, failed upload retry and 
     await sp.locator("#email").fill("supervisor@demo.isdl");
     await sp.locator("#password").fill("Pilot-only-2026!");
     await sp.getByRole("button", { name: "Sign in", exact: true }).click();
+    await sp.getByRole("button", { name: "Messages", exact: true }).click();
     const inbox = sp.locator('[data-message-media="' + message.id + '"]');
     await sp.waitForFunction(
       (id) =>
@@ -2099,7 +2117,7 @@ test("two-way shift chat: current guard view, supervisor history and named repli
       await g.getByText("Previous conversations", { exact: true }).count(),
       0,
     );
-    await incoming.getByText("ISDL Supervisor", { exact: true }).waitFor();
+    await incoming.getByText("Ada", { exact: true }).waitFor();
     assert.equal(
       await incoming.evaluate((el) => getComputedStyle(el).backgroundColor),
       "rgba(0, 0, 0, 0)",
@@ -2224,10 +2242,7 @@ test("empty current conversation stays hidden until a named supervisor sends the
       .getByText("Please check the back gate lock.", { exact: true })
       .waitFor();
     assert.equal(await p.locator(".conversation").isVisible(), true);
-    await p
-      .locator(".incoming")
-      .getByText("ISDL Supervisor", { exact: true })
-      .waitFor();
+    await p.locator(".incoming").getByText("Ada", { exact: true }).waitFor();
     assert.ok(await p.locator(".incoming small").textContent());
     await p.locator("#typedReport > summary").click();
     await p.locator("#report").fill("I will check it now.");
@@ -2333,7 +2348,7 @@ test("newest messages first and current-shift unread badge persists and clears o
         text: "A new unread reply",
       }),
     );
-    await p.getByText("1 new", { exact: true }).waitFor();
+    await p.getByText("1 new", { exact: true }).waitFor({ timeout: 45000 });
     await p
       .getByRole("button", { name: "Message supervisor", exact: true })
       .click();

@@ -1,4 +1,4 @@
-const CACHE = "guard-duty-v43";
+const CACHE = "guard-duty-v90";
 self.addEventListener("install", (e) =>
   e.waitUntil(
     caches
@@ -7,6 +7,7 @@ self.addEventListener("install", (e) =>
         c.addAll([
           "/",
           "/app.js",
+          "/supervisor-status.js",
           "/instructions.js",
           "/material.js",
           "/shift-time.js",

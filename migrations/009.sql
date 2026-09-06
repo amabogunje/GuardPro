@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS user_photos (user_id TEXT PRIMARY KEY REFERENCES users(id), path TEXT NOT NULL, mime TEXT NOT NULL, created_at TEXT NOT NULL);

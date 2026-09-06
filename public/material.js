@@ -53,7 +53,12 @@ function decorate(root) {
     .forEach((button) => {
       button.dataset.md = "true";
       const raw = button.textContent.trim();
-      let name = actionIcons[button.dataset.action] || button.dataset.page;
+      let name =
+        actionIcons[button.dataset.action] ||
+        { instructionSetup: "instructions", patrols: "round", setup: "admin" }[
+          button.dataset.page
+        ] ||
+        button.dataset.page;
       if (button.classList.contains("back")) name = "back";
       if (button.dataset.action === "shift")
         name = raw.includes("End") ? "stop" : "play";

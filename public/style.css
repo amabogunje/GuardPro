@@ -1776,3 +1776,872 @@ summary:focus-visible {
   font-weight: 700;
   line-height: 16px;
 }
+/* Supervisor uses the guard's mobile canvas on every screen, including desktop. */
+.supervisor-mobile {
+  width: 100%;
+  max-width: 600px;
+}
+.supervisor-mobile .grid,
+.supervisor-mobile .stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+.supervisor-mobile .stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+.supervisor-mobile .stat {
+  min-height: 140px;
+  padding: 18px;
+}
+.supervisor-mobile .stat strong {
+  font-size: 32px;
+}
+.supervisor-mobile .stat span {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.supervisor-mobile .card {
+  padding: 20px;
+  min-width: 0;
+}
+.supervisor-mobile .row {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.supervisor-mobile .row > * {
+  min-width: 0;
+}
+.supervisor-mobile .item {
+  overflow-wrap: anywhere;
+}
+.supervisor-mobile input,
+.supervisor-mobile select,
+.supervisor-mobile textarea,
+.supervisor-mobile audio {
+  max-width: 100%;
+  min-width: 0;
+}
+.supervisor-mobile .media {
+  flex-wrap: wrap;
+}
+.supervisor-mobile .media button {
+  max-width: 100%;
+  white-space: normal;
+}
+.supervisor-mobile .sheet {
+  grid-template-columns: minmax(0, 1fr);
+}
+.supervisor-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0 12px;
+}
+.supervisor-heading h2 {
+  margin: 0;
+}
+.supervisor-filters {
+  margin: 12px 0;
+}
+.supervisor-mobile .supervisor-actions button {
+  min-height: 110px;
+  font-size: 17px;
+}
+.supervisor-mobile .supervisor-actions button[data-page="message"] {
+  background: #dce9ff;
+  color: #193b64;
+}
+.supervisor-mobile .supervisor-actions button[data-page="incidents"] {
+  background: #ffdad6;
+  color: #73332d;
+}
+.supervisor-mobile .supervisor-actions button[data-page="instructionSetup"] {
+  background: #e9def8;
+  color: #4e386b;
+}
+.supervisor-mobile .supervisor-actions button[data-page="patrols"] {
+  background: #d0edda;
+  color: #174b35;
+}
+.supervisor-mobile .supervisor-actions button[data-page="summaries"] {
+  background: #fff0c2;
+  color: #5c4600;
+}
+.supervisor-mobile .supervisor-actions button[data-page="admin"] {
+  background: #d7edf0;
+  color: #254d55;
+}
+@media (max-width: 420px) {
+  .supervisor-mobile {
+    padding: 16px 16px 40px;
+  }
+  .supervisor-mobile .card {
+    padding: 16px;
+  }
+  .supervisor-mobile .stat {
+    padding: 14px;
+  }
+}
+
+/* Guard color semantics: blue choices; amber pending; red attention; green active/completed. */
+.guard:not(.supervisor-mobile) {
+  --guard-navigation: #dce7f4;
+  --guard-on-navigation: #263e5c;
+}
+.guard:not(.supervisor-mobile) .actions button[data-page],
+.guard:not(.supervisor-mobile) .scan-actions button,
+.guard:not(.supervisor-mobile) .report-photo-actions button,
+.guard:not(.supervisor-mobile) button[data-page="message"] {
+  background: var(--guard-navigation);
+  color: var(--guard-on-navigation);
+}
+.guard:not(.supervisor-mobile) .actions button[data-page] {
+  border-radius: 24px;
+}
+.guard.off-duty .shift {
+  background: var(--guard-navigation);
+}
+.guard:not(.supervisor-mobile) .actions button.patrol-soon {
+  background: #fff0bd;
+  color: #584300;
+  box-shadow: inset 0 0 0 3px #986500;
+}
+.guard:not(.supervisor-mobile) .actions button.patrol-due {
+  background: #ffdad6;
+  color: #690005;
+  box-shadow: inset 0 0 0 3px #b3261e;
+}
+
+/* Supervisor navigation is neutral; dashboard color represents recorded status. */
+.supervisor-mobile .supervisor-actions button[data-page],
+.supervisor-mobile .report-photo-actions button {
+  background: #dce7f4;
+  color: #263e5c;
+  border-radius: 24px;
+}
+.supervisor-mobile .stat[data-tone] {
+  background: #ccebd9;
+  color: #164c35;
+}
+.supervisor-mobile .stat[data-tone="attention"] {
+  background: #ffdad6;
+  color: #690005;
+}
+
+/* Today's supervisor overview: three vertical KPIs, actions, then detail cards. */
+.supervisor-mobile .stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 24px;
+}
+.supervisor-mobile .stats .stat {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 10px;
+  border-radius: 24px;
+  min-height: 190px;
+}
+.supervisor-mobile .stats .stat strong {
+  font-size: clamp(20px, 5.8vw, 30px);
+  white-space: nowrap;
+  margin: 12px 0;
+}
+.supervisor-mobile .stats .stat span {
+  font-size: 11px;
+  line-height: 1.45;
+}
+.supervisor-mobile .stats .stat > span:first-of-type {
+  min-height: 32px;
+  font-weight: 650;
+}
+.supervisor-mobile .stats .stat-symbol {
+  width: 30px;
+  height: 30px;
+  margin-bottom: 10px;
+}
+.supervisor-quick-start {
+  margin-bottom: 24px;
+}
+.supervisor-quick-start h2 {
+  margin-bottom: 12px;
+}
+.supervisor-quick-start .actions {
+  margin-top: 0;
+}
+
+.supervisor-mobile .stats .stat {
+  min-height: 104px;
+  padding: 14px 8px;
+}
+.supervisor-mobile .stats .kpi-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+}
+.supervisor-mobile .stats .kpi-label .md-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.supervisor-mobile .stats .kpi-label span {
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+.supervisor-mobile .stats .stat strong {
+  font-size: clamp(19px, 5.5vw, 28px);
+  margin: 12px 0 0;
+}
+
+/* Read-only KPI strip, visually distinct from the rounded action tiles. */
+.supervisor-mobile .stats {
+  gap: 0;
+  background: #f3ecdf;
+  border-radius: 0;
+}
+.supervisor-mobile .stats .stat[data-tone] {
+  background: transparent;
+  color: #263e5c;
+  border-radius: 0;
+  box-shadow: none;
+  border: 0;
+  cursor: default;
+}
+.supervisor-mobile .stats .stat + .stat::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12.5%;
+  height: 75%;
+  width: 1px;
+  background: #cbd5de;
+  pointer-events: none;
+}
+.supervisor-mobile .stats .kpi-caution {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: #b3261e;
+}
+
+.supervisor-mobile .stats .kpi-value {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 5px;
+  row-gap: 3px;
+  margin-top: 12px;
+}
+.supervisor-mobile .stats .kpi-value strong {
+  margin: 0;
+}
+.supervisor-mobile .stats .kpi-value .kpi-qualifier {
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.overview-shift-picker {
+  position: relative;
+  margin: 0;
+  flex-shrink: 0;
+}
+.overview-shift-picker > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 4px 0 4px 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #263e5c;
+  cursor: pointer;
+  list-style: none;
+}
+.overview-shift-picker > summary::-webkit-details-marker {
+  display: none;
+}
+.shift-picker-label {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 5px;
+  white-space: nowrap;
+}
+.shift-picker-label strong {
+  font-size: 16px;
+  font-weight: 650;
+}
+.shift-picker-label > span {
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.shift-picker-label small {
+  font-size: 10px;
+  font-weight: 400;
+}
+.shift-picker-arrow {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  transition: transform 120ms ease;
+}
+.overview-shift-picker[open] .shift-picker-arrow {
+  transform: rotate(180deg);
+}
+.overview-shift-picker > summary:focus-visible {
+  outline: 2px solid #315c95;
+  outline-offset: 4px;
+}
+.shift-picker-options {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 10;
+  width: 260px;
+  max-width: calc(100vw - 32px);
+  background: #fff;
+  padding: 6px;
+  border: 1px solid #cbd5de;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px #102a2520;
+}
+.shift-picker-options button {
+  width: 100%;
+  padding: 12px;
+  justify-content: flex-start;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.shift-picker-options button[aria-pressed="true"] {
+  background: #dce7f4;
+  font-weight: 650;
+}
+
+.supervisor-heading:has(.overview-shift-picker) {
+  gap: 8px;
+}
+.supervisor-heading:has(.overview-shift-picker) h2 {
+  font-size: clamp(16px, 4.5vw, 22px);
+}
+.overview-shift-picker > summary {
+  gap: 5px;
+  padding-left: 0;
+}
+.shift-picker-label strong {
+  font-size: 14px;
+}
+
+.overview-date-picker {
+  position: relative;
+  min-width: 0;
+}
+.overview-date-picker > summary {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  list-style: none;
+  cursor: pointer;
+  font-size: clamp(16px, 4.5vw, 22px);
+  font-weight: 600;
+  padding: 8px 0;
+}
+.overview-date-picker > summary::-webkit-details-marker {
+  display: none;
+}
+.overview-calendar {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 11;
+  width: 250px;
+  max-width: calc(100vw - 32px);
+  padding: 16px;
+  background: white;
+  border: 1px solid #cbd5de;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px #102a2520;
+}
+.overview-calendar button {
+  margin-top: 12px;
+}
+.overview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0;
+  overflow-wrap: anywhere;
+}
+.overview-row + .overview-row {
+  border-top: 1px solid #dce2df;
+}
+.overview-row small {
+  display: block;
+  margin-top: 5px;
+  color: #52655d;
+}
+.supervisor-mobile .supervisor-actions button {
+  position: relative;
+}
+
+.overview-row > div {
+  flex: 1;
+  min-width: 0;
+}
+.overview-row > button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  padding: 10px 12px;
+}
+.overview-row > button .button-label {
+  white-space: nowrap;
+}
+.overview-date-picker > summary {
+  color: #263e5c;
+}
+
+.overview-date-picker[open] .shift-picker-arrow {
+  transform: rotate(180deg);
+}
+
+/* Supervisor Home: consistent spacing and hierarchy, isolated from other pages. */
+.supervisor-home {
+  padding-top: 16px;
+  color: #182c2a;
+}
+.supervisor-home .topbar {
+  padding-bottom: 16px;
+}
+.supervisor-home .duty-identity {
+  margin: 16px 0 20px;
+}
+.supervisor-home .duty-identity .eyebrow {
+  margin: 0 0 8px;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+.supervisor-home .greeting-row h1 {
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+.supervisor-home .supervisor-quick-start {
+  margin: 0 0 24px;
+}
+.supervisor-home .supervisor-actions {
+  gap: 12px;
+  margin: 0;
+  grid-auto-rows: 116px;
+}
+.supervisor-home .supervisor-actions button[data-page] {
+  height: 116px;
+  min-height: 116px;
+  padding: 18px 20px;
+  display: grid;
+  grid-template-rows: 28px 1fr;
+  gap: 8px;
+  align-items: start;
+  justify-content: stretch;
+  font-size: 16px;
+  line-height: 21px;
+  font-weight: 550;
+  letter-spacing: 0;
+}
+.supervisor-home .supervisor-actions .md-icon {
+  width: 26px;
+  height: 26px;
+}
+.supervisor-home .supervisor-actions .button-label {
+  align-self: end;
+}
+.supervisor-home .supervisor-heading {
+  margin: 0 0 8px;
+  min-height: 48px;
+  gap: 8px;
+}
+.supervisor-home .overview-date-picker > summary,
+.supervisor-home .overview-shift-picker > summary {
+  min-height: 48px;
+  padding: 8px 0;
+  gap: 4px;
+}
+.supervisor-home .overview-date-picker > summary {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.supervisor-home .shift-picker-arrow {
+  width: 24px;
+  height: 24px;
+}
+.supervisor-home .shift-picker-label {
+  gap: 4px;
+}
+.supervisor-home .shift-picker-label strong {
+  font-size: 13px;
+}
+.supervisor-home .shift-picker-label > span {
+  font-size: 12px;
+}
+.supervisor-home #dashboardPage {
+  animation: none;
+}
+.supervisor-home .stats {
+  margin: 0 0 20px;
+}
+.supervisor-home .stats .stat[data-tone] {
+  min-height: 116px;
+  padding: 14px 10px;
+}
+.supervisor-home .stats .kpi-label {
+  min-height: 32px;
+  gap: 5px;
+  align-items: center;
+}
+.supervisor-home .stats .kpi-label .md-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+.supervisor-home .stats .kpi-label span {
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 600;
+}
+.supervisor-home .stats .kpi-value {
+  margin-top: 12px;
+  column-gap: 4px;
+  row-gap: 4px;
+}
+.supervisor-home .stats .kpi-value strong {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+.supervisor-home .stats .kpi-value .kpi-qualifier {
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.supervisor-home #dashboardPage > .grid {
+  gap: 16px;
+}
+.supervisor-home #dashboardPage > .grid > .card {
+  padding: 16px;
+  border-radius: 20px;
+}
+.supervisor-home #dashboardPage > .grid h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+  color: #182c2a;
+  letter-spacing: 0;
+}
+.supervisor-home .overview-row {
+  align-items: start;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 12px 0;
+}
+.supervisor-home .overview-row:last-child {
+  padding-bottom: 0;
+}
+.supervisor-home .overview-row > div {
+  flex: 1 0 100%;
+}
+.supervisor-home .overview-row strong {
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 550;
+  color: #182c2a;
+}
+.supervisor-home .overview-row small {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 18px;
+  color: #52655d;
+}
+.supervisor-home .overview-row .overview-row-action {
+  margin-left: auto;
+  min-height: 44px;
+  padding: 8px 0 8px 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+.supervisor-home .supervisor-filters {
+  margin: 20px 0 0;
+}
+.supervisor-home .supervisor-filters > summary {
+  font-size: 12px;
+  line-height: 20px;
+  min-height: 44px;
+  padding: 12px 0;
+  font-weight: 500;
+}
+@media (min-width: 440px) {
+  .supervisor-home .supervisor-actions {
+    grid-auto-rows: 120px;
+  }
+  .supervisor-home .supervisor-actions button[data-page] {
+    height: 120px;
+    min-height: 120px;
+  }
+  .supervisor-home .stats .kpi-label span {
+    font-size: 12px;
+  }
+  .supervisor-home #dashboardPage > .grid > .card {
+    padding: 20px;
+  }
+}
+
+/* Full square-corner action tiles with aligned labels. */
+.supervisor-home .supervisor-actions {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 92px;
+  gap: 8px;
+}
+.supervisor-home .supervisor-actions button[data-page] {
+  height: 92px;
+  min-height: 92px;
+  padding: 12px 4px;
+  border: 0;
+  border-radius: 0;
+  background: #dce7f4;
+  box-shadow: none;
+  grid-template-rows: 24px 16px;
+  align-content: center;
+  gap: 6px;
+  justify-items: center;
+  text-align: center;
+  font-size: 12px;
+  line-height: 16px;
+}
+.supervisor-home .supervisor-actions .action-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 0;
+  background: transparent;
+  color: #263e5c;
+}
+.supervisor-home .supervisor-actions button[data-page]:hover {
+  background: #cddded;
+}
+.supervisor-home .supervisor-actions button:focus-visible {
+  outline: 2px solid #263e5c;
+  outline-offset: 2px;
+}
+.supervisor-home .supervisor-actions .md-icon {
+  width: 24px;
+  height: 24px;
+}
+.supervisor-home .supervisor-actions .button-label {
+  align-self: start;
+  display: block;
+  text-align: center;
+  white-space: nowrap;
+  height: 16px;
+  line-height: 16px;
+}
+.supervisor-home .supervisor-actions .message-unread {
+  top: 0;
+  right: 0;
+  padding: 2px 5px;
+  font-size: 10px;
+}
+
+/* Compact, collapsible supervisor attention list. */
+.supervisor-home .attention-section > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+}
+.supervisor-home .attention-section > summary::-webkit-details-marker { display: none; }
+.supervisor-home .attention-section > summary h2 { margin: 0; }
+.supervisor-home .attention-section > summary svg { flex-shrink: 0; }
+.supervisor-home .attention-section[open] > summary svg { transform: rotate(180deg); }
+.supervisor-home .attention-section .overview-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  padding: 10px 0;
+}
+.supervisor-home .attention-section .overview-row > div { min-width: 0; }
+.supervisor-home .attention-section .overview-row small { margin-top: 3px; }
+.supervisor-home .attention-section .overview-row .overview-row-action {
+  margin: 0;
+  padding: 0 0 0 4px;
+  min-height: 44px;
+}
+
+.supervisor-home .attention-section > summary { padding: 0; }
+.supervisor-home .attention-section[open] { padding-bottom: 0; }
+
+/* Keep attention descriptions compact while preserving full text for Review. */
+.supervisor-home .attention-section .overview-row strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Align the Review label with the description while keeping a 44px touch target. */
+.supervisor-home .attention-section .overview-row .overview-row-action {
+  align-self: start;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 6px;
+  padding-top: 0;
+  line-height: 22px;
+}
+
+.supervisor-home .attention-tools, .supervisor-home .attention-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
+.supervisor-home .attention-tools select { width: auto; min-height: 44px; padding: 8px; font-size: 12px; }
+.supervisor-home .attention-pagination { border-top: 1px solid #dde2de; margin-top: 8px; }
+.supervisor-home .attention-pagination button { min-height: 44px; padding: 8px 4px; border: 0; font-size: 12px; }
+
+.supervisor-home .attention-sort-picker { width: max-content; margin-left: auto; }
+.supervisor-home .attention-sort-picker > summary { font-size: 13px; font-weight: 500; }
+.supervisor-home .attention-sort-picker[open] { padding-bottom: 0; }
+
+/* Stable three-row attention panel and quiet text pagination. */
+.supervisor-home .attention-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 44px;
+}
+.supervisor-home .attention-heading h2 {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+.supervisor-home .attention-sort-picker > summary {
+  min-height: 44px;
+  padding: 0;
+  gap: 2px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.supervisor-home .attention-list { height: 192px; }
+.supervisor-home .attention-list .overview-row {
+  box-sizing: border-box;
+  height: 64px;
+  padding: 10px 0;
+  grid-template-rows: 22px 18px;
+  column-gap: 8px;
+  row-gap: 3px;
+}
+.supervisor-home .attention-list .overview-row > div { display: contents; }
+.supervisor-home .attention-list .overview-row strong { grid-column: 1; grid-row: 1; }
+.supervisor-home .attention-list .overview-row small {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.supervisor-home .attention-list .overview-row .overview-row-action {
+  grid-column: 2;
+  grid-row: 1 / 3;
+}
+.supervisor-home .attention-footer { height: 44px; }
+.supervisor-home .attention-pagination { margin-top: 0; border-top: 0; }
+.supervisor-home .attention-pagination button,
+.supervisor-home .attention-pagination button:hover,
+.supervisor-home .attention-pagination button:disabled {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.supervisor-home .attention-pagination button:disabled {
+  cursor: default;
+  color: #78817e !important;
+  background: transparent !important;
+}
+@media (min-width: 440px) {
+  .supervisor-home .attention-heading h2 { font-size: 18px; }
+  .supervisor-home .attention-sort-picker > summary { font-size: 13px; }
+}
+
+/* A direct calendar surface for the overview date, without a nested native picker. */
+.supervisor-home .overview-date-picker > summary { gap: 8px; }
+.overview-calendar-icon { width: 22px; height: 22px; flex: 0 0 22px; color: #526b80; }
+.overview-date-picker[open] > summary { color: #006b56; }
+.supervisor-home .overview-calendar {
+  width: 304px;
+  max-width: calc(100vw - 32px);
+  padding: 12px;
+  border: 1px solid #dce2df;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px #182c2a22;
+  top: calc(100% + 4px);
+}
+.overview-calendar .calendar-month { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.overview-calendar .calendar-month strong { font-size: 15px; }
+.overview-calendar .calendar-month button { width: 44px; height: 44px; min-height: 44px; margin: 0; padding: 0; border: 0; border-radius: 8px; font-size: 26px; }
+.calendar-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.calendar-weekday { text-align: center; font-size: 11px; color: #63736e; padding: 6px 0; }
+.overview-calendar .calendar-days button { width: 100%; min-height: 40px; height: 40px; margin: 0; padding: 0; border: 0; border-radius: 8px; font-size: 13px; color: #263e5c; }
+.overview-calendar .calendar-days button[aria-current="date"] { box-shadow: inset 0 0 0 1px #006b56; }
+.overview-calendar .calendar-days button[aria-pressed="true"] { background: #006b56; color: #fff; }
+.calendar-footer { display: flex; align-items: end; justify-content: space-between; gap: 12px; border-top: 1px solid #e4e8e5; padding-top: 10px; margin-top: 10px; }
+.calendar-footer label { font-size: 11px; color: #63736e; }
+.calendar-footer input { margin-top: 4px; min-height: 40px; padding: 6px 8px; font-size: 12px; width: 160px; }
+.overview-calendar .calendar-footer button { margin: 0; min-height: 44px; border: 0; padding: 8px; font-size: 13px; }
+
+/* Keep guard identity and attendance together in compact rows. */
+.supervisor-home .guards-this-shift .overview-row > div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.supervisor-home .guards-this-shift .overview-row strong { flex-shrink: 0; }
+.supervisor-home .guards-this-shift .overview-row small { margin-top: 0; min-width: 0; }
+
+.guard-thumbnail { position: relative; display: grid; place-items: center; width: 32px; height: 32px; flex: 0 0 32px; border-radius: 50%; overflow: hidden; background: #dce7f4; color: #263e5c; align-self: center; }
+.guard-thumbnail .md-icon { width: 20px; height: 20px; }
+.guard-thumbnail img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+/* Center guard identity; give problem reports a consistent leading icon. */
+.supervisor-home .guards-this-shift .overview-row > div { align-items: center; }
+.supervisor-home .attention-list .attention-report-row { grid-template-columns: 36px minmax(0, 1fr) auto; column-gap: 4px; }
+.supervisor-home .attention-list .attention-report-row .attention-report-icon { grid-column: 1; grid-row: 1 / 3; color: #526b80; display: flex; align-items: center; align-self: stretch; }
+.attention-report-icon .md-icon { width: 36px; height: 36px; flex: 0 0 36px; }
+.supervisor-home .attention-list .attention-report-row strong { grid-column: 2; }
+.supervisor-home .attention-list .attention-report-row small { grid-column: 2 / -1; }
+.supervisor-home .attention-list .attention-report-row .overview-row-action { grid-column: 3; }
+.supervisor-home .last-record-received { margin: 20px 0 8px; text-align: center; font-size: 12px; line-height: 18px; color: #526b80; }

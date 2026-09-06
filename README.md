@@ -24,7 +24,7 @@ SQLite schema migrations in `migrations/001.sql` through `008.sql` run idempoten
 |---|---|---|
 | `bala@demo.isdl` | Guard | Oak House, Ikeja |
 | `owner@demo.isdl` | Customer owner | Oak House, Ikeja |
-| `supervisor@demo.isdl` | ISDL supervisor | Oak House, Ikeja |
+| `supervisor@demo.isdl` | Customer supervisor | Oak House, Ikeja |
 | `other@demo.isdl` | Separate customer | Palm Court |
 
 All demo accounts initially use **`Pilot-only-2026!`**. `DEMO_PASSWORD` only changes the initial seed, not existing passwords. These public demo credentials must be replaced for any private pilot. The seeded telephone number is deliberately non-operational; configure the actual escalation contact in Site management.
@@ -73,3 +73,7 @@ Patrol scheduling: owners and supervisors can open **Overview → Scheduled roun
 Patrols: select a checkpoint, choose QR or NFC, and scan to save automatically. Manual code entry is under Unable to scan. NFC tags must hold the printed checkpoint code as an NDEF text record. Schedule changes apply to new shifts; unfinished patrols resume automatically. Early starts remain enabled for testing. Migration 004 adds optional site location reference settings under Scheduled rounds → Location checks.
 
 Refreshing a signed-in tab restores your account and current page, including offline drafts, for the 12-hour session. Sign in once after this update to enable restoration. Always use Sign out before handing a shared phone to another guard; encrypted pending work is preserved. Browser tab/session recovery behavior varies.
+
+### User identification photos
+
+Settings → Manage your team → Create account accepts an optional JPEG/PNG profile photo (maximum 2 MB). Photos are stored in the existing private media store; only the user or an owner/supervisor sharing an assigned site can retrieve them. They are not publicly cached or included in offline storage. Guards without a photo, or whose photo cannot load, display a default user icon. This is visual identification only, not facial recognition. SQLite migration 009 runs on local startup; run the existing migration command before deploying to PostgreSQL. Include `user_photos` records and their referenced private files in customer offboarding/deletion procedures. Editing/replacing existing users’ photos is not yet exposed in settings.

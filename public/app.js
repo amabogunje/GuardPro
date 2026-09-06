@@ -1,3 +1,11 @@
+let overviewDate = null;
+let attentionPage = 0, attentionOrder = "newest", attentionScope = "";
+let selectedOverviewShift = null;
+import {
+  overviewDetails,
+  overviewShifts,
+  supervisorStatus,
+} from "./supervisor-status.js";
 import {
   closeInstructions,
   instructionEditor,
@@ -63,6 +71,16 @@ const root = document.querySelector("#app"),
           timeStyle: "short",
         })
       : "Not yet received";
+function overviewCalendar(month, selectedDay) {
+  const first = new Date(month + "-01T12:00:00Z");
+  const count = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+  const today = new Date(Date.now() + 3600000).toISOString().slice(0, 10);
+  const label = first.toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+  return `<div class="calendar-month"><button data-md="true" data-action="calendarMonth" data-month="${month}" data-step="-1" aria-label="Previous month">‹</button><strong aria-live="polite">${label}</strong><button data-md="true" data-action="calendarMonth" data-month="${month}" data-step="1" aria-label="Next month">›</button></div><div class="calendar-days">${["M", "T", "W", "T", "F", "S", "S"].map(d => '<span class="calendar-weekday" aria-hidden="true">' + d + '</span>').join("")}${'<span aria-hidden="true"></span>'.repeat((first.getUTCDay() + 6) % 7)}${Array.from({length: count}, (_, i) => {
+    const value = month + "-" + String(i + 1).padStart(2, "0");
+    return `<button data-md="true" data-action="calendarDate" data-date="${value}" aria-label="${new Date(value + "T12:00:00Z").toLocaleDateString("en-GB", {day:"numeric",month:"long",year:"numeric",timeZone:"UTC"})}" aria-pressed="${value === selectedDay}" ${value > today ? "disabled" : ""} ${value === today ? 'aria-current="date"' : ''}>${i + 1}</button>`;
+  }).join("")}</div><div class="calendar-footer"><label for="overviewDate">Jump to date<input id="overviewDate" type="date" max="${today}" value="${selectedDay}"></label><button data-md="true" data-action="overviewToday">Today</button></div>`;
+}
 function toast(t) {
   $("#toast").textContent = t;
   $("#toast").style.display = "block";
@@ -465,6 +483,9 @@ function siteSelect() {
   return `<select id="siteSelect" aria-label="Property">${state.sites.map((s) => `<option value="${s.id}" ${s.id === siteId ? "selected" : ""}>${esc(s.name)}</option>`).join("")}</select>`;
 }
 function renderDashboard() {
+  if (user.role === "supervisor" && page === "home")
+    day =
+      overviewDate || new Date(Date.now() + 3600000).toISOString().slice(0, 10);
   let inc = scopedIncidents(),
     ev = eventList().filter((e) => e.captured_at.slice(0, 10) === day),
     active = state.shifts.filter((s) => s.site_id === siteId && !s.ended_at),
@@ -477,10 +498,15 @@ function renderDashboard() {
   let complete = [...rounds.values()].filter(
     (r) => cps().length && cps().every((c) => r.has(c.id)),
   ).length;
-  root.innerHTML = `<aside class="sidebar">${brand()}<nav>${user.role === "supervisor" ? '<button data-page="message">Messages</button>' : ""}<button data-page="instructionSetup">Shift instructions</button><button data-page="home" class="${page === "home" ? "active" : ""}">▦ Overview</button><button data-page="incidents" class="${page === "incidents" ? "active" : ""}">◉ Incidents</button><button data-page="summaries" class="${page === "summaries" ? "active" : ""}">▤ Daily reports</button>${user.role === "supervisor" ? `<button data-page="admin" class="${page === "admin" ? "active" : ""}">⚙ Site management</button>` : ""}</nav><footer><strong>Care in every round.</strong><p>Provided by Integrated Systems and Devices Limited — ISDL</p>Fictional pilot workspace</footer></aside><div class="workspace"><header class="topbar"><div style="max-width:300px">${siteSelect()}</div><div class="identity"><span class="avatar">${esc(user.name[0])}</span><div><strong>${esc(user.name)}</strong><br><small>${user.role === "owner" ? "Property owner" : "ISDL supervisor"}</small></div><button data-action="logout">Sign out</button></div></header><main class="content"><div class="row"><div><p class="eyebrow">Your property, in view</p><h1>${page === "home" ? "A clearer picture of every shift." : page === "incidents" ? "Issues & follow-up" : page === "admin" ? "Site management" : page === "instructionSetup" ? "Shift instructions" : page === "message" ? "Messages" : "Daily reports"}</h1><p class="muted">${esc(site().name)} · Fictional pilot data</p></div><div><input id="day" aria-label="Report date (UTC)" type="date" value="${day}"><small>Reporting date · UTC</small></div></div><div class="row" style="margin:18px 0"><small>Last record received: ${date(site().last_sync)}</small><button data-action="refresh">↻ Refresh</button></div><div class="notice">Current activity unconfirmed between uploads. New records may be pending on the guard’s phone.</div><div id="dashboardPage"></div></main></div>`;
+  const mobileSupervisor = user.role === "supervisor";
+  if (mobileSupervisor) {
+    root.innerHTML = `<main class="guard supervisor-mobile ${page === "home" ? "supervisor-home" : ""}"><header class="topbar">${brand()}<button data-action="logout">Sign out</button></header><div class="duty-identity"><p class="eyebrow">${esc(site().name)} · Supervisor</p><div class="greeting-row"><h1>Hello, ${esc(user.name)}.</h1>${page !== "home" ? '<button class="back" data-page="home">Home</button>' : ""}</div></div>${state.sites.length > 1 ? siteSelect() : ""}${page === "home" ? `<nav class="actions supervisor-actions" aria-label="Supervisor pages"><button data-page="message" data-md="true" aria-label="Messages"><span class="action-icon">${icon("message")}</span><span class="button-label">Messages</span>${unreadMessageCount() ? `<span class="message-unread" role="status" aria-label="${unreadMessageCount()} unread messages">${unreadMessageCount()} new</span>` : ""}</button><button data-page="incidents" data-md="true" aria-label="Problems"><span class="action-icon">${icon("incidents")}</span><span class="button-label">Problems</span></button><button data-page="summaries" data-md="true" aria-label="Reports"><span class="action-icon">${icon("summaries")}</span><span class="button-label">Reports</span></button><button data-page="setup" data-md="true" aria-label="Settings"><span class="action-icon">${icon("admin")}</span><span class="button-label">Settings</span></button></nav>` : ""}<div class="supervisor-heading"><h2>${{ home: "Today’s overview", setup: "Settings", incidents: "Reported problems", summaries: "Daily reports", admin: "Manage your team", instructionSetup: "Shift instructions", message: "Messages", patrols: "Patrol schedule" }[page] || "Your team"}</h2>${page === "home" ? "" : '<button data-action="refresh">Refresh</button>'}</div><details class="supervisor-filters"><summary>Date & synchronization</summary><label class="label" for="day">Reporting date · UTC</label><input id="day" type="date" value="${day}"><p>Last record received: ${date(site().last_sync)}</p></details><p class="notice">New records may be pending. Current activity is unconfirmed between uploads.</p><div id="dashboardPage"></div></main>`;
+  } else {
+    root.innerHTML = `<aside class="sidebar">${brand()}<nav>${user.role === "supervisor" ? '<button data-page="message">Messages</button>' : ""}<button data-page="instructionSetup">Shift instructions</button><button data-page="home" class="${page === "home" ? "active" : ""}">▦ Overview</button><button data-page="incidents" class="${page === "incidents" ? "active" : ""}">◉ Incidents</button><button data-page="summaries" class="${page === "summaries" ? "active" : ""}">▤ Daily reports</button>${user.role !== "guard" ? `<button data-page="admin" class="${page === "admin" ? "active" : ""}">⚙ Site management</button>` : ""}</nav><footer><strong>Care in every round.</strong><p>Provided by Integrated Systems and Devices Limited — ISDL</p>Fictional pilot workspace</footer></aside><div class="workspace"><header class="topbar"><div style="max-width:300px">${siteSelect()}</div><div class="identity"><span class="avatar">${esc(user.name[0])}</span><div><strong>${esc(user.name)}</strong><br><small>${user.role === "owner" ? "Property owner" : "Customer supervisor"}</small></div><button data-action="logout">Sign out</button></div></header><main class="content"><div class="row"><div><p class="eyebrow">Your property, in view</p><h1>${page === "home" ? "A clearer picture of every shift." : page === "incidents" ? "Issues & follow-up" : page === "admin" ? "Site management" : page === "instructionSetup" ? "Shift instructions" : page === "message" ? "Messages" : "Daily reports"}</h1><p class="muted">${esc(site().name)} · Fictional pilot data</p></div><div><input id="day" aria-label="Report date (UTC)" type="date" value="${day}"><small>Reporting date · UTC</small></div></div><div class="row" style="margin:18px 0"><small>Last record received: ${date(site().last_sync)}</small><button data-action="refresh">↻ Refresh</button></div><div class="notice">Current activity unconfirmed between uploads. New records may be pending on the guard’s phone.</div><div id="dashboardPage"></div></main></div>`;
+  }
   let t = $("#dashboardPage");
-  if (page === "home")
-    t.innerHTML = `<div class="stats"><section class="card stat"><span>WHO CHECKED IN</span><strong>${active.length}</strong><span>Active shifts recorded</span></section><section class="card stat"><span>ROUNDS RECORDED</span><strong>${complete} <small>/ ${site().schedule.split(",").filter(Boolean).length}</small></strong><span>Complete / scheduled today</span></section><section class="card stat"><span>NEEDS ATTENTION</span><strong>${inc.filter((i) => i.status !== "Resolved").length}</strong><span>Open issues</span></section><section class="card stat"><span>FOLLOWING UP</span><strong>${inc.filter((i) => i.status === "Assigned").length}</strong><span>Issues with assigned action</span></section></div><div class="grid"><section class="card"><div class="row"><h2>Who is on duty?</h2>${pill("Attendance")}</div>${active.map((s) => `<div class="item identity"><span class="avatar">${esc(guardName(s.user_id)[0])}</span><div><strong>${esc(guardName(s.user_id))}</strong><p class="muted">Checked in ${date(s.started_at)}</p></div></div>`).join("") || '<p class="empty">No active shifts recorded.</p>'}<h3 style="margin-top:20px">Recent attendance</h3>${
+  if (page === "home" || page === "patrols")
+    t.innerHTML = `<div class="stats"><section class="card stat"><span>WHO CHECKED IN</span><strong>${active.length}</strong><span>Active shifts recorded</span></section><section class="card stat"><span>PATROLS RECORDED</span><strong>${complete} <small>/ ${site().schedule.split(",").filter(Boolean).length}</small></strong><span>Complete / scheduled today</span></section><section class="card stat"><span>NEEDS ATTENTION</span><strong>${inc.filter((i) => i.status !== "Resolved").length}</strong><span>Open issues</span></section><section class="card stat"><span>FOLLOWING UP</span><strong>${inc.filter((i) => i.status === "Assigned").length}</strong><span>Issues with assigned action</span></section></div><div class="grid"><section class="card"><div class="row"><h2>Who is on duty?</h2>${pill("Attendance")}</div>${active.map((s) => `<div class="item identity"><span class="avatar">${esc(guardName(s.user_id)[0])}</span><div><strong>${esc(guardName(s.user_id))}</strong><p class="muted">Checked in ${date(s.started_at)}</p></div></div>`).join("") || '<p class="empty">No active shifts recorded.</p>'}<h3 style="margin-top:20px">Recent attendance</h3>${
       ev
         .filter((e) => ["start", "end"].includes(e.kind))
         .slice(-6)
@@ -496,7 +522,7 @@ function renderDashboard() {
         .slice(0, 3)
         .map((i) => incidentCard(i))
         .join("") || '<p class="empty">No open issues recorded.</p>'
-    }</section><section class="card"><h2>Scheduled rounds</h2>${patrolScheduleForm()}${locationReview()}${ev
+    }</section><section class="card"><h2>Scheduled patrols</h2>${patrolScheduleForm()}${locationReview()}${ev
       .filter((e) => e.kind === "end" && e.payload.patrol_exceptions?.length)
       .map(
         (e) =>
@@ -570,10 +596,154 @@ function renderDashboard() {
       },
       esc,
     );
-  else if (page === "admin") renderAdmin(t);
+  else if (page === "setup" && mobileSupervisor) {
+    t.innerHTML = `<nav class="actions supervisor-actions" aria-label="Settings options"><button data-page="instructionSetup">Shift instructions</button><button data-page="patrols">Patrol schedule</button><button data-page="admin">Manage team</button></nav>`;
+    document.querySelector(".supervisor-filters")?.remove();
+    document.querySelector(".supervisor-mobile > .notice")?.remove();
+  } else if (page === "admin") renderAdmin(t);
+  if (mobileSupervisor && page === "home") {
+    const windows = overviewShifts({
+      day,
+      site: site(),
+      plans: state.shiftPlans || [],
+    });
+    const selected =
+      windows.find((w) => w.key === selectedOverviewShift) ||
+      windows.find((w) => w.current) ||
+      windows.find((w) => w.start > Date.now()) ||
+      windows.at(-1);
+    let overviewSite = site();
+    if (day < new Date(Date.now() + 3600000).toISOString().slice(0, 10)) {
+      const snapshots = eventList().filter(
+        (e) =>
+          e.kind === "start" &&
+          Date.parse(e.captured_at) < selected.end &&
+          Date.parse(e.payload.scheduled_end_at || e.captured_at) >=
+            selected.start &&
+          typeof e.payload.patrol_schedule === "string",
+      );
+      selected.patrolUnknown = snapshots.length === 0;
+      overviewSite = {
+        ...site(),
+        schedule: [
+          ...new Set(
+            snapshots.flatMap((e) =>
+              e.payload.patrol_schedule.split(",").filter(Boolean),
+            ),
+          ),
+        ].join(","),
+      };
+    }
+    const picker = document.createElement("details");
+    picker.className = "overview-shift-picker";
+    picker.innerHTML = `<summary aria-label="Choose overview shift"><span class="shift-picker-label"><strong>Shift ${windows.indexOf(selected) + 1}</strong><span>${selected.start_time}–${selected.end_time}</span>${selected.end_time <= selected.start_time ? '<small title="Ends next day" aria-label="Ends next day">+1</small>' : ""}</span><svg class="shift-picker-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="shift-picker-options">${windows.map((w, i) => `<button type="button" data-md="true" data-action="overviewShift" data-shift="${esc(w.key)}" aria-pressed="${w.key === selected.key}">Shift ${i + 1} · ${w.start_time}–${w.end_time}${w.end_time <= w.start_time ? " next day" : ""}${w.current ? " · Current" : ""}</button>`).join("")}</div>`;
+    document.querySelector(".supervisor-heading").append(picker);
+    const datePicker = document.createElement("details");
+    datePicker.className = "overview-date-picker";
+    const isToday =
+      day === new Date(Date.now() + 3600000).toISOString().slice(0, 10);
+    datePicker.innerHTML = `<summary aria-label="Choose overview date"><span class="overview-date-title">${isToday ? "Today’s overview" : esc(new Date(day + "T12:00:00Z").toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" }))}</span><svg class="overview-calendar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 11h18M7 15h2m4 0h2m-8 3h2"/></svg></summary><div class="overview-calendar">${overviewCalendar(day.slice(0, 7), day)}</div>`;
+    document.querySelector(".supervisor-heading h2").replaceWith(datePicker);
+
+    const cards = supervisorStatus({
+      selectedShift: selected,
+      site: overviewSite,
+      plans: state.shiftPlans || [],
+      shifts: state.shifts,
+      events: eventList(),
+      incidents: inc,
+      checkpoints: cps(),
+      day,
+    });
+    t.querySelector(".stats").innerHTML = [cards[2], cards[0], cards[1]]
+      .map(
+        (c) =>
+          `<section class="card stat" data-md="true" data-tone="${c.tone}"><div class="kpi-label">${c.tone === "attention" ? `<span class="kpi-caution" role="img" aria-label="Needs checking" title="Needs checking">${icon("incidents")}</span>` : icon(["person", "round", "check"][cards.indexOf(c)])}<span>${esc(c.label)}</span></div><div class="kpi-value"><strong>${esc(c.value)}</strong><span class="kpi-qualifier">${esc(c.qualifier)}</span></div></section>`,
+      )
+      .join("");
+    const details = overviewDetails({
+      site: overviewSite,
+      selectedShift: selected,
+      shifts: state.shifts,
+      events: eventList(),
+      incidents: inc,
+      checkpoints: cps(),
+    });
+    const incoming = new Set(
+      (state.notifications || [])
+        .filter(
+          (n) =>
+            n.site_id === siteId &&
+            n.status === "submitted" &&
+            !vault.readMessages?.[n.id],
+        )
+        .map((n) => n.event_id),
+    );
+    const messages = eventList().filter(
+      (e) =>
+        e.kind === "message" &&
+        e.user_id !== user.id &&
+        incoming.has(e.id) &&
+        Date.parse(e.captured_at) < selected.end,
+    );
+    const attention = [
+      ...details.problems.map(
+        (i) =>
+          ({ at: Date.parse(i.captured_at), html: `<div class="overview-row attention-report-row"><span class="attention-report-icon" aria-hidden="true">${icon("summaries")}</span><div><strong>${esc(i.report || "Voice report")}</strong><small>Reported by ${esc(guardName(i.user_id))} on ${esc(new Date(i.captured_at).toLocaleString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Africa/Lagos" }))}</small></div><button data-page="incidents" data-md="true" class="overview-row-action">Review <span aria-hidden="true">→</span></button></div>` }),
+      ),
+      ...(selected.current ? messages : []).map(
+        (e) =>
+          ({ at: Date.parse(e.captured_at), html: `<div class="overview-row"><div><strong>${esc(guardName(e.user_id))} · Unread ${e.payload.has_audio ? "voice message" : "message"}</strong><small>${date(e.captured_at)}</small></div><button data-action="openChat" data-message-id="${e.id}" data-md="true" class="overview-row-action">Open <span aria-hidden="true">→</span></button></div>` }),
+      ),
+      ...details.guards
+        .filter((g) => selected.current && g.expected && g.due && !g.session)
+        .map(
+          (g) =>
+            ({ at: selected.start, html: `<div class="overview-row"><strong>${esc(guardName(g.id))} · Check-in not recorded</strong></div>` }),
+        ),
+      ...(selected.current ? details.patrols : []).map(
+        (p) =>
+          ({ at: p.due, html: `<div class="overview-row"><strong>${p.slot} patrol · Completion not recorded</strong></div>` }),
+      ),
+    ];
+    const scope = [siteId, day, selected.key].join(":");
+    if (attentionScope !== scope) { attentionPage = 0; attentionScope = scope; }
+    attention.sort((a, b) => attentionOrder === "newest" ? b.at - a.at : a.at - b.at);
+    attentionPage = Math.min(attentionPage, Math.max(0, Math.ceil(attention.length / 3) - 1));
+    const offset = attentionPage * 3;
+    const attentionRows = attention.slice(offset, offset + 3).map(item => item.html).join("");
+    const attentionControls = attention.length > 1 ? `<details class="overview-shift-picker attention-sort-picker"><summary aria-label="Sort attention by date"><span>${attentionOrder === "newest" ? "Newest first" : "Oldest first"}</span><svg class="shift-picker-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="shift-picker-options">${["newest", "oldest"].map(order => `<button data-md="true" data-action="attentionSort" data-order="${order}" aria-pressed="${attentionOrder === order}">${order === "newest" ? "Newest first" : "Oldest first"}</button>`).join("")}</div></details>` : "";
+    const attentionPager = attention.length > 3 ? '<nav class="attention-pagination" aria-label="Attention pages"><button data-md="true" data-action="attentionPrevious" ' + (attentionPage === 0 ? "disabled" : "") + '>Previous</button><span>' + (offset + 1) + '–' + Math.min(offset + 3, attention.length) + ' of ' + attention.length + '</span><button data-md="true" data-action="attentionNext" ' + (offset + 3 >= attention.length ? "disabled" : "") + '>Next</button></nav>' : "";
+    t.querySelector(":scope > .grid").innerHTML =
+      `<section class="card attention-card"><div class="attention-section"><div class="attention-heading"><h2>Needs your attention (${attention.length})</h2>${attentionControls}</div><div class="attention-list">${attentionRows || '<p class="empty">Nothing needs your attention.</p>'}</div><div class="attention-footer">${attentionPager}</div></div></section><section class="card guards-this-shift"><h2>Guards this shift</h2>${selected.rosterUnknown ? '<p class="muted">No roster was saved for this date. Showing recorded attendance.</p>' : ""}${details.guards.map((g) => `<div class="overview-row"><div><span class="guard-thumbnail" aria-hidden="true">${icon("person")}${state.users.find(u => u.id === g.id)?.photo_id ? `<img src="/media/profile/${encodeURIComponent(g.id)}" alt="">` : ""}</span><strong>${esc(guardName(g.id))}</strong><small>${g.session ? "Checked in " + date(g.session.started_at) + (g.session.ended_at ? " · Ended " + date(g.session.ended_at) : "") : g.due ? "Check-in not recorded" : "Check-in not due yet"}</small></div></div>`).join("") || '<p class="empty">No guards assigned to this shift.</p>'}</section>`;
+  }
+  if (mobileSupervisor && ["home", "patrols"].includes(page)) {
+    const sections = t.querySelectorAll(":scope > .grid > section");
+    if (page === "patrols") t.replaceChildren(sections[2]);
+    else {
+      sections[2]?.remove();
+      sections[3]?.remove();
+      const stats = t.querySelector(".stats");
+      const actions = document.querySelector(".supervisor-actions");
+      const quickStart = document.createElement("section");
+      quickStart.className = "supervisor-quick-start";
+
+      quickStart.append(actions);
+      document.querySelector(".supervisor-heading").before(quickStart);
+      document.querySelector(".supervisor-filters")?.remove();
+      document.querySelector(".supervisor-mobile > .notice")?.remove();
+      const lastReceived = document.createElement("p");
+      lastReceived.className = "last-record-received";
+      lastReceived.textContent = "Last record received: " + date(site().last_sync);
+      t.append(lastReceived);
+    }
+  }
   if (page === "home" && navigator.onLine)
     for (let n of state.notifications.filter(
-      (n) => n.site_id === siteId && n.status === "submitted",
+      (n) =>
+        n.site_id === siteId &&
+        n.status === "submitted" &&
+        !eventList().some((e) => e.id === n.event_id && e.kind === "message"),
     ))
       api(`/api/notifications/${n.id}/delivered`, {})
         .then(() => {
@@ -587,14 +757,19 @@ function guardName(id) {
   );
 }
 function incidentCard(i, full = false) {
-  return `<article class="item"><div class="row"><strong>${esc(i.report)}</strong>${pill(i.status, i.status === "Resolved" ? "" : "pending")}</div><p class="muted">Event: ${esc(i.event_time || "Not stated")} · Received ${date(i.received_at)}</p><p>${esc(i.responsible || "Supervisor follow-up")} ${i.next_action ? "· " + esc(i.next_action) : ""}</p>${full ? `<p class="source">Captured: ${date(i.captured_at)} · Record ${i.id}</p><div class="media">${i.media.map((m) => `<button data-action="media" data-id="${m.id}" data-mime="${m.mime}">${m.mime.startsWith("audio") ? "▶ Listen to original" : "▧ View photo"} · ${esc(m.source)}</button>`).join("")}</div><div class="timeline">${i.history.map((h) => `<p><strong>${esc(h.status)}</strong> · ${esc(h.name)}<br><small>${date(h.at)}</small><br>${esc(h.note)}</p>`).join("")}</div><details><summary>Original transcript and approved revisions</summary><p>${esc(i.transcript || "No AI transcript; guard supplied text.")}</p>${i.revisions.map((r) => `<p>${date(r.at)} · ${esc(r.content)}</p>`).join("")}</details>${user.role === "supervisor" && i.status !== "Resolved" ? `<form class="transition" data-id="${i.id}"><input type="hidden" name="status" value="${{ Reported: "Acknowledged", Acknowledged: "Assigned", Assigned: "Resolved" }[i.status]}">${i.status === "Acknowledged" ? '<label class="label">Responsible person</label><input name="responsible" required placeholder="e.g. ISDL supervisor / repair contractor"><label class="label">Next action</label><input name="next_action" required placeholder="Arrange replacement lock">' : ""}<label class="label">${i.status === "Assigned" ? "Resolution note" : "Follow-up note"}</label><textarea name="note" ${i.status === "Assigned" ? "required" : ""}></textarea>${i.status === "Assigned" ? '<label class="label">Optional resolution photo</label><input type="file" name="resolution" accept="image/jpeg,image/png">' : ""}<button class="primary">${{ Reported: "Acknowledge issue", Acknowledged: "Assign follow-up", Assigned: "Resolve with note" }[i.status]}</button></form>` : ""}` : `<button data-page="incidents">Review issue →</button>`}</article>`;
+  return `<article class="item"><div class="row"><strong>${esc(i.report)}</strong>${pill(i.status, i.status === "Resolved" ? "" : "pending")}</div><p class="muted">Event: ${esc(i.event_time || "Not stated")} · Received ${date(i.received_at)}</p><p>${esc(i.responsible || "Supervisor follow-up")} ${i.next_action ? "· " + esc(i.next_action) : ""}</p>${full ? `<p class="source">Captured: ${date(i.captured_at)} · Record ${i.id}</p><div class="media">${i.media.map((m) => `<button data-action="media" data-id="${m.id}" data-mime="${m.mime}">${m.mime.startsWith("audio") ? "▶ Listen to original" : "▧ View photo"} · ${esc(m.source)}</button>`).join("")}</div><div class="timeline">${i.history.map((h) => `<p><strong>${esc(h.status)}</strong> · ${esc(h.name)}<br><small>${date(h.at)}</small><br>${esc(h.note)}</p>`).join("")}</div><details><summary>Original transcript and approved revisions</summary><p>${esc(i.transcript || "No AI transcript; guard supplied text.")}</p>${i.revisions.map((r) => `<p>${date(r.at)} · ${esc(r.content)}</p>`).join("")}</details>${user.role === "supervisor" && i.status !== "Resolved" ? `<form class="transition" data-id="${i.id}"><input type="hidden" name="status" value="${{ Reported: "Acknowledged", Acknowledged: "Assigned", Assigned: "Resolved" }[i.status]}">${i.status === "Acknowledged" ? '<label class="label">Responsible person</label><input name="responsible" required placeholder="e.g. Site supervisor / repair contractor"><label class="label">Next action</label><input name="next_action" required placeholder="Arrange replacement lock">' : ""}<label class="label">${i.status === "Assigned" ? "Resolution note" : "Follow-up note"}</label><textarea name="note" ${i.status === "Assigned" ? "required" : ""}></textarea>${i.status === "Assigned" ? '<label class="label">Optional resolution photo</label><input type="file" name="resolution" accept="image/jpeg,image/png">' : ""}<button class="primary">${{ Reported: "Acknowledge issue", Acknowledged: "Assign follow-up", Assigned: "Resolve with note" }[i.status]}</button></form>` : ""}` : `<button data-page="incidents">Review issue →</button>`}</article>`;
 }
 function renderAdmin(t) {
   t.innerHTML = `<div class="grid" style="margin-top:20px"><section class="card"><h2>Instructions & schedule</h2><form class="adminForm"><input type="hidden" name="kind" value="site"><input type="hidden" name="instructions" value="${esc(site().instructions)}"><button type="button" data-page="instructionSetup">Edit shift instructions</button><label class="label">Supervisor telephone</label><input name="phone" value="${esc(site().phone)}"><label class="label">Daily scheduled rounds (24-hour, comma separated)</label><input name="schedule" pattern="([01][0-9]|2[0-3]):[0-5][0-9](,([01][0-9]|2[0-3]):[0-5][0-9])*" value="${esc(site().schedule)}" required><button class="primary">Save site settings</button></form></section><section class="card"><h2>Patrol checkpoints</h2>${cps()
     .map((c) => `<p>${esc(c.name)} · <code>${esc(c.code)}</code></p>`)
     .join(
       "",
-    )}<form class="adminForm"><input type="hidden" name="kind" value="checkpoint"><label class="label">New checkpoint</label><input name="name" required><button>Add checkpoint</button></form><button data-action="qr">Print QR checkpoint sheet</button></section><section class="card"><h2>Add customer & first site</h2><form class="adminForm"><input type="hidden" name="kind" value="customer"><label class="label">Customer name</label><input name="name" required><label class="label">Property name</label><input name="site_name" required><button class="primary">Create customer and site</button></form></section><section class="card"><h2>Create individual sign-in</h2><form class="adminForm"><input type="hidden" name="kind" value="user"><label class="label">Name</label><input name="name" required><label class="label">Email</label><input name="email" type="email" required><label class="label">Initial password (12+ characters)</label><input name="password" type="password" minlength="12" required autocomplete="new-password"><label class="label">Role</label><select name="role"><option value="guard">Guard</option><option value="owner">Customer owner</option><option value="supervisor">ISDL supervisor</option></select><button class="primary">Create & assign to this site</button></form></section><section class="card"><h2>Assign existing team member</h2><form class="adminForm"><input type="hidden" name="kind" value="assign"><label class="label">Team member in your scope</label><select name="user_id">${state.users.map((u) => `<option value="${u.id}">${esc(u.name)} · ${u.role}</option>`).join("")}</select><button class="primary">Assign to selected site</button></form></section><section class="card"><h2>Shift schedule</h2><p class="muted">Daily local site times. Overnight shifts may end the next day.</p>${(
+    )}<form class="adminForm"><input type="hidden" name="kind" value="checkpoint"><label class="label">New checkpoint</label><input name="name" required><button>Add checkpoint</button></form><button data-action="qr">Print QR checkpoint sheet</button></section><section class="card"><h2>Create ${user.role === "owner" ? "supervisor" : "guard"} account</h2><form class="adminForm"><input type="hidden" name="kind" value="user"><label class="label">Name</label><input name="name" required><label class="label">Email</label><input name="email" type="email" required><label class="label">Initial password (12+ characters)</label><input name="password" type="password" minlength="12" required autocomplete="new-password"><label class="label">Role</label><select name="role">${user.role === "owner" ? '<option value="supervisor">Supervisor</option>' : '<option value="guard">Guard</option>'}</select><label class="label" for="profilePhoto">Profile photo (optional)</label><input id="profilePhoto" name="profile_photo" type="file" accept="image/jpeg,image/png"><small>JPEG or PNG, up to 2 MB. Used to identify this team member.</small><button class="primary">Create & assign to this site</button></form></section><section class="card"><h2>Assign existing team member</h2><form class="adminForm"><input type="hidden" name="kind" value="assign"><label class="label">Team member in your scope</label><select name="user_id">${state.users
+    .filter((u) => u.role === (user.role === "owner" ? "supervisor" : "guard"))
+    .map((u) => `<option value="${u.id}">${esc(u.name)} · ${u.role}</option>`)
+    .join(
+      "",
+    )}</select><button class="primary">Assign to selected site</button></form></section><section class="card"><h2>Shift schedule</h2><p class="muted">Daily local site times. Overnight shifts may end the next day.</p>${(
     state.shiftPlans || []
   )
     .filter((p) => p.site_id === siteId)
@@ -609,7 +784,7 @@ function renderAdmin(t) {
     .map((u) => `<option value="${u.id}">${esc(u.name)}</option>`)
     .join(
       "",
-    )}</select><label class="label">Starts</label><input name="start_time" type="time" required><label class="label">Ends</label><input name="end_time" type="time" required><button class="primary">Add shift plan</button></form></section><section class="card"><h2>Another property for this customer</h2><form class="adminForm"><input type="hidden" name="kind" value="additional_site"><label class="label">Property name</label><input name="name" required><button class="primary">Create site</button></form></section></div>`;
+    )}</select><label class="label">Starts</label><input name="start_time" type="time" required><label class="label">Ends</label><input name="end_time" type="time" required><button class="primary">Add shift plan</button></form></section>${user.role === "owner" ? `<section class="card"><h2>Another property for this customer</h2><form class="adminForm"><input type="hidden" name="kind" value="additional_site"><label class="label">Property name</label><input name="name" required><button class="primary">Create site</button></form></section>` : ""}</div>`;
 }
 async function locate() {
   return new Promise((resolve) => {
@@ -719,6 +894,9 @@ async function sync() {
       !openingMicrophone &&
       !photoStream &&
       ![...document.querySelectorAll("audio")].some((audio) => !audio.paused) &&
+      !document.querySelector(
+        ".overview-date-picker[open],.overview-shift-picker[open]",
+      ) &&
       !document.activeElement?.matches("input,textarea")
     )
       render();
@@ -1093,7 +1271,15 @@ document.addEventListener("submit", async (e) => {
       render();
       toast("Patrol schedule saved.");
     } else if (f.classList.contains("adminForm")) {
-      await api("/api/admin", { ...b, site_id: siteId });
+      const photo = f.querySelector("[name=profile_photo]")?.files[0];
+      if (photo) {
+        if (photo.size > 2 * 1024 * 1024) throw new Error("Profile photo must be no larger than 2 MB.");
+        const form = new FormData(f); form.set("site_id", siteId);
+        await api("/api/admin", form);
+      } else {
+        delete b.profile_photo;
+        await api("/api/admin", { ...b, site_id: siteId });
+      }
       await refresh();
       render();
       toast("Saved. Change recorded in audit history.");
@@ -1124,6 +1310,17 @@ document.addEventListener("input", async (e) => {
 });
 document.addEventListener("change", async (e) => {
   try {
+    if (e.target.id === "overviewDate") {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) return;
+      if (e.target.value > new Date(Date.now() + 3600000).toISOString().slice(0, 10)) {
+        e.target.value = day;
+        return;
+      }
+      overviewDate = e.target.value;
+      selectedOverviewShift = null;
+      render();
+      return;
+    }
     if (e.target.id === "chatSelect") {
       if (holding || recordingSaving || openingMicrophone) {
         e.target.value = chatContext().key;
@@ -1226,7 +1423,28 @@ document.addEventListener("click", async (e) => {
       return;
     }
     let a = b.dataset.action;
-    if (a === "openChat") {
+    if (a === "calendarMonth") {
+      const month = new Date(b.dataset.month + "-01T12:00:00Z");
+      month.setUTCMonth(month.getUTCMonth() + Number(b.dataset.step));
+      if (month.toISOString().slice(0, 7) > new Date(Date.now() + 3600000).toISOString().slice(0, 7)) return;
+      document.querySelector(".overview-calendar").innerHTML = overviewCalendar(month.toISOString().slice(0, 7), day);
+      document.querySelector(`[data-action="calendarMonth"][data-step="${b.dataset.step}"]`).focus();
+    } else if (a === "calendarDate") {
+      if (b.dataset.date > new Date(Date.now() + 3600000).toISOString().slice(0, 10)) return;
+      overviewDate = b.dataset.date; selectedOverviewShift = null; render();
+    } else if (a === "attentionSort") {
+      attentionOrder = b.dataset.order === "oldest" ? "oldest" : "newest"; attentionPage = 0; render();
+    } else if (a === "attentionPrevious" || a === "attentionNext") {
+      attentionPage = Math.max(0, attentionPage + (a === "attentionNext" ? 1 : -1)); render();
+    } else if (a === "overviewToday") {
+      overviewDate = null;
+      selectedOverviewShift = null;
+      render();
+    } else if (a === "overviewShift") {
+      if (b.getAttribute("aria-selected") === "true") return;
+      selectedOverviewShift = b.dataset.shift;
+      render();
+    } else if (a === "openChat") {
       if (holding || recordingSaving || openingMicrophone)
         throw new Error("Finish recording first.");
       await saveDraftFromForm();
@@ -1868,7 +2086,8 @@ function loadMessageMedia() {
 setInterval(() => {
   if (
     user &&
-    (page === "message" || (user.role === "guard" && page === "home")) &&
+    (page === "message" ||
+      (["guard", "supervisor"].includes(user.role) && page === "home")) &&
     navigator.onLine &&
     document.visibilityState === "visible" &&
     !holding &&
@@ -1880,6 +2099,20 @@ setInterval(() => {
 
 function unreadMessageCount() {
   const current = shift();
+  if (user.role === "supervisor") {
+    const incoming = new Set(
+      eventList()
+        .filter((e) => e.kind === "message" && e.user_id !== user.id)
+        .map((e) => e.id),
+    );
+    return (state.notifications || []).filter(
+      (n) =>
+        n.site_id === siteId &&
+        incoming.has(n.event_id) &&
+        n.status === "submitted" &&
+        !vault.readMessages?.[n.id],
+    ).length;
+  }
   if (!current || user.role !== "guard") return 0;
   const incoming = new Set(
     eventList()
@@ -1970,6 +2203,8 @@ async function initialize() {
             "message",
             "instructionSetup",
             "admin",
+            "patrols",
+            "setup",
           ];
     page = allowed.includes(restored.view.page) ? restored.view.page : "home";
     if (navigator.onLine) {
@@ -2013,3 +2248,6 @@ window.addEventListener("storage", async (e) => {
   login();
 });
 initialize();
+
+// Keep the default icon visible when a private profile photo cannot load.
+document.addEventListener("error", e => { if (e.target.matches?.(".guard-thumbnail img")) e.target.remove(); }, true);

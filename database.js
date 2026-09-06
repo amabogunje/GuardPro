@@ -75,7 +75,7 @@ function sql(statement) {
 // search_path options are not supported there. Only application-owned tables.
 function qualify(statement) {
   const tables =
-    "customers|users|sites|assignments|checkpoints|sessions|events|shifts|incidents|revisions|transitions|media|notifications|summaries|audit|shift_plans|site_locations|instruction_versions|message_media|message_context|rate_limits";
+    "customers|users|sites|assignments|checkpoints|sessions|events|shifts|incidents|revisions|transitions|media|notifications|summaries|audit|shift_plans|site_locations|instruction_versions|message_media|message_context|rate_limits|user_photos";
   return statement.replace(
     new RegExp(
       "\\b(FROM|JOIN|INTO|UPDATE|REFERENCES|TABLE(?: IF NOT EXISTS)?|ON)\\s+(" +

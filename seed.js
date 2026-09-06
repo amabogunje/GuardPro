@@ -8,12 +8,20 @@ const hash = (p) => {
   return salt + ":" + scryptSync(p, salt, 64).toString("hex");
 };
 export async function seedDemo() {
+  // Rename only the original fictional account; preserve customer-chosen names.
+  await run(
+    "UPDATE users SET name=? WHERE id=? AND email=? AND name=?",
+    "Ada",
+    "supervisor",
+    "supervisor@demo.isdl",
+    "ISDL Supervisor",
+  );
   if (!(await one("SELECT id FROM users LIMIT 1"))) {
     let password = hash(process.env.DEMO_PASSWORD || "Pilot-only-2026!");
     for (let [uid, name, role] of [
       ["bala", "Bala", "guard"],
       ["owner", "Ada Okafor", "owner"],
-      ["supervisor", "ISDL Supervisor", "supervisor"],
+      ["supervisor", "Ada", "supervisor"],
       ["other", "Other Customer", "owner"],
     ])
       await run(

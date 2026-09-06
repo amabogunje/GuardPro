@@ -30,3 +30,5 @@ CREATE INDEX IF NOT EXISTS message_context_thread ON message_context(guard_id,sh
 
 ALTER TABLE message_context ALTER COLUMN shift_id SET NOT NULL;
 CREATE TABLE IF NOT EXISTS rate_limits(key TEXT PRIMARY KEY, n INTEGER NOT NULL, reset_at BIGINT NOT NULL);
+
+CREATE TABLE IF NOT EXISTS user_photos (user_id TEXT PRIMARY KEY REFERENCES users(id), path TEXT NOT NULL, mime TEXT NOT NULL, created_at TEXT NOT NULL);

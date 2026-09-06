@@ -246,7 +246,7 @@ app.get("/api/state", async (req, res) => {
       u.id,
     ),
     all(
-      "SELECT DISTINCT u.id,u.name,u.role FROM users u JOIN assignments a ON a.user_id=u.id WHERE a.site_id IN (SELECT site_id FROM assignments WHERE user_id=?)",
+      "SELECT DISTINCT u.id,u.name,u.role,a.site_id,(SELECT user_id FROM user_photos WHERE user_id=u.id) AS photo_id FROM users u JOIN assignments a ON a.user_id=u.id WHERE a.site_id IN (SELECT site_id FROM assignments WHERE user_id=?)",
       u.id,
     ),
   ]);
@@ -278,6 +278,13 @@ app.get("/api/state", async (req, res) => {
     user: u,
     sites: sites.map((s) => ({
       ...s,
+      ...(u.role !== "guard"
+        ? {
+            guard_ids: names
+              .filter((n) => n.site_id === s.id && n.role === "guard")
+              .map((n) => n.id),
+          }
+        : {}),
       instruction_audio:
         instructions.find((v) => v.site_id === s.id)?.id || null,
     })),
@@ -334,7 +341,17 @@ app.get("/api/state", async (req, res) => {
       (n) =>
         byEvent.get(n.event_id)?.user_id === u.id && readableNotification(n),
     ),
-    users: u.role === "supervisor" ? names : [],
+    users:
+      u.role !== "guard"
+        ? [
+            ...new Map(
+              names.map((n) => [
+                n.id,
+                { id: n.id, name: n.name, role: n.role, photo_id: n.photo_id },
+              ]),
+            ).values(),
+          ]
+        : [],
     ai: process.env.OPENAI_API_KEY ? "live" : "unavailable",
   });
 });
@@ -1223,10 +1240,20 @@ post("/api/patrol-schedule", async (req, res) => {
   });
   res.json({ ok: true, schedule });
 });
-post("/api/admin", async (req, res) => {
-  supervisor(req.user);
+post("/api/admin", upload.single("profile_photo"), async (req, res) => {
+  if (!["owner", "supervisor"].includes(req.user.role))
+    fail("Customer management only", 403);
   let b = req.body,
     s = b.site_id;
+  if (b.kind === "customer")
+    fail("Customer onboarding is not available here", 403);
+  if (b.kind === "additional_site" && req.user.role !== "owner")
+    fail("Owner only", 403);
+  if (
+    b.kind === "user" &&
+    b.role !== (req.user.role === "owner" ? "supervisor" : "guard")
+  )
+    fail("Owners create supervisors; supervisors create guards", 403);
   if (b.kind === "additional_site") {
     let customer = await one(
       "SELECT customer_id FROM sites WHERE id=?",
@@ -1239,17 +1266,6 @@ post("/api/admin", async (req, res) => {
       sid,
       customer.customer_id,
       text(b.name, 120),
-    );
-    await run("INSERT INTO assignments VALUES(?,?)", req.user.id, sid);
-  } else if (b.kind === "customer") {
-    let cid = id();
-    await run("INSERT INTO customers VALUES(?,?)", cid, text(b.name, 120));
-    let sid = id();
-    await run(
-      "INSERT INTO sites(id,customer_id,name) VALUES(?,?,?)",
-      sid,
-      cid,
-      text(b.site_name, 120),
     );
     await run("INSERT INTO assignments VALUES(?,?)", req.user.id, sid);
   } else {
@@ -1305,6 +1321,10 @@ post("/api/admin", async (req, res) => {
         String(b.password || "").length < 12
       )
         fail("Role and password of at least 12 characters required");
+      if (req.file) {
+        if (!["image/jpeg", "image/png"].includes(req.file.mimetype) || req.file.size > 2 * 1024 * 1024) fail("Profile photos must be JPEG or PNG, up to 2 MB");
+        validateFile(req.file);
+      }
       let uid = id();
       await run(
         "INSERT INTO users VALUES(?,?,?,?,?)",
@@ -1315,13 +1335,19 @@ post("/api/admin", async (req, res) => {
         b.role,
       );
       await run("INSERT INTO assignments VALUES(?,?)", uid, s);
+      if (req.file) {
+        const photoPath = await saveMedia("profiles/" + uid, req.file.buffer, req.file.mimetype);
+        await run("INSERT INTO user_photos VALUES(?,?,?,?)", uid, photoPath, req.file.mimetype, now());
+      }
     } else if (b.kind === "assign") {
-      let user = await one("SELECT id FROM users WHERE id=?", b.user_id);
+      let user = await one("SELECT id,role FROM users WHERE id=?", b.user_id);
+      if (user?.role !== (req.user.role === "owner" ? "supervisor" : "guard"))
+        fail("You can only assign team members you manage", 403);
       if (
         !user ||
         !(await one(
-          "SELECT 1 FROM assignments a JOIN assignments b ON a.site_id=b.site_id WHERE a.user_id=? AND b.user_id=?",
-          req.user.id,
+          "SELECT 1 FROM assignments a JOIN sites source ON source.id=a.site_id JOIN sites target ON target.customer_id=source.customer_id WHERE target.id=? AND a.user_id=?",
+          s,
           user.id,
         ))
       )
@@ -1336,8 +1362,18 @@ post("/api/admin", async (req, res) => {
   await audit(req.user, "admin " + b.kind, { site: s, name: b.name });
   res.json({ ok: true });
 });
+app.get("/media/profile/:user", async (req, res) => {
+  if (req.user.id !== req.params.user) {
+    if (req.user.role === "guard" || !(await one("SELECT 1 FROM assignments a JOIN assignments b ON a.site_id=b.site_id WHERE a.user_id=? AND b.user_id=?", req.user.id, req.params.user))) fail("Photo outside assigned scope", 403);
+  }
+  const photo = await one("SELECT * FROM user_photos WHERE user_id=?", req.params.user);
+  if (!photo) fail("Photo not found", 404);
+  res.set("X-Content-Type-Options", "nosniff");
+  await serveMedia(req, res, photo);
+});
 app.get("/api/qr/:site", async (req, res) => {
-  supervisor(req.user);
+  if (!["owner", "supervisor"].includes(req.user.role))
+    fail("Customer management only", 403);
   await requireSite(req.user, req.params.site);
   res.json(
     await Promise.all(
