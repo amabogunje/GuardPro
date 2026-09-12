@@ -20,7 +20,7 @@ export function settingsRoutes({
   app.get("/api/settings/:site", async (req, res) => {
     await access(req);
     const templates = await all(
-      "SELECT * FROM shift_templates WHERE site_id=? ORDER BY created_at",
+      "SELECT t.*,(SELECT instruction_version_id FROM shift_template_audio WHERE shift_template_id=t.id) AS instruction_audio FROM shift_templates t WHERE t.site_id=? ORDER BY t.created_at",
       req.params.site,
     );
     const latest = new Map(templates.map((p) => [p.template_id, p]));
@@ -128,6 +128,14 @@ export function settingsRoutes({
         fail("Choose active guards assigned to this property");
       if (String(s.instructions || "").length > 5000)
         fail("Instructions are too long");
+      if (s.instruction_audio) {
+        const audio = await one(
+          "SELECT id FROM instruction_versions WHERE id=? AND site_id=? AND path IS NOT NULL",
+          s.instruction_audio,
+          req.params.site,
+        );
+        if (!audio) fail("Instruction recording not found", 404);
+      }
     }
     const existing = await all(
       "SELECT DISTINCT template_id FROM shift_templates WHERE site_id=?",
@@ -159,10 +167,11 @@ export function settingsRoutes({
     if (existing.some((p) => !seen.has(p.template_id)))
       fail("Existing shifts must be retained");
     const at = now();
-    for (const s of shifts)
+    for (const s of shifts) {
+      const version = id();
       await run(
         "INSERT INTO shift_templates VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-        id(),
+        version,
         s.template_id,
         req.params.site,
         s.name.trim(),
@@ -174,6 +183,13 @@ export function settingsRoutes({
         req.user.id,
         at,
       );
+      if (s.instruction_audio)
+        await run(
+          "INSERT INTO shift_template_audio VALUES(?,?)",
+          version,
+          s.instruction_audio,
+        );
+    }
     await audit(req.user, "shifts.updated", {
       site: req.params.site,
       shifts: shifts.map((s) => s.template_id),

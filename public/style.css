@@ -1707,7 +1707,8 @@ summary:focus-visible {
 }
 
 #instructionPlayback audio,
-#instructionPreview {
+#instructionPreview,
+#shiftInstructionPreview {
   width: 100%;
   margin: 12px 0;
 }
@@ -1717,6 +1718,14 @@ summary:focus-visible {
 #recordInstructions.recording {
   background: #9c4146;
   color: white;
+}
+#recordShiftInstructions.is-recording {
+  background: #9c4146;
+  color: white;
+}
+#shiftInstructionStatus {
+  display: block;
+  text-align: center;
 }
 
 [data-message-media] audio {

@@ -20,6 +20,18 @@ async function request(route, cookie, body, status = 200) {
   assert.equal(r.status, status, JSON.stringify(result));
   return result;
 }
+async function formRequest(route, cookie, form, status = 200) {
+  const r = await fetch(base + route, {
+    method: "POST",
+    headers: cookie
+      ? { cookie, "X-Session-Proof": cookie.split("=")[1] }
+      : {},
+    body: form,
+  });
+  const result = await r.json();
+  assert.equal(r.status, status, JSON.stringify(result));
+  return result;
+}
 async function login(email) {
   const r = await fetch(base + "/api/login", {
     method: "POST",
@@ -129,6 +141,149 @@ test("settings protect scope and preserve shift versions used by guard starts", 
   const restored=(await request("/api/state",guard)).events.find(e=>e.id===offlineId);
   assert.equal(restored.payload.instructions,version,"Queued starts retain the referenced instructions after settings change");
   await request("/api/events",guard,{id:randomUUID(),site_id:"oak",kind:"end",captured_at:new Date().toISOString(),payload:{shift_id:offlineId,note:"Complete"}});
+});
+test("supervisor voice instructions publish privately and guards retain shift audio versions", async () => {
+  await request("/api/instructions/oak", guard, { instructions: "no" }, 403);
+  await request("/api/instructions/oak", other, { instructions: "no" }, 403);
+  const form = new FormData();
+  form.set("instructions", "Listen to the recorded gate instructions.");
+  form.set(
+    "file",
+    new Blob([Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0x00])], {
+      type: "audio/webm",
+    }),
+    "instructions.webm",
+  );
+  const published = await formRequest("/api/instructions/oak", supervisor, form);
+  assert.ok(published.id);
+  let state = await request("/api/state", guard);
+  assert.equal(state.sites.find((s) => s.id === "oak").instruction_audio, published.id);
+  assert.equal(
+    state.sites.find((s) => s.id === "oak").instructions,
+    "Listen to the recorded gate instructions.",
+  );
+  const { url } = await request(
+    "/api/instructions/" + published.id + "/link",
+    guard,
+  );
+  assert.match(url, /^\/media\/instructions\//);
+  await request("/api/instructions/" + published.id + "/link", other, null, 403);
+  assert.equal(
+    (await fetch(base + url, { headers: { cookie: other } })).status,
+    403,
+  );
+  assert.equal(
+    (
+      await fetch(base + url.replace(/expires=\d+/, "expires=0"), {
+        headers: { cookie: guard },
+      })
+    ).status,
+    403,
+  );
+  const startId = randomUUID();
+  await request("/api/events", guard, {
+    id: startId,
+    site_id: "oak",
+    kind: "start",
+    captured_at: new Date().toISOString(),
+    payload: {},
+  });
+  await request("/api/instructions/oak", supervisor, {
+    instructions: "Future shifts use text only.",
+  });
+  state = await request("/api/state", guard);
+  assert.equal(
+    state.events.find((e) => e.id === startId).payload.instruction_audio,
+    published.id,
+  );
+  assert.equal(
+    state.sites.find((s) => s.id === "oak").instruction_audio,
+    null,
+  );
+  assert.equal(
+    state.sites.find((s) => s.id === "oak").instructions,
+    "Future shifts use text only.",
+  );
+  await request("/api/events", guard, {
+    id: randomUUID(),
+    site_id: "oak",
+    kind: "end",
+    captured_at: new Date().toISOString(),
+    payload: { shift_id: startId, note: "Complete" },
+  });
+});
+test("shift-level voice instructions are saved with the selected shift", async () => {
+  const form = new FormData();
+  form.set(
+    "file",
+    new Blob([Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0x00])], {
+      type: "audio/webm",
+    }),
+    "shift-instructions.webm",
+  );
+  const uploaded = await formRequest(
+    "/api/settings/oak/shift-audio",
+    supervisor,
+    form,
+  );
+  assert.ok(uploaded.id);
+  let settings = await request("/api/settings/oak", supervisor);
+  const shift = {
+    ...settings.shifts[0],
+    instructions: "Use the recorded instructions for this shift.",
+    instruction_audio: uploaded.id,
+    guard_ids: ["bala"],
+  };
+  await request("/api/settings/oak/shifts", supervisor, {
+    shifts: [
+      shift,
+      ...settings.shifts
+        .slice(1)
+        .map((s) => ({ ...s, guard_ids: s.guard_ids.filter((g) => g !== "bala") })),
+    ],
+  });
+  let guardState = await request("/api/state", guard);
+  for (const s of guardState.shifts.filter((s) => !s.ended_at))
+    await request("/api/events", guard, {
+      id: randomUUID(),
+      site_id: "oak",
+      kind: "end",
+      captured_at: new Date().toISOString(),
+      payload: { shift_id: s.id, note: "Complete" },
+    });
+  const startId = randomUUID();
+  await request("/api/events", guard, {
+    id: startId,
+    site_id: "oak",
+    kind: "start",
+    captured_at: new Date().toISOString(),
+    payload: {},
+  });
+  guardState = await request("/api/state", guard);
+  assert.equal(
+    guardState.events.find((e) => e.id === startId).payload.instruction_audio,
+    uploaded.id,
+  );
+  settings = await request("/api/settings/oak", supervisor);
+  await request("/api/settings/oak/shifts", supervisor, {
+    shifts: settings.shifts.map((s) =>
+      s.template_id === shift.template_id
+        ? { ...s, instructions: "Typed instructions only.", instruction_audio: "" }
+        : s,
+    ),
+  });
+  guardState = await request("/api/state", guard);
+  assert.equal(
+    guardState.events.find((e) => e.id === startId).payload.instruction_audio,
+    uploaded.id,
+  );
+  await request("/api/events", guard, {
+    id: randomUUID(),
+    site_id: "oak",
+    kind: "end",
+    captured_at: new Date().toISOString(),
+    payload: { shift_id: startId, note: "Complete" },
+  });
 });
 test("supervisors edit and deactivate peers, while owners and other customers stay protected", async () => {
   const email = "settings-peer@demo.isdl";

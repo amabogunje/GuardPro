@@ -202,7 +202,10 @@ app.get('/api/owner-overview/:site', async (req,res) => {
   const [users,supervisors,plans,shifts,events,incidents,checkpoints,locations,reviews,resolutions]=await Promise.all([
     all('SELECT u.id,u.name,u.role FROM users u JOIN assignments a ON a.user_id=u.id WHERE a.site_id=? AND NOT EXISTS (SELECT 1 FROM disabled_users d WHERE d.user_id=u.id)',site.id),
     all("SELECT u.id,u.name,CASE WHEN c.email_missing=1 THEN '' ELSE u.email END AS email,c.whatsapp FROM users u JOIN assignments a ON a.user_id=u.id LEFT JOIN user_contacts c ON c.user_id=u.id WHERE a.site_id=? AND u.role='supervisor' AND NOT EXISTS (SELECT 1 FROM disabled_users d WHERE d.user_id=u.id)",site.id),
-    Promise.all([scoped('shift_plans'),scoped('shift_templates')]).then(p=>p.flat()),scoped('shifts'),scoped('events'),scoped('incidents'),
+    Promise.all([
+      scoped('shift_plans'),
+      all("SELECT t.*,(SELECT instruction_version_id FROM shift_template_audio WHERE shift_template_id=t.id) AS instruction_audio FROM shift_templates t WHERE t.site_id=?",site.id),
+    ]).then(p=>p.flat()),scoped('shifts'),scoped('events'),scoped('incidents'),
     all('SELECT c.* FROM checkpoints c WHERE c.site_id=? AND NOT EXISTS (SELECT 1 FROM retired_checkpoints r WHERE r.checkpoint_id=c.id)',site.id),
     scoped('property_locations'),scoped('location_reviews'),
     all('SELECT t.*,u.name AS actor_name FROM transitions t JOIN users u ON u.id=t.actor JOIN incidents i ON i.id=t.incident_id WHERE i.site_id=?',site.id)
@@ -239,7 +242,10 @@ app.get("/api/state", async (req, res) => {
       "SELECT s.* FROM sites s JOIN assignments a ON a.site_id=s.id WHERE a.user_id=?",
       u.id,
     ),
-    Promise.all([scoped("shift_plans"),scoped("shift_templates")]).then(parts=>parts.flat()),
+    Promise.all([
+      scoped("shift_plans"),
+      all("SELECT t.*,(SELECT instruction_version_id FROM shift_template_audio WHERE shift_template_id=t.id) AS instruction_audio FROM shift_templates t JOIN assignments a ON a.site_id=t.site_id WHERE a.user_id=?",u.id),
+    ]).then(parts=>parts.flat()),
     scoped("site_locations"),
     all("SELECT c.*,(SELECT at FROM retired_checkpoints WHERE checkpoint_id=c.id) AS retired_at FROM checkpoints c JOIN assignments a ON a.site_id=c.site_id WHERE a.user_id=?",u.id),
     scoped("shifts"),
@@ -248,7 +254,7 @@ app.get("/api/state", async (req, res) => {
     scoped("summaries"),
     scoped("notifications"),
     all(
-      "SELECT v.id,v.site_id,v.created_at FROM instruction_versions v JOIN assignments a ON a.site_id=v.site_id WHERE a.user_id=? ORDER BY v.created_at DESC,v.id DESC",
+      "SELECT v.id,v.site_id,v.created_at,v.path FROM instruction_versions v JOIN assignments a ON a.site_id=v.site_id WHERE a.user_id=? ORDER BY v.created_at DESC,v.id DESC",
       u.id,
     ),
     all(
@@ -316,8 +322,10 @@ app.get("/api/state", async (req, res) => {
               .map((n) => n.id),
           }
         : {}),
-      instruction_audio:
-        instructions.find((v) => v.site_id === s.id)?.id || null,
+      instruction_audio: (() => {
+        const latest = instructions.find((v) => v.site_id === s.id);
+        return latest?.path ? latest.id : null;
+      })(),
     })),
     shiftPlans: u.role === "guard" ? sites.flatMap(s=>effectivePlans(shiftPlans.filter(p=>p.site_id===s.id)).filter(p=>p.guard_id===u.id||p.any_guard).map(p=>p.template_id?{...p,guard_ids:JSON.stringify(p.any_guard?["*"]:[u.id])}:p)) : shiftPlans,
     siteLocations,
@@ -597,13 +605,13 @@ post("/api/events", async (req, res) => {
         await one("SELECT schedule FROM sites WHERE id=?", b.site_id)
       ).schedule;
       if (plan?.template_id) {p.patrol_schedule=plan.schedule;p.shift_template_id=plan.template_id;p.shift_plan_version_id=plan.id;}
-      p.instruction_audio =
-        (
-          await one(
-            "SELECT id FROM instruction_versions WHERE site_id=? ORDER BY created_at DESC, id DESC LIMIT 1",
-            b.site_id,
-          )
-        )?.id || null;
+      const latestInstruction = await one(
+        "SELECT id,path FROM instruction_versions WHERE site_id=? ORDER BY created_at DESC, id DESC LIMIT 1",
+        b.site_id,
+      );
+      p.instruction_audio = plan?.instruction_audio || (latestInstruction?.path
+        ? latestInstruction.id
+        : null);
       p.instructions = (
         await one("SELECT instructions FROM sites WHERE id=?", b.site_id)
       ).instructions;
@@ -976,7 +984,8 @@ post("/api/instructions/:site", upload.single("file"), async (req, res) => {
   if (req.file) {
     validateFile(req.file);
     if (!req.file.mimetype.startsWith("audio/")) fail("Use an audio recording");
-    if (req.file.size > 5 * 1024 * 1024) fail("Recording limit is 5 MB", 413);
+    if (req.file.size > maxUploadBytes)
+      fail("Recording limit is 4 MB", 413);
   }
   if (!content && !req.file && !source?.path)
     fail("Add a recording or typed instructions");
@@ -1012,6 +1021,43 @@ post("/api/instructions/:site", upload.single("file"), async (req, res) => {
     req.params.site,
   );
   await audit(req.user, "instructions.published", {
+    site_id: req.params.site,
+    version,
+  });
+  res.json({ id: version });
+});
+post("/api/settings/:site/shift-audio", upload.single("file"), async (req, res) => {
+  await requireSite(req.user, req.params.site);
+  if (!["owner", "supervisor"].includes(req.user.role))
+    fail("Owner or supervisor only", 403);
+  if (!req.file) fail("Record voice instructions first");
+  validateFile(req.file);
+  if (!req.file.mimetype.startsWith("audio/")) fail("Use an audio recording");
+  if (
+    (
+      await one(
+        "SELECT COALESCE(sum(size),0) n FROM instruction_versions WHERE site_id=?",
+        req.params.site,
+      )
+    ).n +
+      req.file.size >
+    100 * 1024 * 1024
+  )
+    fail("Instruction storage limit reached (100 MB)", 429);
+  const version = id();
+  const file = await saveMedia(version, req.file.buffer, req.file.mimetype);
+  await run(
+    "INSERT INTO instruction_versions VALUES(?,?,?,?,?,?,?,?)",
+    version,
+    req.params.site,
+    req.user.id,
+    now(),
+    "",
+    req.file.mimetype,
+    file,
+    req.file.size,
+  );
+  await audit(req.user, "shift_instruction_audio.uploaded", {
     site_id: req.params.site,
     version,
   });
@@ -1431,13 +1477,17 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
             const siteRow=await one("SELECT schedule FROM sites WHERE id=?",assigned.site_id);
             for(const p of legacy) {
               const key="legacy-"+p.start_time+"-"+p.end_time;
-              if(!latest.has(key)) latest.set(key,{template_id:key,site_id:assigned.site_id,name:"Shift "+(latest.size+1),start_time:p.start_time,end_time:p.end_time,instructions:"",schedule:siteRow.schedule,guard_ids:"[]",legacy:true});
+              if(!latest.has(key)) latest.set(key,{template_id:key,site_id:assigned.site_id,name:"Shift "+(latest.size+1),start_time:p.start_time,end_time:p.end_time,instructions:"",instruction_audio:null,schedule:siteRow.schedule,guard_ids:"[]",legacy:true});
               const entry=latest.get(key),ids=JSON.parse(entry.guard_ids);ids.push(p.guard_id);entry.guard_ids=JSON.stringify(ids);
             }
           }
           for(const p of latest.values()) {
             const guards=JSON.parse(p.guard_ids);
-            if(guards.includes(target.id)||p.legacy) await run("INSERT INTO shift_templates VALUES(?,?,?,?,?,?,?,?,?,?,?)",id(),p.template_id,p.site_id,p.name,p.start_time,p.end_time,p.instructions,p.schedule,JSON.stringify(guards.filter(g=>g!==target.id)),req.user.id,now());
+            if(guards.includes(target.id)||p.legacy) {
+              const version=id();
+              await run("INSERT INTO shift_templates VALUES(?,?,?,?,?,?,?,?,?,?,?)",version,p.template_id,p.site_id,p.name,p.start_time,p.end_time,p.instructions,p.schedule,JSON.stringify(guards.filter(g=>g!==target.id)),req.user.id,now());
+              if(p.instruction_audio) await run("INSERT INTO shift_template_audio VALUES(?,?)",version,p.instruction_audio);
+            }
           }
         }
       }

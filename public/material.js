@@ -68,6 +68,7 @@ function decorate(root) {
       if (button.dataset.action === "media")
         name = button.dataset.mime?.startsWith("audio") ? "play" : "photo";
       if (button.id === "record") name = "report";
+      if (button.id === "recordShiftInstructions") name = "report";
       if (
         button.classList.contains("call") &&
         button.dataset.page !== "message"

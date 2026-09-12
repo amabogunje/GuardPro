@@ -1,4 +1,4 @@
-const CACHE = "guard-duty-v132";
+const CACHE = "guard-duty-v135";
 self.addEventListener("install", (e) =>
   e.waitUntil(
     caches

@@ -32,6 +32,9 @@ export function instructionEditor(host, site, api, done, esc) {
           if (!r.ok) throw Error("Recording unavailable");
           const b = await r.blob();
           if (!stopped) preview(b);
+          status.textContent = "Current voice instructions loaded.";
+        } else if (!stopped) {
+          status.textContent = "Current instructions are typed only.";
         }
       })
       .catch(() => {
@@ -69,6 +72,15 @@ export function instructionEditor(host, site, api, done, esc) {
         stream.getTracks().forEach((t) => t.stop());
         if (stopped) return;
         blob = new Blob(chunks, { type: recorder.mimeType });
+        if (!blob.size) {
+          blob = null;
+          record.disabled = false;
+          publish.disabled = false;
+          record.textContent = "Record voice instructions";
+          record.classList.remove("recording");
+          status.textContent = "No audio captured. Please record again.";
+          return;
+        }
         keep = "";
         preview(blob);
         record.disabled = false;
@@ -110,7 +122,12 @@ export function instructionEditor(host, site, api, done, esc) {
     try {
       const form = new FormData();
       form.set("instructions", q("textarea").value);
-      if (blob) form.set("file", blob, "instructions");
+      if (blob)
+        form.set(
+          "file",
+          blob,
+          "instructions." + (blob.type.includes("mp4") ? "mp4" : "webm"),
+        );
       else if (keep) form.set("keep_audio", keep);
       await api("/api/instructions/" + site.id, form);
       await done();
