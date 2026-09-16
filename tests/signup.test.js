@@ -92,6 +92,14 @@ test("self-service signup creates an isolated owner, customer and first property
   assert.deepEqual(secondState.sites.map((site) => site.id), [second.body.siteId]);
   assert.equal(firstState.propertyLocations.at(-1).address, "1 Self Service Close, Ikeja, Lagos, Nigeria");
 
+  const ownerHeaders={cookie:first.response.headers.get('set-cookie').split(';')[0],'X-Session-Proof':first.body.proof,'Content-Type':'application/json'};
+  const secondProperty=await fetch(base+'/api/admin',{method:'POST',headers:ownerHeaders,body:JSON.stringify({kind:'additional_site',site_id:first.body.siteId,name:'Second free property',address:'3 Free Tier Close, Ikeja, Lagos',latitude:6.61,longitude:3.36,radius_m:100,confirmed:true})});assert.equal(secondProperty.status,403);
+  for(let index=0;index<5;index++) {
+    const response=await fetch(base+'/api/admin',{method:'POST',headers:ownerHeaders,body:JSON.stringify({kind:'user',site_id:first.body.siteId,name:'Free team '+index,email:`free-team-${index}-${suffix}@pilot.invalid`,password:'Free-tier-test-password!',role:index%2?'supervisor':'guard'})});assert.equal(response.status,200,await response.text());
+  }
+  const sixth=await fetch(base+'/api/admin',{method:'POST',headers:ownerHeaders,body:JSON.stringify({kind:'user',site_id:first.body.siteId,name:'Sixth team user',email:`free-team-six-${suffix}@pilot.invalid`,password:'Free-tier-test-password!',role:'guard'})});assert.equal(sixth.status,403);assert.match((await sixth.json()).error,/up to five/i);
+  const overview=await fetch(base+'/api/owner-overview/'+first.body.siteId,{headers:{cookie:first.response.headers.get('set-cookie').split(';')[0],'X-Session-Proof':first.body.proof}});assert.equal(overview.status,200);assert.deepEqual((await overview.json()).subscription,{tier:'free',propertyLimit:1,userLimit:5});
+
   const denied = await fetch(base + `/api/settings/${second.body.siteId}`, {
     headers: {
       cookie: first.response.headers.get("set-cookie").split(";")[0],

@@ -95,5 +95,6 @@ export async function seedDemo() {
       "Supervisor acknowledged; repair pending",
     );
   }
+  for(const customerId of ['oak','other']) if(await one('SELECT id FROM customers WHERE id=?',customerId)) await run('INSERT INTO customer_subscriptions VALUES(?,?,?) ON CONFLICT(customer_id) DO NOTHING',customerId,'internal',now());
   await exec(fs.readFileSync("migrations/003.sql", "utf8"));
 }

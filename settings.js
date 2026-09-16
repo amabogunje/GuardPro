@@ -71,7 +71,11 @@ export function settingsRoutes({
       "SELECT u.id,u.name,CASE WHEN c.email_missing=1 THEN '' ELSE u.email END AS email,c.whatsapp,u.role,(SELECT user_id FROM disabled_users WHERE user_id=u.id) AS disabled,(SELECT user_id FROM user_photos WHERE user_id=u.id) AS photo_id FROM users u JOIN assignments a ON a.user_id=u.id LEFT JOIN user_contacts c ON c.user_id=u.id WHERE a.site_id=?",
       req.params.site,
     );
-    res.json({ shifts, users });
+    const reusableUsers = req.user.role === 'owner' ? await all(
+      "SELECT DISTINCT u.id,u.name,u.role,CASE WHEN c.email_missing=1 THEN '' ELSE u.email END AS email,c.whatsapp,(SELECT user_id FROM user_photos WHERE user_id=u.id) AS photo_id FROM users u JOIN assignments a ON a.user_id=u.id JOIN sites source ON source.id=a.site_id JOIN sites target ON target.customer_id=source.customer_id LEFT JOIN user_contacts c ON c.user_id=u.id WHERE target.id=? AND u.role IN ('guard','supervisor') AND u.id NOT IN (SELECT user_id FROM assignments WHERE site_id=?) ORDER BY u.name",
+      req.params.site,req.params.site,
+    ) : [];
+    res.json({ shifts, users, reusableUsers });
   });
   post("/api/settings/:site/shifts", async (req, res) => {
     await access(req);

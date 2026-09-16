@@ -44,7 +44,7 @@ export async function renderSettings(
     } else if (selected === "checkpoints") {
       checkpointSettings(panel,{site,state,api,esc,icon,done});
     } else {
-      teamSettings(panel,{site,users:data.users,api,esc,icon,done});
+      teamSettings(panel,{site,users:data.users,reusableUsers:data.reusableUsers,api,esc,icon,done,allowReuse:state.user?.role==='owner'});
     }
   }
   host.querySelectorAll("[data-tab]").forEach(

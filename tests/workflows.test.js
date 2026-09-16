@@ -7,8 +7,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { chromium } from "@playwright/test";
-const base = process.env.TEST_BASE_URL || "http://127.0.0.1:3101",
-  data = path.resolve("data", "test-" + Date.now());
+let base = process.env.TEST_BASE_URL || "";
+const data = path.resolve("data", "test-" + Date.now());
 let server, guard, owner, supervisor, other, incident, mid, shift;
 async function req(route, cookie, body, expected = 200) {
   let r = await fetch(base + route, {
@@ -63,7 +63,9 @@ before(async () => {
     server = spawn(process.execPath, ["server.js"], {
       env: {
         ...process.env,
-        PORT: "3101",
+        // An operating-system-selected port prevents an abandoned local test
+        // server from being mistaken for this fixture's server.
+        PORT: "0",
         DATA_DIR: data,
         OPENAI_API_KEY: "",
         DATABASE_URL: "",
@@ -75,7 +77,13 @@ before(async () => {
     });
     await new Promise((resolve, reject) => {
       server.stdout.on("data", (d) => {
-        if (String(d).includes("running")) resolve();
+        const match = String(d).match(
+          /Guard Companion running at http:\/\/127\.0\.0\.1:(\d+)/,
+        );
+        if (match) {
+          base = `http://127.0.0.1:${match[1]}`;
+          resolve();
+        }
       });
       server.on("exit", (c) => reject(new Error("Server exited " + c)));
     });

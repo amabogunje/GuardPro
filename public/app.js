@@ -1,15 +1,17 @@
 let overviewDate = null;
 import { ownerPage } from './owner.js';
-const ownerSupervisorView = () => user?.role === 'owner' && Boolean(vault?.ownerSupervisorView);
+const ownerSupervisionEnabled = () => user?.role === 'owner' && Boolean(state?.ownerSupervision?.some(entry=>entry.site_id===siteId));
+const ownerSupervisorView = () => ownerSupervisionEnabled() && Boolean(vault?.ownerSupervisorView);
 const supervisorView = () => user?.role === 'supervisor' || ownerSupervisorView();
 async function setOwnerMode(supervisor) {
   if(user?.role!=='owner')return;
   if(supervisor&&!site()){page='property';render();return;}
+  if(supervisor&&!ownerSupervisionEnabled()){page='supervisors';render();return;}
   vault.ownerSupervisorView=supervisor;page='home';selectedProblemId=null;selectedLocationShift=null;
   resetSettings();await persist();render();
 }
 function renderOwnerPage() {
-  ownerPage(root,{page,site:site(),user,state,api,esc,icon,brand,siteSelect,done:async()=>{await refresh();render();toast('Saved.');},supervise:()=>setOwnerMode(true)});
+  ownerPage(root,{page,site:site(),user,state,api,esc,icon,brand,siteSelect,selectedProblemId:ownerEvidenceProblemId,done:async()=>{await refresh();render();toast('Saved.');},supervise:()=>setOwnerMode(true)});
 }
 import { locationGroups, gpsReview } from './gps-review.js';
 import { propertyEditor } from './property-location.js';
@@ -33,6 +35,7 @@ import {
 let selectedReportId = null,
   reportMediaUrls = [];
 let selectedProblemId = null;
+let ownerEvidenceProblemId = null;
 let problemQuery = "", problemPage = 0;
 let activityPeriod = "daily";
 function renderActivityReports(target) {
@@ -405,7 +408,7 @@ function render() {
     root.querySelector(".greeting-row h1").textContent = titles[page] || "Your team";
     root.querySelector(".supervisor-mobile > .supervisor-heading")?.remove();
   }
-  if(user.role==='owner') {
+  if(user.role==='owner'&&ownerSupervisionEnabled()) {
     const mode=document.createElement('div');mode.className='owner-mode';
     mode.innerHTML=`<span>${ownerSupervisorView()?'Supervisor view':'Owner view'}</span><button type="button" class="owner-mode-switch" data-action="ownerMode">${ownerSupervisorView()?'Return to owner view':'Act as supervisor'}</button>`;
     root.querySelector('.duty-identity')?.after(mode);
@@ -777,7 +780,7 @@ function siteSelect() {
 function renderDashboard() {
   if(user.role==='owner'&&!ownerSupervisorView()) {
     if(page==='admin')page='property';
-    if(['home','property','supervisors','subscription'].includes(page)||!site()){if(!site()&&!['home','property','subscription'].includes(page))page='home';renderOwnerPage();return;}
+    if(['home','property','supervisors','subscription','ownerActivity','ownerProblems'].includes(page)||!site()){if(!site()&&!['home','property','subscription'].includes(page))page='home';renderOwnerPage();return;}
   }
   if (supervisorView() && page === "home")
     day =
@@ -1772,6 +1775,7 @@ document.addEventListener("click", async (e) => {
       nfcController?.abort();
       if (b.dataset.page === "message") { selectedChat = null; supervisorMessageId = null; }
       if (b.dataset.page === "incidents") selectedProblemId = null;
+      if (b.dataset.page === "ownerProblems") ownerEvidenceProblemId = b.dataset.ownerProblemId || null;
       if(b.dataset.page === "setup" && page !== "setup") resetSettings();
       page = b.dataset.page;
       if (["report", "message"].includes(page) && vault[draftKey()]?.site_id)
@@ -2641,6 +2645,8 @@ async function initialize() {
             "supervisors",
             "subscription",
             "gps",
+            "ownerActivity",
+            "ownerProblems",
           ];
     page = allowed.includes(restored.view.page) ? restored.view.page : "home";
     if (navigator.onLine) {

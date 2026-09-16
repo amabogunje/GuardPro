@@ -25,7 +25,7 @@ async function geometry(p){
  assert.ok(dimensions.width<=600,JSON.stringify(dimensions));assert.equal(dimensions.overflow,false);
  assert.equal(await p.locator('.sidebar').count(),0);
 }
-test('owner mobile setup, supervisor creation and honest subscription screen',async()=>{
+test('owner mobile setup, supervisor creation and honest subscription screen',{concurrency:false},async()=>{
  const {context,p}=await signedIn(390),errors=[];p.on('pageerror',e=>errors.push(e.message));
  try {
   await geometry(p);
@@ -36,22 +36,25 @@ test('owner mobile setup, supervisor creation and honest subscription screen',as
   await p.getByRole('button',{name:'Home',exact:true}).click();await p.getByRole('button',{name:'Supervisors',exact:true}).click();await p.getByRole('button',{name:'+ Add supervisor',exact:true}).click();
   const team=p.locator('#team-editor');assert.equal(await team.locator('[name="role"]').inputValue(),'supervisor');assert.equal(await team.locator('[name="role"]').isVisible(),false);
   await team.locator('[name="name"]').fill('Fictional Test Supervisor');await team.locator('[name="email"]').fill('new-owner-ui@example.test');await team.locator('[name="password"]').fill('Owner-UI-Test-2026!');await team.getByRole('button',{name:'Create supervisor',exact:true}).click();await p.getByRole('button',{name:'Edit Fictional Test Supervisor',exact:true}).waitFor();
-  await p.getByRole('button',{name:'Home',exact:true}).click();await p.getByRole('button',{name:'Subscription',exact:true}).click();await p.getByText('Billing is not enabled for this MVP',{exact:true}).waitFor();await geometry(p);
+  await p.getByRole('button',{name:'Home',exact:true}).click();await p.getByRole('button',{name:'Subscription',exact:true}).click();await p.getByRole('heading',{name:'Free subscription',exact:true}).waitFor();await p.getByText('Up to five guards and supervisors',{exact:true}).waitFor();await geometry(p);
   await p.screenshot({path:path.join(data,'owner-subscription-mobile.png'),fullPage:true});assert.deepEqual(errors,[]);
  } finally {await context.close();}
 });
-test('owner KPIs are display-only and supervisor mode persists without changing identity',async()=>{
+test('owner KPIs are display-only and supervisor mode persists without changing identity',{concurrency:false},async()=>{
  const {context,p}=await signedIn(1440),errors=[];p.on('pageerror',e=>errors.push(e.message));
  try {
-  assert.equal(await p.locator('.owner-kpi').count(),3);assert.equal(await p.locator('.owner-kpi details, .owner-kpi summary, .owner-kpi button, .owner-kpi a').count(),0);await p.getByText('Last seven days',{exact:true}).waitFor();
+  await p.locator('.owner-kpi').first().waitFor();assert.equal(await p.locator('.owner-kpi').count(),3);assert.equal(await p.locator('.owner-kpi details, .owner-kpi summary, .owner-kpi button, .owner-kpi a').count(),0);await p.getByText(/Last seven completed Nigerian calendar days/).waitFor();
   await geometry(p);await p.screenshot({path:path.join(data,'owner-home-desktop.png'),fullPage:true});
-  await p.getByRole('button',{name:'Act as supervisor',exact:true}).click();await p.getByRole('button',{name:'Settings',exact:true}).waitFor();const stateResponse=p.waitForResponse(r=>r.url().endsWith('/api/state')&&r.status()===200);await p.reload();await p.getByRole('button',{name:'Return to owner view',exact:true}).waitFor();await p.getByRole('button',{name:'Settings',exact:true}).waitFor();
+  await p.getByRole('button',{name:'Supervisors',exact:true}).click();await p.getByRole('button',{name:'I supervise this property',exact:true}).click();await p.getByRole('button',{name:'Open supervisor view',exact:true}).waitFor();await p.getByRole('button',{name:'Open supervisor view',exact:true}).click();await p.getByRole('button',{name:'Settings',exact:true}).waitFor();const stateResponse=p.waitForResponse(r=>r.url().endsWith('/api/state')&&r.status()===200);await p.reload();await p.getByRole('button',{name:'Return to owner view',exact:true}).waitFor();await p.getByRole('button',{name:'Settings',exact:true}).waitFor();
   const state=await (await stateResponse).json();assert.equal(state.user.role,'owner');
   await p.getByRole('button',{name:'Problems',exact:true}).click();await p.locator('[data-action="viewProblem"]').first().click();await p.locator('.problemResolve').waitFor();await geometry(p);
   await p.getByRole('button',{name:'Return to owner view',exact:true}).click();await p.locator('.owner-health').waitFor();await p.reload();await p.locator('.owner-health').waitFor();await p.getByRole('button',{name:'Property',exact:true}).waitFor();assert.deepEqual(errors,[]);
  } finally {await context.close();}
 });
-
-
-
-
+test('owner has read-only activity and problem evidence without switching role', {concurrency:false}, async()=>{
+ const {context,p}=await signedIn(390),errors=[];p.on('pageerror',e=>errors.push(e.message));
+ try {
+  await p.getByRole('button',{name:'Activity evidence',exact:true}).click();await p.getByRole('heading',{name:'Activity evidence',exact:true}).waitFor();await p.getByText('Scheduled patrol starts',{exact:true}).waitFor();await p.getByText(/does not confirm all checkpoints or a completed patrol/).waitFor();await geometry(p);
+  await p.getByRole('button',{name:'Home',exact:true}).click();await p.getByRole('button',{name:'Reported problems',exact:true}).click();await p.getByRole('heading',{name:'Unresolved problems',exact:true}).waitFor();await p.locator('.owner-problem-row').first().click();await p.getByText('This is read-only evidence. Switch to supervisor view only if you need to manage the problem.',{exact:true}).waitFor();assert.equal(await p.locator('.problemResolve').count(),0);await geometry(p);assert.deepEqual(errors,[]);
+ } finally {await context.close();}
+});

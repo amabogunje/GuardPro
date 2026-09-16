@@ -77,6 +77,7 @@ try {
     const createdAt = now();
 
     await run("INSERT INTO customers VALUES(?,?)", customerId, customerName);
+    await run("INSERT INTO customer_subscriptions VALUES(?,?,?)", customerId, "free", createdAt);
     await run(
       "INSERT INTO users VALUES(?,?,?,?,?)",
       ownerId,

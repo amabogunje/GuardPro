@@ -114,6 +114,20 @@ const requireSite = async (u, s) => {
   )
     fail("Access denied", 403);
 };
+const subscriptionForCustomer = async (customerId) =>
+  (await one('SELECT tier FROM customer_subscriptions WHERE customer_id=?',customerId)) || {tier:'free'};
+const freeTier = async (siteId) => {
+  const site=await one('SELECT customer_id FROM sites WHERE id=?',siteId);
+  return {site,subscription:site&&await subscriptionForCustomer(site.customer_id)};
+};
+const enforceFreePropertyLimit = async (customerId) => {
+  const subscription=await subscriptionForCustomer(customerId);
+  if(subscription.tier==='free' && (await one('SELECT count(*) n FROM sites WHERE customer_id=?',customerId)).n>=1) fail('Free subscription includes one property',403);
+};
+const enforceFreeUserLimit = async (siteId) => {
+  const {subscription}=await freeTier(siteId);
+  if(subscription?.tier==='free' && (await one("SELECT count(*) n FROM assignments a JOIN users u ON u.id=a.user_id WHERE a.site_id=? AND u.role IN ('guard','supervisor')",siteId)).n>=5) fail('Free subscription includes up to five guards and supervisors',403);
+};
 const supervisor = (u) => {
   if (u.role !== "supervisor") fail("Supervisor only", 403);
 };
@@ -180,6 +194,7 @@ post("/api/signup", async (req, res) => {
 
   const customerId = id(), ownerId = id(), siteId = id(), createdAt = now();
   await run("INSERT INTO customers VALUES(?,?)", customerId, customerName);
+  await run('INSERT INTO customer_subscriptions VALUES(?,?,?)',customerId,'free',createdAt);
   await run("INSERT INTO users VALUES(?,?,?,?,?)", ownerId, ownerName, email, hash(password), "owner");
   await run("INSERT INTO sites(id,customer_id,name) VALUES(?,?,?)", siteId, customerId, propertyName);
   await run("INSERT INTO assignments VALUES(?,?)", ownerId, siteId);
@@ -231,8 +246,9 @@ app.get('/api/owner-overview/:site', async (req,res) => {
   if(req.user.role!=='owner') fail('Owner only',403);
   await requireSite(req.user,req.params.site);
   const site=await one('SELECT * FROM sites WHERE id=?',req.params.site);
+  const subscription=await subscriptionForCustomer(site.customer_id);
   const scoped=t=>all(`SELECT * FROM ${t} WHERE site_id=?`,site.id);
-  const [users,supervisors,plans,shifts,events,incidents,checkpoints,locations,reviews,resolutions]=await Promise.all([
+  const [users,supervisors,plans,shifts,events,incidents,checkpoints,locations,reviews,resolutions,ownerSupervision]=await Promise.all([
     all('SELECT u.id,u.name,u.role FROM users u JOIN assignments a ON a.user_id=u.id WHERE a.site_id=? AND NOT EXISTS (SELECT 1 FROM disabled_users d WHERE d.user_id=u.id)',site.id),
     all("SELECT u.id,u.name,CASE WHEN c.email_missing=1 THEN '' ELSE u.email END AS email,c.whatsapp FROM users u JOIN assignments a ON a.user_id=u.id LEFT JOIN user_contacts c ON c.user_id=u.id WHERE a.site_id=? AND u.role='supervisor' AND NOT EXISTS (SELECT 1 FROM disabled_users d WHERE d.user_id=u.id)",site.id),
     Promise.all([
@@ -241,10 +257,61 @@ app.get('/api/owner-overview/:site', async (req,res) => {
     ]).then(p=>p.flat()),scoped('shifts'),scoped('events'),scoped('incidents'),
     all('SELECT c.* FROM checkpoints c WHERE c.site_id=? AND NOT EXISTS (SELECT 1 FROM retired_checkpoints r WHERE r.checkpoint_id=c.id)',site.id),
     scoped('property_locations'),scoped('location_reviews'),
-    all('SELECT t.*,u.name AS actor_name FROM transitions t JOIN users u ON u.id=t.actor JOIN incidents i ON i.id=t.incident_id WHERE i.site_id=?',site.id)
+    all('SELECT t.*,u.name AS actor_name FROM transitions t JOIN users u ON u.id=t.actor JOIN incidents i ON i.id=t.incident_id WHERE i.site_id=?',site.id),
+    one('SELECT site_id FROM owner_supervision WHERE site_id=? AND owner_id=?',site.id,req.user.id),
   ]);
   const input={site,users,supervisors,plans,shifts,events:events.map(e=>({...e,payload:JSON.parse(e.payload)})),incidents,checkpoints,locations,reviews,resolutions};
-  res.json({...ownerOverview(input),health:ownerHealth({...input,classifications:await scoped('incident_classifications')})});
+  res.json({...ownerOverview({...input,ownerSupervision:Boolean(ownerSupervision)}),subscription:{tier:subscription.tier,propertyLimit:1,userLimit:5},health:ownerHealth({...input,classifications:await scoped('incident_classifications')})});
+});
+app.get('/api/owner-supervision/:site',async(req,res)=>{
+  if(req.user.role!=='owner') fail('Owner only',403);
+  await requireSite(req.user,req.params.site);
+  res.json({enabled:Boolean(await one('SELECT site_id FROM owner_supervision WHERE site_id=? AND owner_id=?',req.params.site,req.user.id))});
+});
+post('/api/owner-supervision/:site',async(req,res)=>{
+  if(req.user.role!=='owner') fail('Owner only',403);
+  await requireSite(req.user,req.params.site);
+  const enabled=req.body?.enabled===true;
+  if(enabled) await run('INSERT INTO owner_supervision VALUES(?,?,?) ON CONFLICT(site_id) DO UPDATE SET owner_id=excluded.owner_id,enabled_at=excluded.enabled_at',req.params.site,req.user.id,now());
+  else await run('DELETE FROM owner_supervision WHERE site_id=? AND owner_id=?',req.params.site,req.user.id);
+  await audit(req.user,enabled?'owner.supervision.enabled':'owner.supervision.disabled',{site:req.params.site});
+  res.json({ok:true,enabled});
+});
+app.get('/api/owner-evidence/:site', async (req,res) => {
+  if(req.user.role!=='owner') fail('Owner only',403);
+  await requireSite(req.user,req.params.site);
+  const kind=String(req.query.kind||'');
+  if(!['activity','problems'].includes(kind)) fail('Choose activity or problems evidence');
+  const site=await one('SELECT id,name,last_sync FROM sites WHERE id=?',req.params.site);
+  const scoped=t=>all(`SELECT * FROM ${t} WHERE site_id=?`,site.id);
+  if(kind==='activity') {
+    const [users,plans,events,incidents,classifications]=await Promise.all([
+      all('SELECT u.id,u.name,u.role FROM users u JOIN assignments a ON a.user_id=u.id WHERE a.site_id=?',site.id),
+      Promise.all([scoped('shift_plans'),all('SELECT * FROM shift_templates WHERE site_id=?',site.id)]).then(rows=>rows.flat()),
+      scoped('events'),scoped('incidents'),scoped('incident_classifications')
+    ]);
+    const health=ownerHealth({site,users,plans,events:events.map(e=>({...e,payload:JSON.parse(e.payload)})),incidents,classifications});
+    const received=[...events,...incidents].map(r=>r.received_at).filter(Boolean).sort().at(-1)||null;
+    const captured=[...events,...incidents].map(r=>r.captured_at).filter(Boolean).sort().at(-1)||null;
+    const fresh=received&&captured&&Date.now()-Date.parse(received)<900000&&Date.now()-Date.parse(captured)<900000;
+    res.json({site:{id:site.id,name:site.name},period:{from:health.from,to:health.to,label:`${health.from} to ${health.to} (seven completed Nigerian calendar days)`},current:{lastRecordReceived:received,lastCapturedAt:captured,status:fresh?'recent':'unconfirmed',message:fresh?'Recent activity received':'Current activity unconfirmed; new records may be pending'},metrics:{guard:health.guard,patrol:health.patrol,unknownDays:health.unknownDays,anyShifts:health.anyShifts}});
+    return;
+  }
+  const [users,incidents,transitions,classifications]=await Promise.all([
+    all('SELECT u.id,u.name FROM users u JOIN assignments a ON a.user_id=u.id WHERE a.site_id=?',site.id),scoped('incidents'),
+    all('SELECT t.*,u.name AS actor_name FROM transitions t JOIN users u ON u.id=t.actor JOIN incidents i ON i.id=t.incident_id WHERE i.site_id=? ORDER BY t.at DESC',site.id),
+    scoped('incident_classifications')
+  ]);
+  const problem=id=>{
+    const incident=incidents.find(i=>i.id===id);if(!incident)return null;
+    return {id:incident.id,report:incident.report,receivedAt:incident.received_at,capturedAt:incident.captured_at,status:incident.status,reportedBy:users.find(u=>u.id===incident.user_id)?.name||'Guard',classification:classifications.find(c=>c.incident_id===incident.id)||null,resolution:transitions.find(t=>t.incident_id===incident.id&&t.status==='Resolved')||null,history:transitions.filter(t=>t.incident_id===incident.id)};
+  };
+  if(req.query.id) {
+    const selected=problem(String(req.query.id));if(!selected)fail('Problem not found',404);
+    selected.media=await all('SELECT m.id,m.mime,m.source,m.size FROM media m JOIN incidents i ON i.id=m.incident_id WHERE i.site_id=? AND m.incident_id=?',site.id,selected.id);
+    res.json({site:{id:site.id,name:site.name},problem:selected});return;
+  }
+  res.json({site:{id:site.id,name:site.name},problems:incidents.map(i=>problem(i.id)).sort((a,b)=>b.receivedAt.localeCompare(a.receivedAt))});
 });
 app.get("/api/state", async (req, res) => {
   const u = req.user;
@@ -272,6 +339,7 @@ app.get("/api/state", async (req, res) => {
     names,
     evidenceRows,
     shiftExceptions,
+    ownerSupervision,
   ] = await Promise.all([
     all(
       "SELECT s.* FROM sites s JOIN assignments a ON a.site_id=s.id WHERE a.user_id=?",
@@ -318,6 +386,7 @@ app.get("/api/state", async (req, res) => {
     ),
     all("SELECT e.* FROM incident_evidence e JOIN incidents i ON i.id=e.incident_id JOIN assignments a ON a.site_id=i.site_id WHERE a.user_id=?", u.id),
     all("SELECT x.* FROM shift_exceptions x JOIN assignments a ON a.site_id=x.site_id WHERE a.user_id=?", u.id),
+    u.role === 'owner' ? all('SELECT site_id FROM owner_supervision WHERE owner_id=?',u.id) : Promise.resolve([]),
   ]);
   const byContext = new Map(contexts.map((c) => [c.event_id, c]));
   const byEvent = new Map(events.map((e) => [e.id, e]));
@@ -348,6 +417,7 @@ app.get("/api/state", async (req, res) => {
   res.json({
     propertyLocations: await scoped('property_locations'),
     locationReviews: u.role==='guard'?[]:await all('SELECT r.*,u.name AS actor_name FROM location_reviews r JOIN users u ON u.id=r.actor JOIN assignments a ON a.site_id=r.site_id WHERE a.user_id=?',u.id),
+    ownerSupervision,
     user: u,
     features: { messaging: messagingEnabled },
     sites: sites.map((s) => ({
@@ -1462,6 +1532,27 @@ async function teamContact(b,userId,previous) {
 async function saveTeamContact(userId,contact) {
   await run('INSERT INTO user_contacts VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET whatsapp=excluded.whatsapp,email_missing=excluded.email_missing',userId,contact.phone,contact.vaultKey,contact.missing);
 }
+async function removeGuardFromSchedules(siteId,userId,actor) {
+  const versions=await all('SELECT * FROM shift_templates WHERE site_id=? ORDER BY created_at',siteId);
+  const latest=new Map(versions.map(plan=>[plan.template_id,plan]));
+  if(!latest.size) {
+    const site=await one('SELECT schedule FROM sites WHERE id=?',siteId);
+    for(const plan of effectivePlans(await all('SELECT * FROM shift_plans WHERE site_id=?',siteId))) {
+      const templateId='legacy-'+plan.start_time+'-'+plan.end_time;
+      const current=latest.get(templateId)||{template_id:templateId,site_id:siteId,name:'Shift '+(latest.size+1),start_time:plan.start_time,end_time:plan.end_time,instructions:'',schedule:site.schedule,guard_ids:'[]'};
+      current.guard_ids=JSON.stringify([...new Set([...JSON.parse(current.guard_ids),plan.guard_id])]);
+      latest.set(templateId,current);
+    }
+  }
+  for(const plan of latest.values()) {
+    const guards=JSON.parse(plan.guard_ids);
+    if(!guards.includes(userId)) continue;
+    const version=id();
+    await run('INSERT INTO shift_templates VALUES(?,?,?,?,?,?,?,?,?,?,?)',version,plan.template_id,siteId,plan.name,plan.start_time,plan.end_time,plan.instructions,plan.schedule,JSON.stringify(guards.filter(guard=>guard!==userId)),actor,now());
+    const audio=await one('SELECT instruction_version_id FROM shift_template_audio WHERE shift_template_id=?',plan.id);
+    if(audio) await run('INSERT INTO shift_template_audio VALUES(?,?)',version,audio.instruction_version_id);
+  }
+}
 post("/api/admin", upload.single("profile_photo"), async (req, res) => {
   if (!["owner", "supervisor"].includes(req.user.role))
     fail("Customer management only", 403);
@@ -1483,6 +1574,7 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
       b.site_id,
     );
     await requireSite(req.user, b.site_id);
+    await enforceFreePropertyLimit(customer.customer_id);
     let sid = id();
     await run(
       "INSERT INTO sites(id,customer_id,name) VALUES(?,?,?)",
@@ -1598,6 +1690,7 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
         validateFile(req.file);
       }
       let uid = id();
+      await enforceFreeUserLimit(s);
       const contact=await teamContact(b,uid);
       await run(
         "INSERT INTO users VALUES(?,?,?,?,?)",
@@ -1628,11 +1721,20 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
         ))
       )
         fail("User outside assigned scope", 403);
+      if(!(await one('SELECT 1 FROM assignments WHERE user_id=? AND site_id=?',user.id,s))) await enforceFreeUserLimit(s);
       await run(
         "INSERT INTO assignments VALUES(?,?) ON CONFLICT DO NOTHING",
         user.id,
         s,
       );
+    } else if (b.kind === 'unassign') {
+      if(req.user.role!=='owner') fail('Owner only',403);
+      const target=await one("SELECT u.id,u.role FROM users u JOIN assignments a ON a.user_id=u.id WHERE a.site_id=? AND u.id=?",s,b.user_id);
+      if(!target || !['guard','supervisor'].includes(target.role)) fail('Only assigned guards and supervisors can be removed',403);
+      if(target.role==='guard' && await one('SELECT id FROM shifts WHERE site_id=? AND user_id=? AND ended_at IS NULL',s,target.id)) fail('End the guard’s active shift before removing this property assignment',409);
+      if(target.role==='guard') await removeGuardFromSchedules(s,target.id,req.user.id);
+      await run('DELETE FROM assignments WHERE user_id=? AND site_id=?',target.id,s);
+      await audit(req.user,'team.unassigned',{site:s,user_id:target.id,role:target.role});
     } else fail("Unknown action");
   }
   await audit(req.user, "admin " + b.kind, { site: s, name: b.name });
@@ -1672,13 +1774,12 @@ app.use((err, req, res, next) => {
         : "Request could not be completed",
   });
 });
-if (!process.env.VERCEL)
-  app.listen(
-    Number(process.env.PORT || 3000),
-    process.env.HOST || "127.0.0.1",
-    () =>
-      console.log(
-        `Guard Companion running at http://${process.env.HOST || "127.0.0.1"}:${process.env.PORT || 3000}`,
-      ),
-  );
+if (!process.env.VERCEL) {
+  const host = process.env.HOST || "127.0.0.1";
+  const listener = app.listen(Number(process.env.PORT || 3000), host, () => {
+    const address = listener.address();
+    const port = typeof address === "object" && address ? address.port : process.env.PORT || 3000;
+    console.log(`Guard Companion running at http://${host}:${port}`);
+  });
+}
 export default app;

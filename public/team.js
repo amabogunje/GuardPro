@@ -1,11 +1,13 @@
 import { phoneNumber } from './login-id.js';
-export function teamSettings(host,{site,users,api,esc,icon,done,roleOnly=null}) {
+export function teamSettings(host,{site,users,reusableUsers=[],api,esc,icon,done,roleOnly=null,allowReuse=false}) {
   const members=users.filter(u=>u.role!=='owner'&&(!roleOnly||u.role===roleOnly));
+  const reusable=reusableUsers.filter(u=>!roleOnly||u.role===roleOnly);
   let query='',page=0;
   const size=5;
   function list(focusId) {
-    host.innerHTML=`<section class="card checkpoint-panel team-panel"><div class="checkpoint-heading"><h2>Users <span class="checkpoint-count">(${members.length})</span></h2><button type="button" class="checkpoint-text-action" id="add-member">+ Add</button></div>${members.length>size?`<label class="checkpoint-search">Find a team member<input type="search" id="team-search" placeholder="Name, number or email" value="${esc(query)}"></label>`:''}<div id="team-rows"></div></section>`;
+    host.innerHTML=`<section class="card checkpoint-panel team-panel"><div class="checkpoint-heading"><h2>Users <span class="checkpoint-count">(${members.length})</span></h2><span class="team-actions"><button type="button" class="checkpoint-text-action" id="add-member">+ Add</button>${allowReuse?'<button type="button" class="checkpoint-text-action" id="reuse-member">+ Reuse</button>':''}</span></div>${members.length>size?`<label class="checkpoint-search">Find a team member<input type="search" id="team-search" placeholder="Name, number or email" value="${esc(query)}"></label>`:''}<div id="team-rows"></div></section>`;
     host.querySelector('#add-member').onclick=()=>edit(null);
+    host.querySelector('#reuse-member')?.addEventListener('click',reuse);
     if(roleOnly) {
       host.querySelector('h2').innerHTML=`Supervisors <span class="checkpoint-count">(${members.length})</span>`;
       host.querySelector('#add-member').textContent='+ Add supervisor';
@@ -13,6 +15,15 @@ export function teamSettings(host,{site,users,api,esc,icon,done,roleOnly=null}) 
     host.querySelector('#team-search')?.addEventListener('input',e=>{query=e.target.value;page=0;rows();});
     rows();
     if(focusId)[...host.querySelectorAll('[data-member]')].find(b=>b.dataset.member===focusId)?.focus();
+  }
+  function reuse() {
+    host.innerHTML=`<section class="card checkpoint-panel team-panel"><div class="checkpoint-heading"><h2>Reuse existing ${roleOnly?'supervisor':'user'}</h2><button type="button" class="checkpoint-text-action" id="team-cancel">Cancel</button></div>${reusable.length?`<form id="reuse-editor" class="settings-fields"><label>${roleOnly?'Supervisor':'User'}<select name="user_id">${reusable.map(member=>`<option value="${esc(member.id)}">${esc(member.name)} · ${member.role==='guard'?'Guard':'Supervisor'}${member.whatsapp?' · '+esc(member.whatsapp):''}</option>`).join('')}</select></label><p class="muted">This keeps the person’s account and adds access to this property.</p><button class="primary">Add to this property</button><p class="checkpoint-status" role="status"></p></form>`:'<p class="checkpoint-empty">No eligible users from your other properties are available.</p>'}</section>`;
+    host.querySelector('#team-cancel').onclick=()=>list();
+    host.querySelector('#reuse-editor')?.addEventListener('submit',async event=>{
+      event.preventDefault();const form=event.currentTarget,button=form.querySelector('button');button.disabled=true;button.textContent='Adding…';
+      try {await api('/api/admin',{kind:'assign',site_id:site.id,user_id:form.elements.user_id.value});await done();}
+      catch(error){form.querySelector('[role="status"]').textContent=error.message;button.disabled=false;button.textContent='Add to this property';}
+    });
   }
   function rows() {
     const found=members.filter(u=>[u.name,u.email,u.whatsapp].join(' ').toLowerCase().includes(query.trim().toLowerCase()));
@@ -25,7 +36,7 @@ export function teamSettings(host,{site,users,api,esc,icon,done,roleOnly=null}) 
     host.querySelector('#team-next')?.addEventListener('click',()=>{page++;rows();});
   }
   function edit(member) {
-    host.innerHTML=`<section class="card checkpoint-panel team-panel"><div class="checkpoint-heading"><h2>${member?'Edit team member':'Add team member'}</h2><button type="button" class="checkpoint-text-action" id="team-cancel">Cancel</button></div><form id="team-editor" class="settings-fields"><label>Name<input name="name" required maxlength="120" value="${esc(member?.name||'')}"></label><label>Role<select name="role"><option value="guard">Guard</option><option value="supervisor" ${member?.role==='supervisor'?'selected':''}>Supervisor</option></select></label><label>WhatsApp number<input name="whatsapp" type="tel" autocomplete="tel" placeholder="0801 234 5678" value="${esc(member?.whatsapp||'')}"></label><label>Email (optional)<input name="email" type="email" maxlength="200" autocomplete="email" value="${esc(member?.email||'')}"></label><label>${member?'New password (optional)':'Password'}<input name="password" type="password" minlength="12" ${member?'':'required'} autocomplete="new-password"></label><small>At least 12 characters.${member?' Leave blank to keep the current password.':''}</small><label>Profile photo (optional)<input type="file" name="profile_photo" accept="image/jpeg,image/png"></label><small>JPEG or PNG, up to 2 MB.</small>${member?`<label>Status<select name="disabled"><option value="false">Active</option><option value="true" ${member.disabled?'selected':''}>Inactive</option></select></label><small>Inactive members cannot sign in. Their past records are kept.</small>`:''}<button class="primary" id="team-save" disabled>${member?'Save changes':'Create team member'}</button><p class="checkpoint-status" role="status"></p></form></section>`;
+    host.innerHTML=`<section class="card checkpoint-panel team-panel"><div class="checkpoint-heading"><h2>${member?'Edit team member':'Add team member'}</h2><button type="button" class="checkpoint-text-action" id="team-cancel">Cancel</button></div><form id="team-editor" class="settings-fields"><label>Name<input name="name" required maxlength="120" value="${esc(member?.name||'')}"></label><label>Role<select name="role"><option value="guard">Guard</option><option value="supervisor" ${member?.role==='supervisor'?'selected':''}>Supervisor</option></select></label><label>WhatsApp number<input name="whatsapp" type="tel" autocomplete="tel" placeholder="0801 234 5678" value="${esc(member?.whatsapp||'')}"></label><label>Email (optional)<input name="email" type="email" maxlength="200" autocomplete="email" value="${esc(member?.email||'')}"></label><label>${member?'New password (optional)':'Password'}<input name="password" type="password" minlength="12" ${member?'':'required'} autocomplete="new-password"></label><small>At least 12 characters.${member?' Leave blank to keep the current password.':''}</small><label>Profile photo (optional)<input type="file" name="profile_photo" accept="image/jpeg,image/png"></label><small>JPEG or PNG, up to 2 MB.</small>${member?`<label>Status<select name="disabled"><option value="false">Active</option><option value="true" ${member.disabled?'selected':''}>Inactive</option></select></label><small>Inactive members cannot sign in. Their past records are kept.</small>`:''}<button class="primary" id="team-save" disabled>${member?'Save changes':'Create team member'}</button>${member&&allowReuse?'<button type="button" class="team-remove" id="team-unassign">Remove from this property</button>':''}<p class="checkpoint-status" role="status"></p></form></section>`;
     const form=host.querySelector('form'),save=host.querySelector('#team-save');
     if(roleOnly) {
       host.querySelector('h2').textContent=member?'Edit supervisor':'Add supervisor';
@@ -42,6 +53,13 @@ export function teamSettings(host,{site,users,api,esc,icon,done,roleOnly=null}) 
     };
     form.oninput=update;form.onchange=update;
     host.querySelector('#team-cancel').onclick=()=>list(member?.id);
+    const remove=host.querySelector('#team-unassign');
+    if(remove) remove.onclick=async()=>{
+      if(remove.dataset.confirm!=='true'){remove.dataset.confirm='true';remove.textContent='Confirm removal from this property';return;}
+      remove.disabled=true;
+      try {await api('/api/admin',{kind:'unassign',site_id:site.id,user_id:member.id});await done();}
+      catch(error){form.querySelector('[role="status"]').textContent=error.message;remove.disabled=false;remove.dataset.confirm='';remove.textContent='Remove from this property';}
+    };
     form.onsubmit=async event=>{
       event.preventDefault();event.stopPropagation();if(busy||save.disabled)return;
       busy=true;save.disabled=true;save.textContent='Saving…';
