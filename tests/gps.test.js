@@ -42,7 +42,10 @@ test('owner-only address setup and durable capture-time assessments',async()=>{
 test('supervisor reviews grouped GPS flags without changing problems',async()=>{
  const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
  try{const context=await browser.newContext({viewport:{width:360,height:900}}),p=await context.newPage();const errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto(base);await p.locator('#email').fill('supervisor@demo.isdl');await p.locator('#password').fill('Pilot-only-2026!');await p.getByRole('button',{name:'Sign in',exact:true}).click();
- await p.locator('[data-action="reviewLocation"]').first().click();await p.getByRole('heading',{name:'Location review',exact:true}).waitFor();
+ // The overview shows only three attention rows at once. Use the stable location-review
+ // entry point so an unrelated, newer item cannot hide this review workflow.
+ await p.locator('[data-action="locationHistory"]').click();await p.getByRole('heading',{name:'Location review',exact:true}).waitFor();
+ await p.locator('[data-action="reviewLocation"]').first().click();
  await p.getByText('Location outside property area',{exact:true}).first().waitFor();
  assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
  await p.locator('#gps-review-form textarea').fill('Called guard; checking handset GPS.');await p.getByRole('button',{name:'Mark reviewed',exact:true}).click();await p.getByText('All displayed location exceptions have been reviewed.',{exact:true}).waitFor();
