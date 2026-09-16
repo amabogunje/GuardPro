@@ -39,7 +39,7 @@ All demo accounts initially use **`Pilot-only-2026!`**. `DEMO_PASSWORD` only cha
 4. In another browser profile, sign in as owner. Open **Incidents** to see the submitted report and its private original media. Submission time and event time remain separate.
 5. Sign in as supervisor. Open Incidents. Acknowledge the new issue, assign a responsible person and next action, then resolve with a note and optional photo. Each transition preserves actor and timestamp. Acknowledgement alone never resolves the incident.
 6. Open **Daily reports**, generate a draft, inspect counts/source records, edit the narrative and approve. The owner sees only approved summaries. Download source records as JSON.
-7. Settings creates guards and supervisors, assignments, daily shift plans, checkpoints, round times, approved instructions and escalation contacts. Print the QR checkpoint sheet from this screen. ISDL creates a real first customer, owner and property through the controlled [assisted provisioning procedure](docs/ASSISTED-CUSTOMER-PROVISIONING.md).
+7. A new customer selects **Create an account** on sign-in, then completes the two-step account and first-property setup. The new owner can add their first supervisor from **Supervisors**. Settings creates guards and supervisors, assignments, daily shift plans, checkpoints, round times, approved instructions and escalation contacts. Print the QR checkpoint sheet from this screen. The controlled [operator fallback procedure](docs/ASSISTED-CUSTOMER-PROVISIONING.md) is available when self-service setup is not possible.
 8. End Bala’s shift and enter handover notes.
 
 ## Offline demonstration

@@ -135,6 +135,19 @@ async function rate(key, duration, maximum) {
   limit.set(key, entry);
   return entry.n <= maximum;
 }
+async function issueSession(res, u) {
+  const token = randomBytes(32).toString("hex");
+  const expiresAt = Date.now() + 12 * 3600000;
+  await run("INSERT INTO sessions VALUES(?,?,?)", token, u.id, expiresAt);
+  res.cookie("session", token, {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: process.env.COOKIE_SECURE === "true",
+    maxAge: 43200000,
+  });
+  const contact = await one("SELECT vault_key FROM user_contacts WHERE user_id=?", u.id);
+  return { id: u.id, name: u.name, role: u.role, proof: token, expiresAt, vaultAccount: contact?.vault_key || u.email };
+}
 post("/api/login", async (req, res) => {
   let u = await one(
     "SELECT u.* FROM users u LEFT JOIN user_contacts c ON c.user_id=u.id WHERE (u.email=? AND COALESCE(c.email_missing,0)=0) OR c.whatsapp=?",
@@ -143,17 +156,37 @@ post("/api/login", async (req, res) => {
   );
   if (!u || (await one("SELECT 1 FROM disabled_users WHERE user_id=?",u.id)) || !verify(String(req.body.password || ""), u.password))
     fail("Incorrect sign-in details", 401);
-  let token = randomBytes(32).toString("hex"),
-    expiresAt = Date.now() + 12 * 3600000;
-  await run("INSERT INTO sessions VALUES(?,?,?)", token, u.id, expiresAt);
-  res.cookie("session", token, {
-    httpOnly: true,
-    sameSite: "strict",
-    secure: process.env.COOKIE_SECURE === "true",
-    maxAge: 43200000,
-  });
-  const contact=await one("SELECT vault_key FROM user_contacts WHERE user_id=?",u.id);
-  res.json({ id: u.id, name: u.name, role: u.role, proof: token, expiresAt, vaultAccount:contact?.vault_key || u.email });
+  res.json(await issueSession(res, u));
+});
+post("/api/signup", async (req, res) => {
+  if (!(await rate("signup:" + req.ip, 3600000, 5)))
+    fail("Too many account requests; please try again later.", 429);
+  const ownerName = text(req.body.owner_name, 120);
+  const customerName = text(req.body.customer_name, 120);
+  const propertyName = text(req.body.property_name, 120);
+  const email = loginId(req.body.email);
+  const password = String(req.body.password || "");
+  if (!ownerName || !customerName || !propertyName) fail("Enter your name, customer name and property name");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fail("Use a valid email address");
+  if (password.length < 12) fail("Use a password of at least 12 characters");
+  let property;
+  try {
+    property = propertyInput(req.body);
+  } catch (error) {
+    fail(error.message);
+  }
+  if (await one("SELECT id FROM users WHERE lower(email)=lower(?)", email))
+    fail("An account already uses this email address", 409);
+
+  const customerId = id(), ownerId = id(), siteId = id(), createdAt = now();
+  await run("INSERT INTO customers VALUES(?,?)", customerId, customerName);
+  await run("INSERT INTO users VALUES(?,?,?,?,?)", ownerId, ownerName, email, hash(password), "owner");
+  await run("INSERT INTO sites(id,customer_id,name) VALUES(?,?,?)", siteId, customerId, propertyName);
+  await run("INSERT INTO assignments VALUES(?,?)", ownerId, siteId);
+  await run("INSERT INTO site_locations VALUES(?,?,?,?)", siteId, property.latitude, property.longitude, property.radius_m);
+  await run("INSERT INTO property_locations VALUES(?,?,?,?,?,?,?,?)", id(), siteId, property.address, property.latitude, property.longitude, property.radius_m, ownerId, createdAt);
+  await audit({ id: ownerId }, "customer.self_registered", { customer_id: customerId, site_id: siteId });
+  res.json({ ...(await issueSession(res, { id: ownerId, name: ownerName, role: "owner", email })), customerId, siteId });
 });
 app.use(["/api", "/media"], async (req, res, next) => {
   let token = (req.headers.cookie || "")

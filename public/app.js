@@ -181,6 +181,8 @@ let vault = { state: null, queue: [], draft: null },
   timer,
   roundId = null,
   slot = null;
+let signupStep = 0,
+  signupDraft = {};
 const root = document.querySelector("#app"),
   $ = (s) => document.querySelector(s),
   uuid = () => crypto.randomUUID(),
@@ -255,7 +257,49 @@ const persist = () => save(vault),
     `<div class="brand"><img src="/icon.svg" alt=""><div><strong>Guard Companion</strong></div></div>`;
 watchMaterial(root);
 function login() {
-  root.innerHTML = `<main class="login">${brand()}<div class="card"><span class="eyebrow">Professional guard supervision</span><h1>Welcome back</h1><p class="muted">Sign in to access your security workspace.</p><form id="login"><label class="label" for="email">Email or WhatsApp number</label><input id="email" name="email" type="text" autocomplete="username" required value="bala@demo.isdl"><label class="label" for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required><button class="primary wide">Sign in</button></form><details><summary>Fictional pilot accounts</summary><p>Guard: bala@demo.isdl<br>Owner: owner@demo.isdl<br>Supervisor: supervisor@demo.isdl<br>Separate customer: other@demo.isdl</p><p>Password: <code>Pilot-only-2026!</code></p></details></div><footer>Provided by Integrated Systems and Devices Limited — ISDL<br>Guard supervision. For emergencies, use your normal telephone contacts.</footer></main>`;
+  const signup = signupStep === 1
+    ? `<div class="card signup-card"><span class="eyebrow">Set up Guard Companion</span><p class="signup-step">Step 1 of 2</p><h1>Create your account</h1><p class="muted">Create the owner account for your property. You can add a supervisor after setup.</p><form id="signupAccount"><label class="label" for="signupOwnerName">Your name</label><input id="signupOwnerName" name="owner_name" autocomplete="name" maxlength="120" required value="${esc(signupDraft.owner_name || "")}"><label class="label" for="signupCustomerName">Customer or household name</label><input id="signupCustomerName" name="customer_name" maxlength="120" required value="${esc(signupDraft.customer_name || "")}"><label class="label" for="signupEmail">Email address</label><input id="signupEmail" name="email" type="email" autocomplete="email" required value="${esc(signupDraft.email || "")}"><label class="label" for="signupPassword">Password</label><input id="signupPassword" name="password" type="password" autocomplete="new-password" minlength="12" required><p class="field-help">Use at least 12 characters.</p><label class="label" for="signupPasswordConfirm">Confirm password</label><input id="signupPasswordConfirm" name="password_confirm" type="password" autocomplete="new-password" minlength="12" required><button class="primary wide">Continue</button><button type="button" class="text-action wide" data-action="cancelSignup">Back to sign in</button></form></div>`
+    : signupStep === 2
+      ? `<div class="card signup-card"><span class="eyebrow">Set up Guard Companion</span><p class="signup-step">Step 2 of 2</p><h1>Add your first property</h1><p class="muted">This is where your guards will check in and record patrols.</p><form id="signupProperty"><label class="label" for="signupPropertyName">Property name</label><input id="signupPropertyName" name="property_name" maxlength="120" required value="${esc(signupDraft.property_name || "")}" placeholder="For example, Oak House"><label class="label" for="signupAddress">Full property address</label><textarea id="signupAddress" name="address" maxlength="500" required placeholder="Street, area, city and state">${esc(signupDraft.address || "")}</textarea><div class="location-row"><label class="label" for="signupLatitude">Latitude<input id="signupLatitude" name="latitude" type="number" step="any" required value="${esc(signupDraft.latitude || "")}"></label><label class="label" for="signupLongitude">Longitude<input id="signupLongitude" name="longitude" type="number" step="any" required value="${esc(signupDraft.longitude || "")}"></label></div><button type="button" class="location-action wide" data-action="signupLocation">Use my current position</button><p id="signupLocationStatus" class="field-help">Use this while you are at the property, or enter its coordinates manually.</p><label class="label" for="signupRadius">Allowed check-in area (metres)</label><input id="signupRadius" name="radius_m" type="number" min="20" max="5000" required value="${esc(signupDraft.radius_m || "100")}"><label class="signup-confirm"><input type="checkbox" name="confirmed" required ${signupDraft.confirmed ? "checked" : ""}><span>I confirm this is the correct property location.</span></label><p class="field-help">Location is collected only when guards check in or scan checkpoints on duty. Guard Companion does not continuously track guards.</p><button class="primary wide">Create account</button><button type="button" class="text-action wide" data-action="signupBack">Back</button></form></div>`
+      : `<div class="card"><span class="eyebrow">Professional guard supervision</span><h1>Welcome back</h1><p class="muted">Sign in to access your security workspace.</p><form id="login"><label class="label" for="email">Email or WhatsApp number</label><input id="email" name="email" type="text" autocomplete="username" required value="bala@demo.isdl"><label class="label" for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required><button class="primary wide">Sign in</button></form><div class="signup-entry"><p class="muted">New to Guard Companion?</p><button class="wide" type="button" data-action="startSignup">Create an account</button></div><details><summary>Fictional pilot accounts</summary><p>Guard: bala@demo.isdl<br>Owner: owner@demo.isdl<br>Supervisor: supervisor@demo.isdl<br>Separate customer: other@demo.isdl</p><p>Password: <code>Pilot-only-2026!</code></p></details></div>`;
+  root.innerHTML = `<main class="login">${brand()}${signup}<footer>Provided by Integrated Systems and Devices Limited — ISDL<br>Guard supervision. For emergencies, use your normal telephone contacts.</footer></main>`;
+}
+
+async function completeSignIn(credentials, online) {
+  vault = await unlock(credentials.email, credentials.password, online?.vaultAccount);
+  roundId = vault.roundId || null;
+  slot = vault.slot || null;
+  if (online) {
+    vault.auth = online.proof;
+    await refresh();
+  } else {
+    if (!vault.state) throw new Error("First sign-in needs connectivity");
+    state = vault.state;
+    user = state.user;
+    siteId = state.sites[0]?.id;
+  }
+  $("#toast").style.display = "none";
+  try {
+    await remember(online?.expiresAt);
+  } catch {
+    toast("This browser could not keep your sign-in for refresh.");
+  }
+  page = "home";
+  render();
+  navigator.storage?.persist?.();
+  if (user.role === "guard" && siteId) {
+    const signedUser = user.id,
+      signedSite = siteId,
+      signedAt = new Date().toISOString();
+    locate()
+      .then(async (location) => {
+        if (user?.id !== signedUser || siteId !== signedSite) return;
+        await enqueue("sign_in_location", { location, sign_in_at: signedAt });
+        await sync();
+      })
+      .catch(() => {});
+  }
+  await sync();
 }
 async function refresh() {
   state = await api("/api/state");
@@ -1428,43 +1472,21 @@ document.addEventListener("submit", async (e) => {
       } catch (err) {
         if (navigator.onLine) throw err;
       }
-      vault = await unlock(b.email, b.password, online?.vaultAccount);
-      roundId = vault.roundId || null;
-      slot = vault.slot || null;
-      if (online) {
-        vault.auth = online.proof;
-        await refresh();
-      } else {
-        if (!vault.state) throw new Error("First sign-in needs connectivity");
-        state = vault.state;
-        user = state.user;
-        siteId = state.sites[0]?.id;
-      }
-      $("#toast").style.display = "none";
-      try {
-        await remember(online?.expiresAt);
-      } catch {
-        toast("This browser could not keep your sign-in for refresh.");
-      }
-      page = "home";
-      render();
-      navigator.storage?.persist?.();
-      if (user.role === "guard" && siteId) {
-        const signedUser = user.id,
-          signedSite = siteId,
-          signedAt = new Date().toISOString();
-        locate()
-          .then(async (location) => {
-            if (user?.id !== signedUser || siteId !== signedSite) return;
-            await enqueue("sign_in_location", {
-              location,
-              sign_in_at: signedAt,
-            });
-            await sync();
-          })
-          .catch(() => {});
-      }
-      await sync();
+      await completeSignIn(b, online);
+    } else if (f.id === "signupAccount") {
+      if (b.password !== b.password_confirm) throw new Error("Passwords do not match");
+      signupDraft = { ...signupDraft, ...b };
+      signupStep = 2;
+      login();
+      $("#signupPropertyName")?.focus();
+    } else if (f.id === "signupProperty") {
+      signupDraft = { ...signupDraft, ...b, confirmed: b.confirmed === "on" };
+      const online = await api("/api/signup", signupDraft);
+      const credentials = { email: signupDraft.email, password: signupDraft.password };
+      signupStep = 0;
+      signupDraft = {};
+      await completeSignIn(credentials, online);
+      toast("Your account and first property are ready. Add a supervisor when you are ready.");
     } else if (f.id === "shiftForm") {
       let s = shift();
       if (
@@ -1758,6 +1780,43 @@ document.addEventListener("click", async (e) => {
       return;
     }
     let a = b.dataset.action;
+    if (a === "startSignup") {
+      signupStep = 1;
+      signupDraft = {};
+      login();
+      $("#signupOwnerName")?.focus();
+      return;
+    }
+    if (a === "cancelSignup") {
+      signupStep = 0;
+      signupDraft = {};
+      login();
+      return;
+    }
+    if (a === "signupBack") {
+      const propertyForm = $("#signupProperty");
+      signupDraft = { ...signupDraft, ...Object.fromEntries(new FormData(propertyForm)) };
+      signupStep = 1;
+      login();
+      $("#signupPassword")?.focus();
+      return;
+    }
+    if (a === "signupLocation") {
+      const status = $("#signupLocationStatus");
+      if (!navigator.geolocation) throw new Error("Location is unavailable on this browser. Enter the coordinates manually.");
+      status.textContent = "Finding your position…";
+      const position = await new Promise((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          timeout: 12000,
+          maximumAge: 0,
+          enableHighAccuracy: true,
+        }),
+      );
+      $("#signupLatitude").value = String(position.coords.latitude);
+      $("#signupLongitude").value = String(position.coords.longitude);
+      status.textContent = "Current position added. Confirm the address and location before continuing.";
+      return;
+    }
     if(a==='ownerMode'){await setOwnerMode(!ownerSupervisorView());return;}
     if (a === "activityPeriod") {
       activityPeriod = ["daily","monthly","custom"].includes(b.dataset.value) ? b.dataset.value : "daily";

@@ -4,7 +4,7 @@
 **Audit baseline:** `6f80c7c`  
 **Source:** [Independent readiness report](audit-2026-09-16/MVP-READINESS-REPORT.md), [engineering notes](audit-engineering-notes.md), [product notes](audit-product-notes.md)  
 **Current release decision:** NOT READY for paying customer operations.  
-**Current work:** Obtain independent review for completed supervisor, guard and O1 remediations, and prepare signed cross-role Android validation.
+**Current work:** Obtain independent review for completed supervisor, guard and O1 self-service remediations, and prepare signed cross-role Android validation.
 **Next issue:** Begin O2 owner interpretation of historical activity and current uncertainty.
 **Progress:** S0 is verified locally and remains Not released. S1–S7, G1–G5 and O1 remain ready for independent verification. G6 is blocked on real-device evidence across all roles; G7 and X7 are ready for independent verification after clean local release-suite verification.
 
@@ -12,13 +12,13 @@ This is the authoritative shared plan. Keep stable IDs so the owner can discuss,
 
 ## 1. Scope and decisions
 
-Working target: a supported, assisted paid pilot of recorded guard supervision. Preserve the existing mobile guard/supervisor/owner design. Prioritize authorization, evidence integrity, recovery and customer onboarding before cosmetic changes. Do not add a repair-management workflow.
+Working target: a supported, self-service paid pilot of recorded guard supervision. Preserve the existing mobile guard/supervisor/owner design. Prioritize authorization, evidence integrity, recovery and customer onboarding before cosmetic changes. Do not add a repair-management workflow.
 
 The audit proposes one property per initial customer, named guard rosters, external urgent communication, and manual invoicing. These are planning defaults to confirm with the product owner before restricting advertised capability. Conditional issues remain OPEN until implemented or explicitly deferred with an accepted service limitation. They do not disappear from the plan.
 
 | Decision | Proposed default | Status / owner | Affected issues |
 |---|---|---|---|
-| D1 Initial customer scope | Assisted onboarding; one property initially | Proposed; product owner | O1, O7, X8 |
+| D1 Initial customer scope | Self-service owner signup and guided first-property setup; one property initially | Accepted 2026-09-16; product owner | O1, O7, X8 |
 | D2 Instructions | Keep recorded instructions as well as typed instructions for low-literacy use | Proposed; product owner | G7, S6 |
 | D3 Owner also supervises | Support this existing promised variant | Proposed; product owner | O6 |
 | D4 Urgent help | Remove dummy alarm; use configured normal telephone help, no guaranteed monitoring | Proposed; product owner | G3, S4, X8 |
@@ -102,7 +102,7 @@ Independent work may overlap. Dependencies in the register must be honored. Plan
 
 | ID | Priority | Status | Implementation deliverable and acceptance | Dependencies / verification |
 |---|---|---|---|---|
-| O1 | P1 | Ready for verification | Supported, audited fresh-customer/owner/first-property provisioning; self-service zero-property path fixed if offered, otherwise honest assisted flow. No ad-hoc SQL/demo credentials. | Assisted one-property command, onboarding runbook and local two-tenant owner login/isolation/audit test are complete. Independent operator rehearsal and production/demo separation under X1 remain required. |
+| O1 | P1 | Ready for verification | Supported, audited self-service fresh-customer/owner/first-property signup and guided setup; retain assisted provisioning only as internal support fallback. No ad-hoc SQL/demo credentials. | Focused API/browser checks pass for mobile wizard, tenant isolation, duplicate rejection, location confirmation and audit. Independent Android/customer trial and X1 production/demo separation remain required. |
 | O2 | P1 | Not started | Label historical period unambiguously; current outstanding/unreviewed and unconfirmed freshness visible without operational interpretation. | S4; exclude-today, stale offline receipt and current issue browser/API fixtures. |
 | O3 | P1 | Not started | Align patrol score/label with D5; disclose unknown/partial measurement and Any staffing limitations. No start-only evidence presented as completion. | S2, D5; zero scans/on-time start, incomplete roster and Any fixtures; owner/supervisor/export reconciliation. |
 | O4 | P1 | Not started | Retrospective classification separated from current unresolved/unclassified issues; zero classified security does not imply safe. Clear P1 meaning/denominator. | S3, O2; today's open incident, historical resolved P1, unclassified/legacy report fixtures. |
@@ -305,15 +305,17 @@ Implementation: remote commit `61ed1b3` was integrated with local remediation as
 Acceptance evidence: `node --test --test-reporter=spec tests/settings.test.js` in the isolated integration worktree completed 7 passed, 0 failed, including private publication, shift-level association and immutable guard versions.  
 Next action: independently confirm denied-microphone and offline playback behavior on a supported Android device.
 
-### O1 — Assisted first-customer provisioning
+### O1 — Self-service first-customer onboarding
 
 Status / release state: Ready for verification / Not released
-Dependencies and scope decision: Implements D1's proposed assisted, one-property initial scope. It does not advertise or add public self-service signup.
-Implementation files: `scripts/provision-customer.mjs`, `docs/ASSISTED-CUSTOMER-PROVISIONING.md`, `package.json`, `tests/provisioning.test.js`. The command requires explicit `--confirm`, a traceable operator ID, validated customer/owner/property/location inputs, and an owner-password environment variable name. It creates the customer, owner, first property, assignment, confirmed location and immutable audit receipt in one transaction.
-Acceptance criteria checked: two fresh customer/owner/property accounts sign in independently; each owner sees only its own first property; cross-property settings access is denied; the provisioning audit record identifies the operator and generated records.
-Test command | date | revision | environment | result | evidence path: `node --test --test-reporter=spec tests/provisioning.test.js tests/owner-overview.test.js` | 2026-09-16 | working tree | isolated SQLite server and two controlled provisioning processes | 5 passed, 0 failed | `tests/provisioning.test.js`, `tests/owner-overview.test.js`
-Review result and unresolved concerns: local verification only. A named ISDL operator must rehearse the procedure against the isolated production environment. X1 must demonstrate that production contains no shared demo data or credentials before real-customer use.
-Next action: conduct the independent operator rehearsal, attach the receipt without credentials, and keep O1 at Ready for verification until it is reviewed.
+Dependencies and scope decision: D1 was changed by the product owner on 2026-09-16 to a self-service owner signup and one guided first-property setup. Subscription and payment remain outside this flow. The assisted command remains an internal support fallback, not the normal customer journey.
+Baseline / observed gap: a fresh customer could only be created by an ISDL operator. There was no public, guided route to create an owner, customer and first property without demo access.
+Implementation files: `server.js`, `public/app.js`, `public/style.css`, `tests/signup.test.js`; existing fallback: `scripts/provision-customer.mjs`, `docs/ASSISTED-CUSTOMER-PROVISIONING.md`. The public endpoint validates account and confirmed property inputs, creates customer, owner, property, assignment and location atomically, writes a self-registration audit record, and returns a normal owner session. The two-step mobile wizard explains the property-location purpose and continues into the owner experience.
+Acceptance criteria checked: a new owner completes signup at 390px without a demo account; the property location is confirmed; the user reaches their owner workspace; two new customer tenants cannot access each other's state/settings; duplicates and unconfirmed locations are rejected; audit history identifies the self-registration actor and records created customer/site IDs.
+Test command | date | revision | environment | result | evidence path: `node --test --test-reporter=spec tests/signup.test.js tests/provisioning.test.js tests/owner-overview.test.js` | 2026-09-16 | working tree | isolated SQLite servers plus headless Chrome at 390×844 | 8 passed, 0 failed | `tests/signup.test.js`, `tests/provisioning.test.js`, `tests/owner-overview.test.js`
+Cross-role regression checks: the existing assisted-provisioning and owner overview/isolation cases passed in the same run. A serial release-suite attempt initially reported three false failures because an orphaned local workflow server occupied its fixed port. After confirming the port clear, `tests/workflows.test.js` passed its API, media, state-machine, offline and mobile cases through the reported stages. The full release command must still be rerun from a clean test-process state before a release decision; X7 remains the release-suite gate.
+Review result and unresolved concerns: local verification only. Independent customer and Android review remain required. X1 must demonstrate that production contains no shared demo data or credentials before real-customer use. A commercial/support handoff remains O8/X8 work.
+Next action: have an independent reviewer complete the signup flow on a supported Android device, then attach the result; rerun the complete release suite from a clean test-process state before deployment.
 
 ## 7. GATE-1 — release approval record
 
@@ -358,6 +360,7 @@ Deliberately outside the working remediation target: in-app chat, AI transcripti
 | 2026-09-16 | G6 | Reclassified G6 from Guard to Mobile and device validation while retaining its stable ID. Expanded acceptance and the field checklist to guard, supervisor and owner journeys. | Blocked on signed real-device results; this is a documentation and release-governance change only, with no production claim. |
 | 2026-09-16 | GPS review, X7 | Repaired the GPS browser regression by navigating through the stable Location review history entry instead of assuming its action is among the overview's first three attention rows. Made `test:release` serial so test files cannot contend for local server resources. | GPS suite: 4 passed, 0 failed. Clean `npm run test:release`: 58 passed, 0 failed in 141 seconds. The command deliberately filters six retired messaging scenarios and one retired owner-publication scenario; no deployment occurred. X7 is Ready for independent verification. |
 | 2026-09-16 | O1 | Added a controlled assisted-provisioning command and runbook for one fresh customer, owner and first property. The command validates inputs, reads the temporary owner password only from a named environment variable, creates all records atomically and emits an audited receipt. | Focused provisioning and owner-isolation suites: 5 passed, 0 failed. O1 is Ready for independent verification; a named operator rehearsal and X1 production/demo separation remain required. No deployment occurred. |
+| 2026-09-16 | D1, O1 | Product owner accepted self-service signup as the initial customer route. Added public, rate-limited signup that atomically creates a customer, owner, first property, confirmed location, assignment, audit entry and owner session; added a two-step mobile wizard and retained the controlled operator command only as a support fallback. | Focused signup/provisioning/owner checks: 8 passed, 0 failed, including a 390×844 browser journey, two-tenant isolation, duplicate rejection and audit evidence. O1 is Ready for independent verification. A full-suite attempt was contaminated by an orphaned fixed-port workflow server; rerun cleanly before a release decision. No deployment occurred. |
 
 ### New regression register
 

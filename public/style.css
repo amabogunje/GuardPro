@@ -848,6 +848,69 @@ progress::-webkit-progress-value {
 .login .card details {
   margin-top: 20px;
 }
+.login .signup-card {
+  padding-bottom: 28px;
+}
+.signup-step {
+  margin: 12px 0 0;
+  color: var(--md-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+.signup-entry {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--md-outline-variant);
+}
+.signup-entry .muted {
+  margin: 0 0 10px;
+}
+.text-action {
+  margin-top: 12px;
+  color: var(--md-primary);
+  background: transparent;
+  border-color: transparent;
+}
+.text-action:hover {
+  background: var(--md-primary-container);
+}
+.field-help {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.location-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.location-row .label {
+  min-width: 0;
+}
+.location-row input {
+  width: 100%;
+}
+.location-action {
+  margin-top: 16px;
+  color: var(--md-primary);
+  background: var(--md-primary-container);
+  border-color: transparent;
+}
+.signup-confirm {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 20px;
+  line-height: 1.4;
+}
+.signup-confirm input {
+  min-height: auto;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex: 0 0 auto;
+}
 .login .card .eyebrow {
   letter-spacing: 0.5px;
 }

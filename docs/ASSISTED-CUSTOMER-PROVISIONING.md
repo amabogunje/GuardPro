@@ -1,6 +1,8 @@
-# Assisted customer provisioning
+# Operator fallback provisioning
 
-For the initial paid pilot, ISDL provisions one customer, one owner and one property through the controlled command below. It is not a public sign-up feature and it does not grant the new owner access to demo properties.
+The normal first-customer journey is self-service: select **Create an account** on the Guard Companion sign-in screen, then complete the guided account and first-property setup. It creates an owner account, customer, property, confirmed location and isolated workspace without access to demo properties.
+
+This controlled command remains an internal ISDL support fallback when a customer cannot complete self-service setup. It creates the same one customer, one owner and one property scope.
 
 Run migrations first in the intended environment. Set a temporary owner password in the operator's secure shell or secret runner, then invoke the command with its **environment variable name**, never the password itself. Use a real operator identifier so the resulting audit entry can be traced.
 
