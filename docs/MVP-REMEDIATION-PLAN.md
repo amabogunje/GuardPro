@@ -5,8 +5,8 @@
 **Source:** [Independent readiness report](audit-2026-09-16/MVP-READINESS-REPORT.md), [engineering notes](audit-engineering-notes.md), [product notes](audit-product-notes.md)  
 **Current release decision:** NOT READY for paying customer operations.  
 **Current work:** Verify the remaining GPS review regression and obtain independent review for completed guard remediations.  
-**Next issue:** Repair the GPS review regression, then complete G6 signed Android field validation.  
-**Progress:** S0 is verified locally and remains Not released. S1–S7 and G1–G5 remain ready for independent verification. G6 is blocked on real-device evidence; G7 is reopened because recorded instruction publication is unreachable; X7 is In progress to align the release suite with approved MVP scope.
+**Next issue:** Repair the GPS review regression, then complete G6 signed cross-role Android field validation.
+**Progress:** S0 is verified locally and remains Not released. S1–S7 and G1–G5 remain ready for independent verification. G6 is blocked on real-device evidence across all roles; G7 is ready for verification after remote integration; X7 is In progress to align the release suite with approved MVP scope.
 
 This is the authoritative shared plan. Keep stable IDs so the owner can discuss, prioritize and verify work independently. The audit remains an unchanged historical record; update this plan as implementation progresses. Creating this plan does not authorize purchases or deployments, and does not assert that the proposed commercial scope has been accepted.
 
@@ -83,7 +83,6 @@ Independent work may overlap. Dependencies in the register must be honored. Plan
 | G3 | P1 | Ready for verification | Remove nonfunctional Emergency action; implement correctly labelled configured help if D4 accepted. No claim an alert was sent. | Placeholder alarm removed. Configured Call supervisor uses a telephone link; actual dialler exercise remains G6. |
 | G4 | P1 | Ready for verification | Server enforces coherent start/patrol/scan/end chronology and handles skew with review/rejection; original capture/receipt preserved. Legitimate offline delay remains valid. | Server now rejects captures before a referenced shift or materially future device times; old captures retain a review marker. Boundary testing remains independent verification. |
 | G5 | P1 | Ready for verification | Safe credential reset/vault recovery flow or supported tool/runbook; guard can regain access without silently discarding pending evidence. Explain unrecoverable loss. | Assisted recovery and lost-device procedure documented; encrypted pending work is explicitly unrecoverable after credential/browser loss. Field reset exercise remains required. |
-| G6 | P1 | Blocked | Signed real Android acceptance record with models/browser/OS, permissions, weak connectivity, QR, recording interruption, screen lock, storage pressure and shared phone. NFC only claimed if tested. | Checklist created at `docs/real-android-pilot-checklist.md`; blocked until ISDL, QA and a pilot operator execute and sign it. Desktop browser tests do not close this issue. |
 | G7 | P2 | Ready for verification | Recorded instructions accessible from current Settings and cached playback for guards, or accepted typed-only limitation with corrected labels/claims. | Settings → Shifts now exposes per-shift typed and recorded instructions. Focused tests verify private upload, saved shift association and immutable active-shift playback. Independent browser/Android review remains required. |
 
 ### Supervisor
@@ -111,6 +110,12 @@ Independent work may overlap. Dependencies in the register must be honored. Plan
 | O6 | P2 | Not started | Owner-as-supervisor is a persistent responsibility choice that completes setup without a fake supervisor account. | O1, D3; refresh, audit identity, owner-only and separate-supervisor cases. |
 | O7 | P2 | Not started | Reuse existing supervisor for another property through authorized workflow, or explicitly accept and enforce single-property initial scope. | S0, O1, D1; existing identity assignment, duplicate contact, tenant boundaries, removal and access tests. |
 | O8 | P1 | Not started | Truthful manual-service/payment/support information or remove dead-end Subscription entry; establish contract, invoice/ledger and service dates. | D6, X8; ISDL commercial supplies terms; no invented prices/statuses or unsolicited payment integration. |
+
+### Mobile and device validation
+
+| ID | Priority | Status | Implementation deliverable and acceptance | Dependencies / verification |
+|---|---|---|---|---|
+| G6 | P1 | Blocked | Signed cross-role Android acceptance record with device/browser/OS, shared-phone behavior, permissions, weak connectivity, interruption, storage pressure, accessible mobile layouts and core guard, supervisor and owner journeys. QR, recording and NFC are tested where the device supports them. | Checklist at `docs/real-android-pilot-checklist.md`; blocked until ISDL, QA and representative guard, supervisor and owner users execute and sign it. Desktop browser tests do not close this issue. |
 
 ### Shared engineering and operations
 
@@ -147,7 +152,7 @@ Run focused cases per change and the complete current release suite before relea
 | Fresh customer; owner supervises; existing supervisor on second property if supported | Complete setup without duplicate identities or demo access; scoped evidence | O1/O5/O6/O7 |
 | Slow storage plus concurrent login/check-in | Bounded latency, no cross-customer transaction stall or duplicated writes | X6/X9 |
 | Production restore and tenant offboarding rehearsal | DB and media usable; removed access denied; unaffected tenant preserved | X1/X3/X4 |
-| 360–390px, larger text, permissions denied, actual Android interruptions | Core journeys remain usable; phone results and limitations recorded | G6, all changed UI |
+| 360–390px, larger text, permissions denied, actual Android interruptions | Guard, supervisor and owner core journeys remain usable; phone results and limitations recorded | G6, all changed UI |
 
 ## 6. Per-issue evidence records
 
@@ -284,10 +289,12 @@ Status / release state: Ready for verification / Not released
 Implementation files: `docs/guard-access-recovery.md`; related session revocation is implemented in S5. The procedure explicitly distinguishes safe assisted reset from irrecoverable encrypted pending work after credential/browser loss.  
 Next action: conduct password reset, expired-session, pending-audio and lost-phone exercises.
 
-### G6 — Real Android acceptance
+### G6 — Cross-role mobile and Android acceptance
 
 Status / release state: Blocked / Not released  
-Blocker: a signed field record from ISDL, QA and a pilot operator is required. `docs/real-android-pilot-checklist.md` is ready for use; no Android hardware claim is made from desktop/browser simulation.  
+Scope: This is a device and field-acceptance gate for every enabled user journey, not a guard-only defect.
+Blocker: a signed field record from ISDL, QA, and representative guard, supervisor and owner users is required. `docs/real-android-pilot-checklist.md` is ready for use; no Android hardware claim is made from desktop/browser simulation.
+Evidence: record normal and increased-text Android use for every role, plus the guard-specific camera, microphone, location, QR, offline, interrupted-upload, screen-lock, storage and shared-phone exercises. Test NFC only where the device/browser supports it.
 Next action: execute, attach and review the checklist before release.
 
 ### G7 — Recorded instructions
@@ -338,6 +345,7 @@ Deliberately outside the working remediation target: in-app chat, AI transcripti
 | 2026-09-16 | X7 | Updated `test:release` to skip all six retired in-app messaging scenarios by name while retaining the dedicated disabled-messaging boundary test. `git diff --check` passed. `npm run build` is not applicable because the project intentionally has no build script; it is a directly run Node server. | Release command still must fail on the active G7 regression until it is remediated. |
 | 2026-09-16 | G7, X7 | Safely integrated remote `61ed1b3` into local remediation commit `fbc7984`. Migration collision was resolved by retaining remote shift audio as `015` and moving local evidence/exception tables to `016`. A private profile-photo retrieval regression was fixed in `storage.js`; the supervisor suite then passed 11/11. | G7 settings suite passed 7/7. Full release suite ran 58 tests: 57 passed, one existing GPS review browser test failed consistently and requires separate remediation. No deployment occurred. |
 | 2026-09-16 | G7 | Began remediation for the verified navigation regression. The intended design is per-shift: Settings → Shifts → Add/Edit shift will own typed and recorded instructions; the start record will retain that version for guard playback. | Next: inspect existing instruction storage/snapshot behavior, add the shift editor control, then test publishing, scope, active-shift immutability, offline cache and denied microphone fallback. |
+| 2026-09-16 | G6 | Reclassified G6 from Guard to Mobile and device validation while retaining its stable ID. Expanded acceptance and the field checklist to guard, supervisor and owner journeys. | Blocked on signed real-device results; this is a documentation and release-governance change only, with no production claim. |
 
 ### New regression register
 
@@ -345,9 +353,9 @@ None recorded during remediation yet. The original audit defects are tracked abo
 
 ## 10. Audit coverage checklist
 
-- Guard G1–G7: seven register entries.
+- Guard: G1–G5 and G7; G6 remains a stable guard-origin ID but is classified as cross-role mobile acceptance.
 - Supervisor S0–S7: eight entries, including reproduced authorization issue.
 - Owner O1–O8: eight entries.
-- Shared gates: production separation X1; minimization X2; recovery G5/S5; integrity G4/S1/S2/S3; backup/lifecycle X3/X4; support/locking X5/X6; release evidence X7/G6; service boundary X8.
+- Shared gates: production separation X1; minimization X2; recovery G5/S5; integrity G4/S1/S2/S3; backup/lifecycle X3/X4; support/locking X5/X6; release evidence X7 and device acceptance G6; service boundary X8.
 - Additional engineering risks: conflict-blocked queue G2; global external-I/O lock X6; unbounded state/history X9; property-level privilege escalation S0.
-- Current total: **32 remediation issues** (7 guard + 8 supervisor + 8 owner + 9 shared). No issue has been silently dropped. GATE-1 is a release decision, not an additional fix.
+- Current total: **32 remediation issues**, including the cross-role G6 mobile acceptance gate. No issue has been silently dropped. GATE-1 is a release decision, not an additional fix.
