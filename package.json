@@ -10,6 +10,7 @@
     "start": "node --env-file-if-exists=.env server.js",
     "test": "node --test tests/*.test.js",
     "test:release": "node --test --test-concurrency=1 --test-skip-pattern=\"shift supervisor messages|voice supervisor messages|two-way shift chat|messaging requires a shift|empty current conversation|newest messages first|recorded shift instructions: owner publishes\" tests/*.test.js",
+    "provision:customer": "node scripts/provision-customer.mjs",
     "db:migrate": "node --env-file-if-exists=.env.local migrate.js",
     "start:cloud": "node --env-file-if-exists=.env.local server.js",
     "test:cloud": "node scripts/test-cloud.mjs"
