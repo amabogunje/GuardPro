@@ -4,8 +4,8 @@
 **Audit baseline:** `6f80c7c`  
 **Source:** [Independent readiness report](audit-2026-09-16/MVP-READINESS-REPORT.md), [engineering notes](audit-engineering-notes.md), [product notes](audit-product-notes.md)  
 **Current release decision:** NOT READY for paying customer operations.  
-**Current work:** G7 — restore reachable recorded-instruction publication (In progress).  
-**Next issue:** Implement and verify a per-shift recorded-instruction path, then obtain independent review and complete G6 signed Android field validation.  
+**Current work:** Verify the remaining GPS review regression and obtain independent review for completed guard remediations.  
+**Next issue:** Repair the GPS review regression, then complete G6 signed Android field validation.  
 **Progress:** S0 is verified locally and remains Not released. S1–S7 and G1–G5 remain ready for independent verification. G6 is blocked on real-device evidence; G7 is reopened because recorded instruction publication is unreachable; X7 is In progress to align the release suite with approved MVP scope.
 
 This is the authoritative shared plan. Keep stable IDs so the owner can discuss, prioritize and verify work independently. The audit remains an unchanged historical record; update this plan as implementation progresses. Creating this plan does not authorize purchases or deployments, and does not assert that the proposed commercial scope has been accepted.
@@ -84,7 +84,7 @@ Independent work may overlap. Dependencies in the register must be honored. Plan
 | G4 | P1 | Ready for verification | Server enforces coherent start/patrol/scan/end chronology and handles skew with review/rejection; original capture/receipt preserved. Legitimate offline delay remains valid. | Server now rejects captures before a referenced shift or materially future device times; old captures retain a review marker. Boundary testing remains independent verification. |
 | G5 | P1 | Ready for verification | Safe credential reset/vault recovery flow or supported tool/runbook; guard can regain access without silently discarding pending evidence. Explain unrecoverable loss. | Assisted recovery and lost-device procedure documented; encrypted pending work is explicitly unrecoverable after credential/browser loss. Field reset exercise remains required. |
 | G6 | P1 | Blocked | Signed real Android acceptance record with models/browser/OS, permissions, weak connectivity, QR, recording interruption, screen lock, storage pressure and shared phone. NFC only claimed if tested. | Checklist created at `docs/real-android-pilot-checklist.md`; blocked until ISDL, QA and a pilot operator execute and sign it. Desktop browser tests do not close this issue. |
-| G7 | P2 | In progress | Recorded instructions accessible from current Settings and cached playback for guards, or accepted typed-only limitation with corrected labels/claims. | Reopened during verification: current Settings navigation no longer exposes recorded-instruction publication. Restore a user-facing per-shift path, then repeat recording, authorization and offline playback tests. |
+| G7 | P2 | Ready for verification | Recorded instructions accessible from current Settings and cached playback for guards, or accepted typed-only limitation with corrected labels/claims. | Settings → Shifts now exposes per-shift typed and recorded instructions. Focused tests verify private upload, saved shift association and immutable active-shift playback. Independent browser/Android review remains required. |
 
 ### Supervisor
 
@@ -292,10 +292,11 @@ Next action: execute, attach and review the checklist before release.
 
 ### G7 — Recorded instructions
 
-Status / release state: In progress / Not released  
+Status / release state: Ready for verification / Not released  
 Implementation files: `public/app.js`, `public/instructions.js`, `server.js`. Guard refresh caches assigned/current-shift instruction audio for offline playback, while typed instructions and versioned active-shift content remain supported.  
-Verification failure: `tests/workflows.test.js` cannot reach the recorded-instruction editor through the approved Settings navigation. This is a functional access regression, not a test exclusion.  
-Next action: provide a user-facing, per-shift recorded-instruction control within the approved Settings pattern; then independently confirm denied-microphone and offline playback behavior.
+Implementation: remote commit `61ed1b3` was integrated with local remediation as `fbc7984`. Settings → Shifts → Add/Edit shift now provides typed instructions plus record, playback and remove controls for the recorded version. The active shift snapshots the selected audio version.  
+Acceptance evidence: `node --test --test-reporter=spec tests/settings.test.js` in the isolated integration worktree completed 7 passed, 0 failed, including private publication, shift-level association and immutable guard versions.  
+Next action: independently confirm denied-microphone and offline playback behavior on a supported Android device.
 
 ## 7. GATE-1 — release approval record
 
@@ -335,6 +336,7 @@ Deliberately outside the working remediation target: in-app chat, AI transcripti
 | 2026-09-16 | G7, X7 | Serial browser verification passed the core offline guard, patrol, report, responsive-layout, authorization and retry scenarios. It also found that recorded-instruction publication is unreachable from the approved Settings navigation. | G7 reopened. Retired in-app messaging tests are explicitly skipped; the recorded-instruction scenario remains active and failing until there is a user-facing per-shift path. |
 | 2026-09-16 | S1–S7, G1–G6, X7 | Completed local verification on the working tree based on `6f80c7c`. Focused supervisor/settings/activity suites: 20 passed, 0 failed. Serial workflow suite: 20 passed, 6 explicitly skipped retired-messaging tests, 1 active G7 failure. Dedicated disabled-messaging boundary test: 1 passed, 0 failed. Browser inspection confirmed the guard mobile screen exposes Start patrol, Report a problem, Hear instructions, compact synchronized state and a normal Call supervisor telephone link, with no Emergency or in-app messaging control. | Retain S1–S7 and G1–G5 as Ready for independent verification. G6 remains blocked on signed Android field evidence; G7 is reopened. Full release suite cannot pass until G7 is fixed. Not committed or deployed. |
 | 2026-09-16 | X7 | Updated `test:release` to skip all six retired in-app messaging scenarios by name while retaining the dedicated disabled-messaging boundary test. `git diff --check` passed. `npm run build` is not applicable because the project intentionally has no build script; it is a directly run Node server. | Release command still must fail on the active G7 regression until it is remediated. |
+| 2026-09-16 | G7, X7 | Safely integrated remote `61ed1b3` into local remediation commit `fbc7984`. Migration collision was resolved by retaining remote shift audio as `015` and moving local evidence/exception tables to `016`. A private profile-photo retrieval regression was fixed in `storage.js`; the supervisor suite then passed 11/11. | G7 settings suite passed 7/7. Full release suite ran 58 tests: 57 passed, one existing GPS review browser test failed consistently and requires separate remediation. No deployment occurred. |
 | 2026-09-16 | G7 | Began remediation for the verified navigation regression. The intended design is per-shift: Settings → Shifts → Add/Edit shift will own typed and recorded instructions; the start record will retain that version for guard playback. | Next: inspect existing instruction storage/snapshot behavior, add the shift editor control, then test publishing, scope, active-shift immutability, offline cache and denied microphone fallback. |
 
 ### New regression register
