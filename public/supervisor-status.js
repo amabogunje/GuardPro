@@ -1,6 +1,19 @@
 import { effectivePlans } from "./shift-plans.js";
 // Daily site shift windows use Nigerian local time (UTC+01:00).
 const DAY = 86400000;
+// A guard may check in shortly before the rostered start, but a previous
+// occurrence must never satisfy attendance for the selected shift.
+const EARLY_CHECK_IN_GRACE = 15 * 60 * 1000;
+
+function startedForOccurrence(shift, window, now) {
+  const started = Date.parse(shift.started_at);
+  return (
+    Number.isFinite(started) &&
+    started >= window.start - EARLY_CHECK_IN_GRACE &&
+    started < window.end &&
+    started <= now
+  );
+}
 export function overviewShifts({ site, plans = [], day, now = Date.now() }) {
   const today = new Date(now + 3600000).toISOString().slice(0, 10);
   const localDay = day || today;
@@ -72,19 +85,23 @@ export function supervisorStatus({
     windows.at(-1);
   // The denominator is guards due to check in, not a future roster size.
   const expected = new Set(now >= window.start ? window.guardIds : []);
+  const eligible = (shift) =>
+    shift.site_id === site.id &&
+    (window.anyGuard || expected.has(shift.user_id));
   const checked = new Set(
     shifts
-      .filter(
-        (s) =>
-          s.site_id === site.id &&
-          (window.anyGuard || expected.has(s.user_id)) &&
-          Date.parse(s.started_at) < window.end &&
-          Date.parse(s.ended_at || new Date(now).toISOString()) >=
-            window.start &&
-          Date.parse(s.started_at) <= now,
-      )
+      .filter((s) => eligible(s) && startedForOccurrence(s, window, now))
       .map((s) => s.user_id),
   );
+  const overdueOpen = shifts.filter((s) => {
+    const started = Date.parse(s.started_at);
+    return (
+      eligible(s) &&
+      !s.ended_at &&
+      Number.isFinite(started) &&
+      started < window.start - EARLY_CHECK_IN_GRACE
+    );
+  });
   const within = (time) =>
     Date.parse(time) >= window.start && Date.parse(time) < window.end;
   const slots = new Map();
@@ -129,8 +146,12 @@ export function supervisorStatus({
     {
       label: "Guards checked in",
       value: window.rosterUnknown ? "—" : `${checked.size} of ${window.anyGuard ? checked.size : expected.size}`,
-      qualifier: window.rosterUnknown ? "roster unavailable" : "expected",
-      tone: checked.size < expected.size ? "attention" : "good",
+      qualifier: window.rosterUnknown
+        ? "roster unavailable"
+        : overdueOpen.length
+          ? `${overdueOpen.length} earlier shift${overdueOpen.length === 1 ? "" : "s"} still open`
+          : "expected",
+      tone: checked.size < expected.size || overdueOpen.length ? "attention" : "good",
     },
     {
       label: "Patrols scheduled",
@@ -161,8 +182,7 @@ export function overviewDetails({
   const sessions = shifts.filter(
     (s) =>
       s.site_id === site.id &&
-      Date.parse(s.started_at) < window.end &&
-      Date.parse(s.ended_at || new Date(now).toISOString()) > window.start,
+      startedForOccurrence(s, window, now),
   );
   // Include recorded attendance even if the original roster is incomplete.
   const ids = new Set([...window.guardIds, ...sessions.map((s) => s.user_id)]);

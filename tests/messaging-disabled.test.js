@@ -40,18 +40,13 @@ test("MVP hides messaging for every role and rejects new messages", async () => 
       await p.locator("#email").fill(role+"@demo.isdl");
       await p.locator("#password").fill("Pilot-only-2026!");
       await p.getByRole("button",{name:"Sign in",exact:true}).click();
-      await p.locator(role==="owner"?".workspace":".guard").waitFor();
+      await p.locator(".guard").waitFor();
       assert.equal(await p.locator('[data-page="message"],[data-action="openChat"],.message-unread').count(),0);
       if(role==="supervisor") assert.equal(await p.locator(".supervisor-quick-start button").count(),3);
       if(role==="bala") {
-        assert.equal(await p.locator(".actions > button").count(),4);
-        const before = await (await fetch(base+"/api/state",{headers})).json();
-        await p.getByRole("button",{name:"Emergency",exact:true}).click();
-        await p.getByRole("heading",{name:"Emergency alarm not yet implemented"}).waitFor();
-        await p.getByRole("button",{name:"OK",exact:true}).click();
-        const after = await (await fetch(base+"/api/state",{headers})).json();
-        assert.equal(after.events.length,before.events.length);
-        assert.equal(after.notifications.length,before.notifications.length);
+        assert.equal(await p.locator(".actions > button").count(),3);
+        assert.equal(await p.getByRole("button",{name:"Emergency",exact:true}).count(),0);
+        assert.equal(await p.getByRole("link",{name:"Call supervisor",exact:true}).count(),1);
         await p.getByRole("button",{name:"Hear instructions",exact:true}).click();
         assert.equal(await p.locator('[data-page="message"]').count(),0);
       }
@@ -64,7 +59,7 @@ test("MVP hides messaging for every role and rejects new messages", async () => 
           await p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
           return p.evaluate((owner) => {
             const selectors = owner
-              ? [".sidebar .brand", ".workspace .topbar", ".owner-page-identity .eyebrow", ".owner-page-identity h1"]
+              ? [".guard .brand", ".guard .topbar [data-action=logout]", ".greeting-row h1"]
               : [".guard .brand", ".guard .topbar [data-action=logout]", ".duty-identity .eyebrow", ".greeting-row h1"];
             return selectors.map(selector => {
               const box = document.querySelector(selector).getBoundingClientRect();
@@ -73,7 +68,7 @@ test("MVP hides messaging for every role and rejects new messages", async () => 
           },role==="owner");
         };
         const baseline = await positions();
-        const routes = role === "bala" ? ["round","report","instructions"] : role === "supervisor" ? ["incidents","summaries","setup","instructionSetup","patrols","admin"] : ["incidents","summaries","instructionSetup","admin"];
+        const routes = role === "bala" ? ["round","report","instructions"] : role === "supervisor" ? ["incidents","summaries","setup","instructionSetup","patrols","admin"] : ["property","supervisors","subscription"];
         for (const route of routes) {
           if(role==="supervisor" && ["instructionSetup","patrols","admin"].includes(route)) {
             await p.locator('[data-page="setup"]').click();
@@ -84,7 +79,7 @@ test("MVP hides messaging for every role and rejects new messages", async () => 
             for(const key of ["x","y","height"])
               assert.ok(Math.abs(box[key]-baseline[i][key])<1,role+" "+route+" "+width+" header "+i+" "+key+" changed: "+baseline[i][key]+" to "+box[key]);
           });
-          await p.locator(role==="owner"?'.sidebar [data-page="home"]':'.greeting-row [data-page="home"]').click();
+          await p.locator('.greeting-row [data-page="home"]').click();
         }
         if(role==="bala") await p.getByRole("button",{name:"Hear instructions",exact:true}).click();
       }

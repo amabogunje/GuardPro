@@ -139,6 +139,108 @@ test("customer account hierarchy restricts creation and assignments", async () =
   );
 });
 
+test("only owners can share users across properties or change shared accounts", async () => {
+  const siteName = "Scoped property " + randomUUID();
+  await req("/api/admin", owner, {
+    kind: "additional_site",
+    site_id: "oak",
+    name: siteName,
+    address: "10 Fictional Pilot Close, Ikeja, Lagos",
+    latitude: 6.6,
+    longitude: 3.35,
+    radius_m: 100,
+    confirmed: true,
+  });
+  const secondSite = (await req("/api/state", owner)).sites.find(
+    (site) => site.name === siteName,
+  );
+  assert.ok(secondSite);
+  const email = `shared-${randomUUID()}@demo.isdl`;
+  const originalPassword = "Pilot-only-2026!";
+  const changedPassword = "Changed-pilot-password!";
+  const localEmail = `local-${randomUUID()}@demo.isdl`;
+  const localPassword = "Local-pilot-password!";
+  await req("/api/admin", supervisor, {
+    kind: "user",
+    site_id: "oak",
+    name: "Oak-only guard",
+    email: localEmail,
+    password: originalPassword,
+    role: "guard",
+  });
+  const local = (await req("/api/settings/oak", supervisor)).users.find(
+    (user) => user.email === localEmail,
+  );
+  assert.ok(local);
+  await req("/api/admin", supervisor, {
+    kind: "update_user",
+    site_id: "oak",
+    user_id: local.id,
+    name: local.name,
+    email: localEmail,
+    password: localPassword,
+    role: "guard",
+  });
+  await req("/api/admin", owner, {
+    kind: "user",
+    site_id: secondSite.id,
+    name: "Shared supervisor",
+    email,
+    password: originalPassword,
+    role: "supervisor",
+  });
+  const shared = (await req(`/api/settings/${secondSite.id}`, owner)).users.find(
+    (user) => user.email === email,
+  );
+  assert.ok(shared);
+  await req(
+    "/api/admin",
+    supervisor,
+    { kind: "assign", site_id: "oak", user_id: shared.id },
+    403,
+  );
+  await req("/api/admin", owner, {
+    kind: "assign",
+    site_id: "oak",
+    user_id: shared.id,
+  });
+  await req(
+    "/api/admin",
+    supervisor,
+    {
+      kind: "update_user",
+      site_id: "oak",
+      user_id: shared.id,
+      name: shared.name,
+      email,
+      password: changedPassword,
+      role: "supervisor",
+    },
+    403,
+  );
+  await req("/api/admin", owner, {
+    kind: "update_user",
+    site_id: "oak",
+    user_id: shared.id,
+    name: shared.name,
+    email,
+    password: changedPassword,
+    role: "supervisor",
+  });
+  const login = await fetch(base + "/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password: changedPassword }),
+  });
+  assert.equal(login.status, 200);
+  const localLogin = await fetch(base + "/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: localEmail, password: localPassword }),
+  });
+  assert.equal(localLogin.status, 200);
+});
+
 test("supervisor pages retain a mobile canvas on phone and desktop", async () => {
   const guards = (await req("/api/state", supervisor)).users.filter(
     (u) => u.role === "guard",
@@ -391,6 +493,80 @@ test("shift overview scopes attendance, patrols and reports and provides a defau
     now: Date.parse("2026-09-05T02:00:00Z"),
   }).find((w) => w.current);
   assert.equal(overnight.start, Date.parse("2026-09-04T15:00:00Z"));
+});
+
+test("attendance is tied to the selected occurrence and retains valid overnight coverage", async () => {
+  const { supervisorStatus, overviewDetails } =
+    await import("../public/supervisor-status.js");
+  const site = { id: "oak" };
+  const dayShift = {
+    start: Date.parse("2026-09-05T05:00:00Z"),
+    end: Date.parse("2026-09-05T17:00:00Z"),
+    guardIds: ["bala"],
+    anyGuard: false,
+    schedule: "",
+  };
+  const staleOpen = {
+    site_id: "oak",
+    user_id: "bala",
+    started_at: "2026-09-04T05:00:00Z",
+  };
+  const now = Date.parse("2026-09-05T11:00:00Z");
+  const stale = supervisorStatus({
+    site,
+    selectedShift: dayShift,
+    shifts: [staleOpen],
+    now,
+  })[0];
+  assert.equal(stale.value, "0 of 1");
+  assert.equal(stale.tone, "attention");
+  assert.equal(stale.qualifier, "1 earlier shift still open");
+  assert.equal(
+    overviewDetails({ site, selectedShift: dayShift, shifts: [staleOpen], now })
+      .guards[0].session,
+    undefined,
+  );
+
+  const earlyAndDuplicate = supervisorStatus({
+    site,
+    selectedShift: dayShift,
+    now,
+    shifts: [
+      { site_id: "oak", user_id: "bala", started_at: "2026-09-05T04:50:00Z" },
+      { site_id: "oak", user_id: "bala", started_at: "2026-09-05T05:02:00Z" },
+    ],
+  })[0];
+  assert.equal(earlyAndDuplicate.value, "1 of 1");
+  assert.equal(earlyAndDuplicate.tone, "good");
+
+  const afterShift = supervisorStatus({
+    site,
+    selectedShift: dayShift,
+    now: Date.parse("2026-09-05T18:00:00Z"),
+    shifts: [
+      { site_id: "oak", user_id: "bala", started_at: "2026-09-05T17:00:00Z" },
+    ],
+  })[0];
+  assert.equal(afterShift.value, "0 of 1");
+  assert.equal(afterShift.tone, "attention");
+
+  const overnight = {
+    start: Date.parse("2026-09-04T17:00:00Z"),
+    end: Date.parse("2026-09-05T05:00:00Z"),
+    guardIds: ["bala"],
+    anyGuard: false,
+    schedule: "",
+  };
+  const overnightCard = supervisorStatus({
+    site,
+    selectedShift: overnight,
+    now: Date.parse("2026-09-05T01:00:00Z"),
+    shifts: [
+      { site_id: "oak", user_id: "bala", started_at: "2026-09-04T17:02:00Z" },
+    ],
+  })[0];
+  assert.equal(overnightCard.value, "1 of 1");
+  assert.equal(overnightCard.tone, "good");
 });
 
 test("historical overview uses prior plans and separates carry-over from later records", async () => {

@@ -43,7 +43,20 @@ test("expectations count due guard shifts and patrol stops; resolved count stays
     incidents:[{id:"p1",user_id:"g",captured_at:"2026-01-02T08:20:00+01:00",status:"Resolved"},{id:"p2",user_id:"g",captured_at:"2026-01-02T08:25:00+01:00",status:"Reported"},{id:"older",captured_at:"2026-01-01T08:00:00+01:00",status:"Resolved"}],
     resolutions:[{incident_id:"older",status:"Resolved",at:"2026-01-02T08:30:00+01:00"}]});
   assert.deepEqual(report.expected,{shiftStarts:1,shiftEnds:0,patrolStarts:1,checkpointScans:2});
-  assert.equal(report.counts.shiftStarts,2);
+  assert.equal(report.counts.shiftStarts,1,"Duplicate starts count once for their scheduled occurrence");
   assert.equal(report.counts.problemsResolved,1);
   assert.equal(report.counts.problemsReported,2);
+});
+test("activity reports do not count stale or late starts as attendance for a scheduled occurrence",()=>{
+  const report=activityReport({
+    from:"2026-01-02",to:"2026-01-02",now:Date.parse("2026-01-02T20:00:00+01:00"),
+    site:{id:"s",name:"Test"},users:[],checkpoints:[],incidents:[],resolutions:[],
+    plans:[{template_id:"day",guard_ids:["bala"],start_time:"08:00",end_time:"16:00",created_at:"2026-01-01T00:00:00Z"}],
+    events:[
+      {id:"stale",kind:"start",user_id:"bala",captured_at:"2026-01-01T08:00:00+01:00",payload:{shift_template_id:"day"}},
+      {id:"late",kind:"start",user_id:"bala",captured_at:"2026-01-02T16:00:00+01:00",payload:{shift_template_id:"day"}},
+    ],
+  });
+  assert.equal(report.expected.shiftStarts,1);
+  assert.equal(report.counts.shiftStarts,0);
 });

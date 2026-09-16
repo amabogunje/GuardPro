@@ -25,10 +25,17 @@ export async function saveMedia(key, buffer, contentType) {
 }
 export async function serveMedia(req, res, media) {
   res.set("Cache-Control", "private, no-store").type(media.mime);
-  if (!cloudMedia)
-    return new Promise((resolve, reject) =>
-      res.sendFile(media.path, (error) => (error ? reject(error) : resolve())),
-    );
+  if (!cloudMedia) {
+    try {
+      // Local pilot media is capped on upload. Reading it here avoids an
+      // Express sendFile path-resolution failure on Windows/OneDrive paths.
+      return res.send(await fs.readFile(media.path));
+    } catch {
+      throw Object.assign(new Error("Recording or photo unavailable"), {
+        status: 404,
+      });
+    }
+  }
   const result = await get(media.path, { access: "private", useCache: false });
   if (!result || result.statusCode !== 200)
     throw Object.assign(

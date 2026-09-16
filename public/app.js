@@ -33,6 +33,7 @@ import {
 let selectedReportId = null,
   reportMediaUrls = [];
 let selectedProblemId = null;
+let problemQuery = "", problemPage = 0;
 let activityPeriod = "daily";
 function renderActivityReports(target) {
   const today = new Date(Date.now()+3600000).toISOString().slice(0,10);
@@ -83,7 +84,8 @@ function renderSupervisorProblems(target, reports) {
     const event = eventList().find(e => e.id === selected.id);
     const audioOnly = event?.payload.report_format === "audio" || selected.report === "Voice report — listen to the attached recording.";
     const written = event?.payload.typed_report ?? (audioOnly ? "" : selected.report || "");
-    target.innerHTML = `<section class="card problem-detail" id="incident-${esc(selected.id)}"><p class="muted">Received on ${esc(date(selected.received_at))}<br>Reported by ${esc(guardName(selected.user_id))}</p><div id="problemAudio"></div>${written.trim() ? '<p class="problem-written">' + esc(written) + '</p>' : ''}<div id="problemPhotos"></div>${selected.status !== "Resolved" ? `<form class="problemResolve" data-id="${esc(selected.id)}"><label class="label" for="problemCategory">Category</label><select id="problemCategory" name="category" required><option value="">Choose category</option><option value="security">Security</option><option value="maintenance">Maintenance</option><option value="other">Other</option></select><div id="problemPriorityField" hidden><label class="label" for="problemPriority">Security priority</label><select id="problemPriority" name="priority" disabled><option value="">Choose priority</option><option value="P1">P1 — High</option><option value="P2">P2 — Medium</option><option value="P3">P3 — Low</option></select></div><label class="label" for="problemComments">Supervisor comments</label><textarea id="problemComments" name="note" maxlength="5000"></textarea><button class="primary wide">Resolve Problem</button></form>` : ""}</section>`;
+    const evidenceNotice = selected.evidence?.status === "incomplete" ? `<p class="notice pending">Supporting media incomplete (${selected.evidence.received} of ${selected.evidence.expected}). The guard must retry the upload before this problem can be resolved.</p>` : "";
+    target.innerHTML = `<section class="card problem-detail" id="incident-${esc(selected.id)}"><p class="muted">Received on ${esc(date(selected.received_at))}<br>Reported by ${esc(guardName(selected.user_id))}</p>${evidenceNotice}<div id="problemAudio"></div>${written.trim() ? '<p class="problem-written">' + esc(written) + '</p>' : ''}<div id="problemPhotos"></div>${selected.status !== "Resolved" ? `<form class="problemResolve" data-id="${esc(selected.id)}"><p class="muted">Classify after you have addressed the problem: Security affects protection of people or property; Maintenance is a facility issue; Other does not fit either. Security priorities: P1 immediate danger, P2 urgent security concern, P3 routine security concern.</p><label class="label" for="problemCategory">Category</label><select id="problemCategory" name="category" required><option value="">Choose category</option><option value="security">Security</option><option value="maintenance">Maintenance</option><option value="other">Other</option></select><div id="problemPriorityField" hidden><label class="label" for="problemPriority">Security priority</label><select id="problemPriority" name="priority" disabled><option value="">Choose priority</option><option value="P1">P1 — Immediate danger</option><option value="P2">P2 — Urgent concern</option><option value="P3">P3 — Routine concern</option></select></div><label class="label" for="problemComments">Supervisor comments</label><textarea id="problemComments" name="note" maxlength="5000"></textarea><button class="primary wide" ${selected.evidence?.status === "incomplete" ? "disabled" : ""}>Resolve Problem</button></form>` : ""}</section>`;
     const category=target.querySelector('#problemCategory');
     if(category)category.onchange=()=>{
       const security=category.value==='security',priority=target.querySelector('#problemPriority');
@@ -102,10 +104,15 @@ function renderSupervisorProblems(target, reports) {
   } else {
     selectedProblemId = null;
     document.querySelector(".supervisor-heading")?.remove();
-    const sorted = [...reports].sort((a,b) => b.captured_at.localeCompare(a.captured_at));
+    const sorted = [...reports].filter(i => (i.report || "").toLocaleLowerCase().includes(problemQuery.toLocaleLowerCase())).sort((a,b) => b.captured_at.localeCompare(a.captured_at));
+    const pageSize = 5, offset = Math.min(problemPage, Math.max(0, Math.ceil(sorted.length / pageSize) - 1)) * pageSize;
+    const visible = sorted.slice(offset, offset + pageSize);
     const section = (title, items, empty) => `<section class="card problem-list"><h2>${title} <span class="problem-count">(${items.length})</span></h2><div>${items.map(i => `<button type="button" data-md="true" class="problem-row" data-action="viewProblem" data-id="${esc(i.id)}" title="${esc(i.report || "Voice report")}"><span class="problem-file" aria-hidden="true">${icon("incidents")}</span><span class="problem-overview"><strong>${esc(i.report || "Voice report")}</strong><small>Reported by ${esc(guardName(i.user_id))} · ${esc(reportDateTime(i.captured_at))}</small></span><svg class="problem-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>`).join("") || '<p class="empty">' + empty + '</p>'}</div></section>`;
-    target.innerHTML = section("Outstanding Problems", sorted.filter(i => i.status !== "Resolved"), "No outstanding problems.") +
-      section("Resolved Problems", sorted.filter(i => i.status === "Resolved"), "No resolved problems.");
+    target.innerHTML = `<label class="checkpoint-search">Find a problem<input type="search" id="problem-search" value="${esc(problemQuery)}" placeholder="Search reported text"></label>` + section("Outstanding Problems", visible.filter(i => i.status !== "Resolved"), "No outstanding problems.") +
+      section("Resolved Problems", visible.filter(i => i.status === "Resolved"), "No resolved problems.") + (sorted.length > pageSize ? `<nav class="inbox-pagination"><button id="problem-prev" ${offset === 0 ? "disabled" : ""}>Previous</button><span>${offset + 1}–${Math.min(offset + pageSize, sorted.length)} of ${sorted.length}</span><button id="problem-next" ${offset + pageSize >= sorted.length ? "disabled" : ""}>Next</button></nav>` : "");
+    target.querySelector('#problem-search').oninput = event => { problemQuery = event.target.value; problemPage = 0; renderSupervisorProblems(target, reports); };
+    target.querySelector('#problem-prev')?.addEventListener('click', () => { problemPage--; renderSupervisorProblems(target, reports); });
+    target.querySelector('#problem-next')?.addEventListener('click', () => { problemPage++; renderSupervisorProblems(target, reports); });
   }
   const footer = document.createElement("p");
   footer.className = "last-record-received";
@@ -607,7 +614,8 @@ function renderGuard() {
   if (page === "message" && s) return renderMessage();
   if (!s && page !== "shift") {
     page = "home";
-    root.innerHTML = `<main class="guard off-duty"><header class="topbar">${brand()}<button data-action="logout" aria-label="Sign out">Sign out</button></header><div class="off-duty-identity"><p class="eyebrow">${esc(site().name)}</p><h1>Hello, ${esc(user.name)}.</h1></div>${state.sites.length > 1 ? siteSelect() : ""}<section class="card shift"><div class="row"><h2>Start your shift</h2>${pill("Off duty")}</div><button class="primary" data-action="shift">Click here</button></section><button class="call wide" disabled>Message supervisor</button></main>`;
+    const help = site().phone ? `<a class="call wide" href="tel:${esc(String(site().phone).replace(/[^+\d]/g,""))}">Call supervisor</a>` : '<p class="muted">Use your usual supervisor contact if you need help before your shift.</p>';
+    root.innerHTML = `<main class="guard off-duty"><header class="topbar">${brand()}<button data-action="logout" aria-label="Sign out">Sign out</button></header><div class="off-duty-identity"><p class="eyebrow">${esc(site().name)}</p><h1>Hello, ${esc(user.name)}.</h1></div>${state.sites.length > 1 ? siteSelect() : ""}<section class="card shift"><div class="row"><h2>Start your shift</h2>${pill("Off duty")}</div><button class="primary" data-action="shift">Click here</button></section>${help}</main>`;
     return;
   }
   root.innerHTML = `<main class="guard on-duty"><header class="topbar">${brand()}<button data-action="logout" aria-label="Sign out">Sign out</button></header><div class="duty-identity"><p class="eyebrow">${esc(site().name)}</p><div class="greeting-row"><h1>Hello, ${esc(user.name)}.</h1>${page === "savedReport" ? '<button class="back" data-page="report">Reports</button>' : page !== "home" ? '<button class="back" data-page="home">Home</button>' : ""}</div></div>${state.sites.length > 1 ? siteSelect() : ""}<div id="guardPage"></div></main>`;
@@ -624,8 +632,12 @@ function renderGuard() {
         dateStyle: "medium",
         timeStyle: "short",
       });
-    target.innerHTML = `<section class="card shift duty-card"><div class="row"><h2>You are on duty</h2>${pill("On duty")}</div><div class="shift-facts"><div><span>Shift started</span><strong>${esc(localDate(s.started_at))}</strong></div><div class="elapsed"><span>Time on duty</span><strong id="shiftTimer" role="timer" aria-label="Time on duty" data-started="${s.started_at}">${elapsedShift(s.started_at)}</strong></div><div><span>Shift ends</span><strong>${end ? esc(localDate(end)) : "Not scheduled — ask your supervisor"}</strong></div></div><button class="primary" data-action="shift">End shift</button></section><div class="actions"><button data-page="round" data-md="true" id="patrolButton" aria-label="Start patrol">${icon("round")}<span class="button-label">Start patrol</span><small id="patrolCountdown"></small></button><button data-page="report">Report a problem</button><button data-page="instructions">Hear instructions</button><button id="messageSupervisorButton" data-page="message" data-md="true" aria-label="Message supervisor" ${unread ? 'aria-describedby="unreadMessages"' : ""}>${icon("message")}<span class="button-label">Message supervisor</span>${unread ? `<span class="message-unread" id="unreadMessages" role="status" aria-label="${unread} unread messages">${unread} new</span>` : ""}</button></div>`;
-    target.querySelector(".actions").insertAdjacentHTML("beforeend", '<button class="emergency-action" data-action="emergencyPlaceholder" data-md="true">' + icon("incidents") + '<span class="button-label">Emergency</span></button>');
+    const queued = pending();
+    const failed = queued.filter(q => q.status === "failed").length;
+    const conflicts = queued.filter(q => q.status === "conflict").length;
+    const syncState = !queued.length ? "All saved records synchronized." : conflicts ? `${conflicts} saved record${conflicts === 1 ? "" : "s"} need supervisor review.` : failed ? `${failed} saved record${failed === 1 ? "" : "s"} need${failed === 1 ? "s" : ""} retry.` : `${queued.length} saved record${queued.length === 1 ? "" : "s"} waiting to upload.`;
+    const help = site().phone ? `<a class="call wide" href="tel:${esc(String(site().phone).replace(/[^+\d]/g,""))}">Call supervisor</a>` : "";
+    target.innerHTML = `<section class="card shift duty-card"><div class="row"><h2>You are on duty</h2>${pill("On duty")}</div><div class="shift-facts"><div><span>Shift started</span><strong>${esc(localDate(s.started_at))}</strong></div><div class="elapsed"><span>Time on duty</span><strong id="shiftTimer" role="timer" aria-label="Time on duty" data-started="${s.started_at}">${elapsedShift(s.started_at)}</strong></div><div><span>Shift ends</span><strong>${end ? esc(localDate(end)) : "Not scheduled — ask your supervisor"}</strong></div></div><button class="primary" data-action="shift">End shift</button></section><div class="actions"><button data-page="round" data-md="true" id="patrolButton" aria-label="Start patrol">${icon("round")}<span class="button-label">Start patrol</span><small id="patrolCountdown"></small></button><button data-page="report">Report a problem</button><button data-page="instructions">Hear instructions</button><button id="messageSupervisorButton" data-page="message" data-md="true" aria-label="Message supervisor" ${unread ? 'aria-describedby="unreadMessages"' : ""}>${icon("message")}<span class="button-label">Message supervisor</span>${unread ? `<span class="message-unread" id="unreadMessages" role="status" aria-label="${unread} unread messages">${unread} new</span>` : ""}</button></div><p class="muted" role="status">${syncState}</p>${queued.length ? '<button data-action="retryPending" class="checkpoint-text-action">Retry saved records</button>' : ""}${help}`;
   } else if (page === "shift")
     target.innerHTML = `<section class="card"><h2>End your shift</h2><form id="shiftForm"><p>Ready to finish your shift?</p><label class="label">Handover notes (optional)</label><textarea name="note" placeholder="Anything the next guard should know?"></textarea><button class="primary wide">Confirm end shift</button></form></section>`;
   else if (page === "round") {
@@ -993,6 +1005,12 @@ function renderDashboard() {
       const lastReceived = document.createElement("p");
       lastReceived.className = "last-record-received";
       lastReceived.textContent = "Last record received: " + date(site().last_sync);
+      if (!site().last_sync || Date.now() - Date.parse(site().last_sync) > 30 * 60000) {
+        const uncertainty = document.createElement("p");
+        uncertainty.className = "notice pending";
+        uncertainty.textContent = "Current activity unconfirmed. New guard records may still be pending upload.";
+        t.prepend(uncertainty);
+      }
       t.append(lastReceived);
     }
   }
@@ -1125,7 +1143,7 @@ async function sync() {
   if (busy || signingOut || !user || !navigator.onLine) return;
   busy = true;
   try {
-    for (let q of pending()) {
+    for (let q of pending().filter((q) => q.status !== "conflict")) {
       if (q.kind === "message" && !state.features?.messaging) continue;
       q.status = "uploading";
       q.error = "";
@@ -1158,6 +1176,12 @@ async function sync() {
         q.status = "failed";
         q.error = e.message;
         await persist();
+        if (!q.submitted && e.status === 409) {
+          q.status = "conflict";
+          q.error = "This saved record conflicts with the server. Ask your supervisor to review it.";
+          await persist();
+          continue;
+        }
         // A failed attachment must not hold subsequent urgent records hostage.
         if (!q.submitted && e.status !== 403) break;
       }
@@ -1539,6 +1563,7 @@ document.addEventListener("submit", async (e) => {
           report_format: d.report?.trim() ? "text" : "audio",
           typed_report: d.report?.trim() || "",
           transcript: d.transcript || "",
+          evidence: { audio: d.audio ? 1 : 0, photos: (d.photos || []).length },
           approved: true,
           draft_history: d.history || [],
         },
@@ -1744,18 +1769,6 @@ document.addEventListener("click", async (e) => {
       page = "incidents";
       render(); return;
     }
-    if (a === "emergencyPlaceholder") {
-      const dialog = document.createElement("dialog");
-      dialog.className = "confirmation-dialog";
-      dialog.id = "confirmationDialog";
-      dialog.setAttribute("aria-labelledby", "emergencyTitle");
-      dialog.innerHTML = '<h2 id="emergencyTitle">Emergency alarm not yet implemented</h2><p>No alert or notification has been sent. Contact your supervisor by phone or WhatsApp.</p><div class="confirmation-actions"><button type="button" class="primary" autofocus>OK</button></div>';
-      document.body.append(dialog);
-      dialog.querySelector("button").onclick = () => dialog.close();
-      dialog.addEventListener("close", () => dialog.remove(), {once:true});
-      dialog.showModal();
-      return;
-    }
     if (a === "messageRecipient") {
       vault[draftKey()] ||= {};
       vault[draftKey()].recipient = b.dataset.value;
@@ -1854,6 +1867,7 @@ document.addEventListener("click", async (e) => {
         throw new Error(
           "Finish the recording and wait for playback before signing out.",
         );
+      if (pending().length && !(await confirmAction("You have saved records waiting to upload. Signing out keeps them encrypted on this phone for your account. Are you sure you want to sign out?", "Sign out"))) return;
       signingOut = true;
       b.disabled = true;
       b.textContent = "Signing out…";
@@ -1903,6 +1917,11 @@ document.addEventListener("click", async (e) => {
       }
     } else if (a === "sync") {
       await sync();
+    } else if (a === "retryPending") {
+      for (const q of pending()) if (["failed", "conflict"].includes(q.status)) q.status = "pending";
+      await persist();
+      await sync();
+      render();
     } else if (a === "refresh") {
       await refresh();
       render();

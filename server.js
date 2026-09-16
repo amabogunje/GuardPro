@@ -237,6 +237,8 @@ app.get("/api/state", async (req, res) => {
     history,
     revisions,
     names,
+    evidenceRows,
+    shiftExceptions,
   ] = await Promise.all([
     all(
       "SELECT s.* FROM sites s JOIN assignments a ON a.site_id=s.id WHERE a.user_id=?",
@@ -281,6 +283,8 @@ app.get("/api/state", async (req, res) => {
       "SELECT DISTINCT u.id,u.name,u.role,a.site_id,(SELECT user_id FROM disabled_users WHERE user_id=u.id) AS disabled,(SELECT user_id FROM user_photos WHERE user_id=u.id) AS photo_id FROM users u JOIN assignments a ON a.user_id=u.id WHERE a.site_id IN (SELECT site_id FROM assignments WHERE user_id=?)",
       u.id,
     ),
+    all("SELECT e.* FROM incident_evidence e JOIN incidents i ON i.id=e.incident_id JOIN assignments a ON a.site_id=i.site_id WHERE a.user_id=?", u.id),
+    all("SELECT x.* FROM shift_exceptions x JOIN assignments a ON a.site_id=x.site_id WHERE a.user_id=?", u.id),
   ]);
   const byContext = new Map(contexts.map((c) => [c.event_id, c]));
   const byEvent = new Map(events.map((e) => [e.id, e]));
@@ -364,6 +368,13 @@ app.get("/api/state", async (req, res) => {
       )
       .map((i) => ({
         ...i,
+        evidence: (() => {
+          const expected = evidenceRows.find((e) => e.incident_id === i.id);
+          const received = media.filter((m) => m.incident_id === i.id).length;
+          if (!expected) return { status: "legacy", expected: 0, received };
+          const total = expected.expected_audio + expected.expected_photos;
+          return { status: received >= total ? "complete" : "incomplete", expected: total, received };
+        })(),
         classification: classifications.find(c=>c.incident_id===i.id)||null,
         media: media.filter((m) => m.incident_id === i.id).map(displayMedia),
         history: history.filter((h) => h.incident_id === i.id),
@@ -391,6 +402,7 @@ app.get("/api/state", async (req, res) => {
           ]
         : [],
     ai: process.env.OPENAI_API_KEY ? "live" : "unavailable",
+    shiftExceptions,
   });
 });
 const text = (x, max = 5000) =>
@@ -490,6 +502,8 @@ post("/api/events", async (req, res) => {
     fail("Invalid location");
   if (!["start", "end", "scan", "sign_in_location"].includes(b.kind))
     delete p.location;
+  if (Date.parse(b.captured_at) > Date.now() + 15 * 60000)
+    fail("Device time is too far ahead. Correct the phone time and try again.", 409);
   if (Math.abs(Date.parse(b.captured_at) - Date.now()) > 86400000)
     p.clock_review = "Device capture time differs by over a day; review";
   if (["scan", "start", "sign_in_location"].includes(b.kind)) {
@@ -645,6 +659,8 @@ post("/api/events", async (req, res) => {
         b.site_id,
       );
       if (!shift) fail("Start a shift first");
+      if (Date.parse(b.captured_at) < Date.parse(shift.started_at))
+        fail("This record was captured before the shift started", 409);
       if (b.kind === "end") {
         const records = (
           await all(
@@ -754,6 +770,8 @@ post("/api/events", async (req, res) => {
         text(p.report),
         text(p.transcript),
       );
+      const evidence = p.evidence || {};
+      await run("INSERT INTO incident_evidence VALUES(?,?,?,?)", b.id, evidence.audio === 1 ? 1 : 0, Math.max(0, Math.min(4, Number(evidence.photos) || 0)), at);
       await run(
         "INSERT INTO revisions VALUES(?,?,?,?,?)",
         id(),
@@ -1116,6 +1134,9 @@ post("/api/incidents/:id/resolve", async (req, res) => {
   await transaction(async () => {
     const incident = await mediaIncident(req.user, req.params.id);
     if (incident.status === "Resolved") return;
+    const expected = await one("SELECT * FROM incident_evidence WHERE incident_id=?", incident.id);
+    if (expected && (await one("SELECT count(*) AS n FROM media WHERE incident_id=?", incident.id)).n < expected.expected_audio + expected.expected_photos)
+      fail("Supporting media is still uploading. Retry the upload before resolving this problem.", 409);
     let classification;
     try {classification=classificationInput(req.body);}catch(e){fail(e.message);}
     const changed = await run("UPDATE incidents SET status='Resolved' WHERE id=? AND status<>'Resolved'", incident.id);
@@ -1126,6 +1147,20 @@ post("/api/incidents/:id/resolve", async (req, res) => {
     await audit(req.user, "problem resolved", {incident_id:incident.id,note,actor_role:req.user.role,...classification});
   });
   res.json({ok:true});
+});
+post("/api/shifts/:id/close-exception", async (req, res) => {
+  if (!['owner','supervisor'].includes(req.user.role)) fail("Supervisor or owner only", 403);
+  const shift = await one("SELECT * FROM shifts WHERE id=?", req.params.id);
+  if (!shift) fail("Shift not found", 404);
+  await requireSite(req.user, shift.site_id);
+  if (shift.ended_at) return res.json({ ok: true, alreadyClosed: true });
+  const reason = text(req.body.reason, 5000);
+  if (!reason) fail("Explain why this shift is being closed");
+  const closedAt = now();
+  await run("UPDATE shifts SET ended_at=? WHERE id=? AND ended_at IS NULL", closedAt, shift.id);
+  await run("INSERT INTO shift_exceptions VALUES(?,?,?,?,?,?)", id(), shift.id, shift.site_id, req.user.id, closedAt, reason);
+  await audit(req.user, "shift.exception_closed", { shift_id: shift.id, reason });
+  res.json({ ok: true });
 });
 post("/api/incidents/:id/transition", async (req, res) => {
   supervisor(req.user);
@@ -1455,18 +1490,20 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
       const target = await one("SELECT u.* FROM users u JOIN assignments a ON a.user_id=u.id WHERE u.id=? AND a.site_id=?",b.user_id,s);
       if(!target || target.role === "owner" || !["guard","supervisor"].includes(b.role)) fail("Only assigned guards and supervisors can be managed",403);
       if(target.id===req.user.id && (b.disabled === "true" || b.role!==target.role)) fail("You cannot deactivate yourself or change your own role",403);
+      if(req.user.role === "supervisor" && target.id !== req.user.id && await one("SELECT 1 FROM assignments WHERE user_id=? AND site_id<>?",target.id,s))
+        fail("Shared accounts can only be changed by an owner",403);
       const contact=await teamContact(b,target.id,target);
       if(b.password && b.password.length<12) fail("Use a password of at least 12 characters");
       if(req.file) {
         if(!["image/jpeg","image/png"].includes(req.file.mimetype)||req.file.size>2*1024*1024) fail("Profile photos must be JPEG or PNG, up to 2 MB");
         validateFile(req.file);
       }
-      if((b.disabled === "true" || b.role !== target.role) && await one("SELECT 1 FROM shifts WHERE user_id=? AND ended_at IS NULL",target.id)) fail("End this guard’s active shift before deactivating or changing their role",409);
       await run("UPDATE users SET name=?,email=?,role=?,password=? WHERE id=?",text(b.name,120),contact.email,b.role,b.password?hash(b.password):target.password,target.id);
       await saveTeamContact(target.id,contact);
       if(b.disabled === "true") await run("INSERT INTO disabled_users VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET actor=excluded.actor,at=excluded.at",target.id,req.user.id,now());
       else await run("DELETE FROM disabled_users WHERE user_id=?",target.id);
       if(b.disabled === "true" || b.password || b.role !== target.role) await run("DELETE FROM sessions WHERE user_id=?",target.id);
+      if(b.disabled === "true") await audit(req.user,"user.disabled",{user_id:target.id,active_shift:Boolean(await one("SELECT 1 FROM shifts WHERE user_id=? AND ended_at IS NULL",target.id))});
       if(b.disabled === "true" || b.role !== "guard") {
         const assignedSites=await all("SELECT site_id FROM assignments WHERE user_id=?",target.id);
         for(const assigned of assignedSites) {
@@ -1547,12 +1584,14 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
       let user = await one("SELECT id,role FROM users WHERE id=?", b.user_id);
       if (!["supervisor","guard"].includes(user?.role))
         fail("You can only assign team members you manage", 403);
+      if (req.user.role !== "owner") fail("Owner only", 403);
       if (
         !user ||
         !(await one(
-          "SELECT 1 FROM assignments a JOIN sites source ON source.id=a.site_id JOIN sites target ON target.customer_id=source.customer_id WHERE target.id=? AND a.user_id=?",
+          "SELECT 1 FROM assignments a JOIN sites source ON source.id=a.site_id JOIN assignments owner_access ON owner_access.site_id=source.id JOIN sites target ON target.customer_id=source.customer_id WHERE target.id=? AND a.user_id=? AND owner_access.user_id=?",
           s,
           user.id,
+          req.user.id,
         ))
       )
         fail("User outside assigned scope", 403);

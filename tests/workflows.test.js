@@ -69,7 +69,7 @@ before(async () => {
         DATABASE_URL: "",
         BLOB_READ_WRITE_TOKEN: "",
         VERCEL: "",
-        ENABLE_MESSAGING: "true",
+        ENABLE_MESSAGING: "false",
       },
       stdio: "pipe",
     });
@@ -340,6 +340,7 @@ test("Android viewport: offline capture, reload, shared sign-out, interrupted up
       true,
     );
     await p.getByRole("button", { name: "Sign out", exact: true }).click();
+    if (await p.locator("[data-confirm=accept]").count()) await approveDialog(p);
     await p.getByRole("heading", { name: "Welcome back" }).waitFor();
     assert.equal(
       await p.getByText("Offline browser test:", { exact: false }).count(),
@@ -477,14 +478,7 @@ test("voice recording, permission fallbacks, owner mobile and supervisor adminis
       path: path.join(data, "owner-mobile.png"),
       fullPage: true,
     });
-    await p.locator('[data-health="risk"] > summary').click();
-    await p.getByRole("button", { name: "View all problems", exact: true }).click();
-    await p
-      .getByText(
-        "Voice UI test. The lock is damaged. I called the supervisor.",
-        { exact: true },
-      )
-      .waitFor();
+    await p.locator("#ownerOverview").waitFor();
     await p.getByRole("button", { name: "Sign out", exact: true }).click();
     await p.locator("#email").fill("supervisor@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
@@ -538,7 +532,7 @@ test("Material layouts: every page at compact, medium and expanded widths", asyn
         role === "bala"
           ? ["home", "shift", "round", "report", "instructions"]
           : role === "owner"
-            ? ["home", "incidents", "summaries"]
+            ? ["home", "property", "supervisors", "subscription"]
             : ["home", "incidents", "summaries", "admin", "qr"];
       for (const width of [390, 900, 1440]) {
         await p.setViewportSize({ width, height: 900 });
@@ -553,10 +547,7 @@ test("Material layouts: every page at compact, medium and expanded widths", asyn
           } else if (role === "owner") {
             if (await p.locator('.greeting-row .back').count())
               await p.locator('.greeting-row .back').click();
-            if (screen !== "home") {
-              await p.locator(`[data-health="${screen === 'incidents' ? 'risk' : 'guard'}"] > summary`).click();
-              await p.getByRole('button', {name: screen === 'incidents' ? 'View all problems' : 'View activity reports', exact:true}).first().click();
-            }
+            if (screen !== "home") await p.locator(`[data-page="${screen}"]`).first().click();
           } else {
             const target = screen === "qr" ? "admin" : screen;
             if (
@@ -670,10 +661,8 @@ test("off-duty messaging is disabled; duty actions return after check-in", async
           0,
           text,
         );
-      assert.equal(
-        await p.getByRole("button", { name: "Message supervisor" }).count(),
-        1,
-      );
+      assert.equal(await p.getByRole("button", { name: "Message supervisor" }).count(), 0);
+      assert.equal(await p.getByRole("link", { name: "Call supervisor" }).count(), 1);
       assert.equal(
         await p
           .getByRole("button", { name: "Click here", exact: true })
@@ -743,7 +732,7 @@ test("off-duty messaging is disabled; duty actions return after check-in", async
     );
     assert.equal(
       await p.getByRole("button", { name: "Message supervisor" }).count(),
-      1,
+      0,
     );
     await ctx.close();
   } finally {
@@ -779,7 +768,7 @@ test("shift timing handles Nigerian day and overnight schedules, elapsed time an
   );
 });
 
-test("shift supervisor messages survive offline reload, arrive once and stay customer-scoped", async () => {
+test("shift supervisor messages survive offline reload, arrive once and stay customer-scoped", { skip: "In-app messaging is deliberately disabled for the MVP." }, async () => {
   const browser = await chromium.launch({
     executablePath:
       process.env.CHROME_PATH ||
@@ -1752,7 +1741,7 @@ test("recorded shift instructions: owner publishes, scoped private playback, off
   }
 });
 
-test("voice supervisor messages: photo, offline reload, failed upload retry and private inbox playback", async () => {
+test("voice supervisor messages: photo, offline reload, failed upload retry and private inbox playback", { skip: "In-app messaging is deliberately disabled for the MVP." }, async () => {
   if (!(await req("/api/state", guard)).shifts.some((s) => !s.ended_at))
     await req("/api/events", guard, event("start"));
   const browser = await chromium.launch({
@@ -1939,7 +1928,7 @@ test("voice supervisor messages: photo, offline reload, failed upload retry and 
   }
 });
 
-test("two-way shift chat: current guard view, supervisor history and named replies", async () => {
+test("two-way shift chat: current guard view, supervisor history and named replies", { skip: "In-app messaging is deliberately disabled for the MVP." }, async () => {
   for (const active of (await req("/api/state", guard)).shifts.filter(
     (s) => !s.ended_at,
   ))
@@ -2147,7 +2136,7 @@ test("two-way shift chat: current guard view, supervisor history and named repli
   }
 });
 
-test("messaging requires a shift; late synchronization preserves on-duty capture", async () => {
+test("messaging requires a shift; late synchronization preserves on-duty capture", { skip: "In-app messaging is deliberately disabled for the MVP." }, async () => {
   for (const s of (await req("/api/state", guard)).shifts.filter(
     (s) => !s.ended_at,
   ))
@@ -2204,7 +2193,7 @@ test("messaging requires a shift; late synchronization preserves on-duty capture
   );
 });
 
-test("empty current conversation stays hidden until a named supervisor sends the first message", async () => {
+test("empty current conversation stays hidden until a named supervisor sends the first message", { skip: "In-app messaging is deliberately disabled for the MVP." }, async () => {
   for (const s of (await req("/api/state", guard)).shifts.filter(
     (s) => !s.ended_at,
   ))
@@ -2267,7 +2256,7 @@ test("empty current conversation stays hidden until a named supervisor sends the
   }
 });
 
-test("newest messages first and current-shift unread badge persists and clears offline", async () => {
+test("newest messages first and current-shift unread badge persists and clears offline", { skip: "In-app messaging is deliberately disabled for the MVP." }, async () => {
   for (const s of (await req("/api/state", guard)).shifts.filter(
     (s) => !s.ended_at,
   ))
@@ -2501,6 +2490,7 @@ test("sign-out invalidates a restored second tab", async () => {
       .getByRole("button", { name: "Sign out", exact: true })
       .waitFor();
     await p.getByRole("button", { name: "Sign out", exact: true }).click();
+    if (await p.locator("[data-confirm=accept]").count()) await approveDialog(p);
     await otherTab.getByRole("heading", { name: "Welcome back" }).waitFor();
     await otherTab.reload();
     await otherTab.getByRole("heading", { name: "Welcome back" }).waitFor();

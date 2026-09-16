@@ -25,6 +25,7 @@ export function activityReport({from,to,site,events,incidents,resolutions,users,
   rows.sort((a,b)=>a.at.localeCompare(b.at)||a.id.localeCompare(b.id));
   const count=kind=>rows.filter(r=>r.kind===kind).length;
   const expected={shiftStarts:0,shiftEnds:0,patrolStarts:0,checkpointScans:0};
+  const recordedShiftOccurrences=new Set();
   const today=new Date(now+3600000).toISOString().slice(0,10);
   const starts=events.filter(e=>e.kind==="start").map(e=>({...e,payload:typeof e.payload==="string"?JSON.parse(e.payload):e.payload}));
   // Include yesterday's shift so an overnight end falls in the correct report.
@@ -44,9 +45,21 @@ export function activityReport({from,to,site,events,incidents,resolutions,users,
       let shiftEnd=Date.parse(day+"T"+p.end_time+":00+01:00");
       if(shiftEnd<=shiftStart) shiftEnd+=86400000;
       const due=t=>t>=start && t<end && t<=now;
-      // Any-guard shifts derive their attendance target from distinct guards who
-      // checked in. Named assignments retain their planned target, even if absent.
-      const attendees=p.any_guard ? starts.filter(e=>e.payload.shift_template_id===p.template_id && Date.parse(e.captured_at)>=shiftStart && Date.parse(e.captured_at)<shiftEnd && Date.parse(e.captured_at)<=now) : [];
+      // Match starts to their scheduled occurrence. A small early grace permits
+      // a legitimate early check-in without allowing an earlier open shift to
+      // satisfy this occurrence. A set keeps retries from inflating reports.
+      const startForOccurrence=e=>{
+        const at=Date.parse(e.captured_at);
+        return at>=shiftStart-15*60000 && at<shiftEnd && at<=now &&
+          (!p.template_id || !e.payload.shift_template_id || e.payload.shift_template_id===p.template_id);
+      };
+      const occurrenceStarts=starts.filter(e=>startForOccurrence(e) && (p.any_guard || e.user_id===p.guard_id));
+      const attendees=p.any_guard ? occurrenceStarts : [];
+      if(due(shiftStart)) {
+        const occurrence=p.template_id || `${p.guard_id||"any"}:${p.start_time}-${p.end_time}`;
+        for(const guardId of new Set(occurrenceStarts.map(e=>e.user_id)))
+          recordedShiftOccurrences.add(`${occurrence}:${shiftStart}:${guardId}`);
+      }
       if(p.any_guard) {
         if(expected.shiftStarts!==null) expected.shiftStarts+=new Set(attendees.filter(e=>within(e.captured_at)).map(e=>e.user_id)).size;
         if(due(shiftEnd) && expected.shiftEnds!==null) expected.shiftEnds+=new Set(attendees.map(e=>e.user_id)).size;
@@ -54,7 +67,7 @@ export function activityReport({from,to,site,events,incidents,resolutions,users,
         if(due(shiftStart) && expected.shiftStarts!==null) expected.shiftStarts++;
         if(due(shiftEnd) && expected.shiftEnds!==null) expected.shiftEnds++;
       }
-      const snapshot=starts.find(e=>(e.user_id===p.guard_id || (p.any_guard && e.payload.shift_template_id===p.template_id)) && Date.parse(e.captured_at)>=shiftStart && Date.parse(e.captured_at)<shiftEnd)?.payload;
+      const snapshot=occurrenceStarts[0]?.payload;
       const schedule=snapshot?.patrol_schedule ?? p.schedule ?? (day===today ? site.schedule : null);
       if(schedule===null && shiftStart<end && shiftEnd>start) {expected.patrolStarts=null;expected.checkpointScans=null;continue;}
       for(let slotDay=base;slotDay<shiftEnd;slotDay+=86400000)
@@ -71,7 +84,8 @@ export function activityReport({from,to,site,events,incidents,resolutions,users,
   }
   const reportedIds=new Set(rows.filter(r=>r.kind==="incident").map(r=>r.id));
   const resolvedReported=incidents.filter(i=>reportedIds.has(i.id)&&i.status==="Resolved").length;
+  const shiftStarts=plans.length ? recordedShiftOccurrences.size : count("start");
   return {site:{id:site.id,name:site.name},from,to,timeZone:"Africa/Lagos",generatedAt:new Date().toISOString(),lastReceived:site.last_sync,
-    counts:{shiftStarts:count("start"),shiftEnds:count("end"),patrolStarts:count("patrol_start"),checkpointScans:count("scan"),problemsReported:count("incident"),problemsResolved:resolvedReported},expected,rows};
+    counts:{shiftStarts,shiftEnds:count("end"),patrolStarts:count("patrol_start"),checkpointScans:count("scan"),problemsReported:count("incident"),problemsResolved:resolvedReported},expected,rows};
 }
 import { effectivePlans } from "./public/shift-plans.js";

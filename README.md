@@ -125,3 +125,7 @@ New shift starts and checkpoint scans receive a server assessment using the prop
 Supervisors see pending location exceptions grouped per guard shift in **Needs your attention**, separate from the Problems KPI. Review shows the evidence and map links, accepts an optional comment, and records **Mark reviewed** with actor and time. Later exceptions require another review. Review history remains accessible; marking reviewed neither changes the recorded GPS nor resolves a reported problem.
 
 Migration **013** adds `property_locations` and `location_reviews`; include them in hosted runtime grants, retention and customer offboarding. No hosted migration has been run for this feature. Test with `node --test tests/gps.test.js`. Browser verification uses a map fixture, not a live geocoding service. Before a pilot, confirm the actual address/radius on site and test Android GPS accuracy, denied permissions, offline capture and delayed upload over HTTPS. These checks use individual on-duty events, not continuous tracking, and cannot establish misconduct or prove a property is secure.
+
+## MVP readiness and remediation
+
+See [the remediation plan and progress register](docs/MVP-REMEDIATION-PLAN.md) for issue status, acceptance criteria, dependencies, verification evidence and the paid-pilot release gate. The [independent audit](docs/audit-2026-09-16/MVP-READINESS-REPORT.md) is the historical baseline.
