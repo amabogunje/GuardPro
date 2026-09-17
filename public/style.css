@@ -2078,6 +2078,26 @@ summary:focus-visible {
   background: #f3ecdf;
   border-radius: 0;
 }
+.supervisor-mobile .stats .supervisor-setup-status {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+  min-height: 0;
+  padding: 18px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: #263e5c;
+}
+.supervisor-mobile .supervisor-setup-status p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.supervisor-mobile .supervisor-setup-status button {
+  justify-self: start;
+  min-height: 44px;
+}
 .supervisor-mobile .stats .stat[data-tone] {
   background: transparent;
   color: #263e5c;

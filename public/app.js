@@ -974,6 +974,10 @@ function renderDashboard() {
       site: site(),
       plans: state.shiftPlans || [],
     });
+    if (!windows.length) {
+      t.querySelector(".stats").innerHTML = `<section class="card stat supervisor-setup-status"><div class="kpi-label">${icon("shifts")}<span>Shift setup required</span></div><p>Set up your first shift before Guard Patrol measures check-ins or patrols for this property.</p><button type="button" class="primary" data-page="setup">Set up shifts</button></section>`;
+      t.querySelector(":scope > .grid").innerHTML = `<section class="card attention-card"><div class="attention-section"><div class="attention-heading"><h2>Needs your attention</h2></div><div class="attention-list"><p class="empty">Nothing needs your attention.</p></div></div></section><section class="card guards-this-shift"><h2>Guards this shift</h2><p class="empty">No shift has been set up.</p></section>`;
+    } else {
     const selected =
       windows.find((w) => w.key === selectedOverviewShift) ||
       windows.find((w) => w.current) ||
@@ -1084,6 +1088,7 @@ function renderDashboard() {
     const attentionPager = attention.length > 3 ? '<nav class="attention-pagination" aria-label="Attention pages"><button data-md="true" data-action="attentionPrevious" ' + (attentionPage === 0 ? "disabled" : "") + '>Previous</button><span>' + (offset + 1) + '–' + Math.min(offset + 3, attention.length) + ' of ' + attention.length + '</span><button data-md="true" data-action="attentionNext" ' + (offset + 3 >= attention.length ? "disabled" : "") + '>Next</button></nav>' : "";
     t.querySelector(":scope > .grid").innerHTML =
       `<section class="card attention-card"><div class="attention-section"><div class="attention-heading"><h2>Needs your attention (${attention.length})</h2>${attentionControls}</div><div class="attention-list">${attentionRows || '<p class="empty">Nothing needs your attention.</p>'}</div><div class="attention-footer">${attentionPager}</div></div></section><section class="card guards-this-shift"><h2>Guards this shift</h2>${selected.rosterUnknown ? '<p class="muted">No roster was saved for this date. Showing recorded attendance.</p>' : ""}${details.guards.map((g) => `<div class="overview-row"><div><span class="guard-thumbnail" aria-hidden="true">${icon("person")}${state.users.find(u => u.id === g.id)?.photo_id ? `<img src="/media/profile/${encodeURIComponent(g.id)}" alt="">` : ""}</span><strong>${esc(guardName(g.id))}</strong><small>${g.session ? "Checked in " + date(g.session.started_at) + (g.session.ended_at ? " · Ended " + date(g.session.ended_at) : "") : g.due ? "Check-in not recorded" : "Check-in not due yet"}</small></div></div>`).join("") || '<p class="empty">No guards assigned to this shift.</p>'}</section>`;
+    }
   }
   if (mobileSupervisor && ["home", "patrols"].includes(page)) {
     const sections = t.querySelectorAll(":scope > .grid > section");

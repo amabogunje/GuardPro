@@ -49,23 +49,6 @@ export function settingsRoutes({
         groups.get(key).guard_ids.push(p.guard_id);
       }
       shifts = [...groups.values()];
-      if (!shifts.length)
-        shifts = [
-          {
-            template_id: "default",
-            name: "Shift 1",
-            start_time: "00:00",
-            end_time: "00:00",
-            instructions: "",
-            schedule: site.schedule,
-            guard_ids: (
-              await all(
-                "SELECT u.id FROM users u JOIN assignments a ON a.user_id=u.id WHERE a.site_id=? AND u.role='guard' AND u.id NOT IN (SELECT user_id FROM disabled_users)",
-                site.id,
-              )
-            ).map((u) => u.id),
-          },
-        ];
     }
     const users = await all(
       "SELECT u.id,u.name,CASE WHEN c.email_missing=1 THEN '' ELSE u.email END AS email,c.whatsapp,u.role,(SELECT user_id FROM disabled_users WHERE user_id=u.id) AS disabled,(SELECT user_id FROM user_photos WHERE user_id=u.id) AS photo_id FROM users u JOIN assignments a ON a.user_id=u.id LEFT JOIN user_contacts c ON c.user_id=u.id WHERE a.site_id=?",

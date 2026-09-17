@@ -34,14 +34,6 @@ export function overviewShifts({ site, plans = [], day, now = Date.now() }) {
       });
     if(p.guard_id) groups.get(key).guardIds.push(p.guard_id);
   }
-  if (!groups.size)
-    groups.set("default", {
-      key: "default",
-      start_time: "00:00",
-      end_time: "00:00",
-      guardIds: localDay < today ? [] : site.guard_ids || [],
-      rosterUnknown: localDay < today,
-    });
   return [...groups.values()]
     .map((g) => {
       let start = Date.parse(`${localDay}T${g.start_time}:00+01:00`);
@@ -83,6 +75,12 @@ export function supervisorStatus({
     windows.find((w) => w.current) ||
     windows.find((w) => w.start > now) ||
     windows.at(-1);
+  if (!window)
+    return [
+      { label: "Guards checked in", value: "—", qualifier: "set up a shift", tone: "good" },
+      { label: "Patrols scheduled", value: "—", qualifier: "set up a shift", tone: "good" },
+      { label: "Problems reported", value: String(incidents.filter(i => i.site_id === site.id && i.status !== "Resolved").length), qualifier: "need attention", tone: incidents.some(i => i.site_id === site.id && i.status !== "Resolved") ? "attention" : "good" },
+    ];
   // The denominator is guards due to check in, not a future roster size.
   const expected = new Set(now >= window.start ? window.guardIds : []);
   const eligible = (shift) =>

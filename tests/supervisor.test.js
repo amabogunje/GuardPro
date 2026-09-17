@@ -416,7 +416,7 @@ test("supervisor pages retain a mobile canvas on phone and desktop", async () =>
   }
 });
 
-test("shift overview scopes attendance, patrols and reports and provides a default", async () => {
+test("shift overview scopes attendance and patrols without inventing a default shift", async () => {
   const { overviewShifts, supervisorStatus } =
     await import("../public/supervisor-status.js");
   const now = Date.parse("2026-09-05T11:00:00Z");
@@ -426,9 +426,9 @@ test("shift overview scopes attendance, patrols and reports and provides a defau
     schedule: "09:00,10:00,15:00,22:00",
   };
   const fallback = overviewShifts({ site, now });
-  assert.equal(fallback.length, 1);
-  assert.equal(fallback[0].end - fallback[0].start, 86400000);
-  assert.equal(supervisorStatus({ site, now })[0].value, "0 of 3");
+  assert.equal(fallback.length, 0);
+  assert.equal(supervisorStatus({ site, now })[0].value, "—");
+  assert.equal(supervisorStatus({ site, now })[0].qualifier, "set up a shift");
   const plans = [
     { site_id: "oak", guard_id: "a", start_time: "08:00", end_time: "16:00" },
     { site_id: "oak", guard_id: "b", start_time: "08:00", end_time: "16:00" },
@@ -648,10 +648,7 @@ test("historical overview uses prior plans and separates carry-over from later r
       ["new", false],
     ],
   );
-  assert.equal(
-    overviewShifts({ site, plans: [], day: "2026-01-01" })[0].rosterUnknown,
-    true,
-  );
+  assert.deepEqual(overviewShifts({ site, plans: [], day: "2026-01-01" }), []);
 });
 
 test("problem KPI and list agree for unresolved carry-over and drop resolved reports", async () => {

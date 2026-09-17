@@ -94,6 +94,14 @@ test("self-service signup creates an isolated owner, customer and first property
   assert.deepEqual(firstState.sites.map((site) => site.id), [first.body.siteId]);
   assert.deepEqual(secondState.sites.map((site) => site.id), [second.body.siteId]);
   assert.equal(firstState.propertyLocations.at(-1).address, "1 Self Service Close, Ikeja, Lagos, Nigeria");
+  const firstSettings = await fetch(base + `/api/settings/${first.body.siteId}`, {
+    headers: {
+      cookie: first.response.headers.get("set-cookie").split(";")[0],
+      "X-Session-Proof": first.body.proof,
+    },
+  });
+  assert.equal(firstSettings.status, 200);
+  assert.deepEqual((await firstSettings.json()).shifts, []);
 
   const ownerHeaders={cookie:first.response.headers.get('set-cookie').split(';')[0],'X-Session-Proof':first.body.proof,'Content-Type':'application/json'};
   const secondProperty=await fetch(base+'/api/admin',{method:'POST',headers:ownerHeaders,body:JSON.stringify({kind:'additional_site',site_id:first.body.siteId,name:'Second free property',address:'3 Free Tier Close, Ikeja, Lagos',latitude:6.61,longitude:3.36,radius_m:100,confirmed:true})});assert.equal(secondProperty.status,403);
