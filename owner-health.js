@@ -12,6 +12,7 @@ export function ownerHealth({site,plans=[],events=[],incidents=[],classification
   const inRange=t=>Date.parse(t)>=start&&Date.parse(t)<end;
   const starts=events.filter(e=>e.kind==='start').map(e=>({...e,payload:typeof e.payload==='string'?JSON.parse(e.payload):e.payload}));
   const patrolStarts=events.filter(e=>e.kind==='patrol_start').map(e=>({...e,payload:typeof e.payload==='string'?JSON.parse(e.payload):e.payload}));
+  const scans=events.filter(e=>e.kind==='scan').map(e=>({...e,payload:typeof e.payload==='string'?JSON.parse(e.payload):e.payload}));
   const guard=[],patrol=[],used=new Set();let unknownDays=0,anyShifts=0;
   const names=new Map(users.map(u=>[u.id,u.name]));
   const startTimes=[...new Set(plans.map(p=>p.start_time))];
@@ -39,8 +40,10 @@ export function ownerHealth({site,plans=[],events=[],incidents=[],classification
           const at=Date.parse(new Date(slotDay+3600000).toISOString().slice(0,10)+'T'+slot+':00+01:00');
           if(at<expectedAt||at>=finish||at<start||at>=end)continue;
           const candidatesForPatrol=patrolStarts.filter(e=>e.payload.scheduled_for===new Date(at).toISOString()&&(p.any_guard?candidates.some(s=>s.id===e.payload.shift_id):e.payload.shift_id===match?.id));
-          const scan=candidatesForPatrol.sort((a,b)=>a.captured_at.localeCompare(b.captured_at))[0];
-          patrol.push({label,window:`${p.start_time}–${p.end_time}`,guard:p.any_guard?'Any assigned guard':names.get(p.guard_id)||'Guard',expectedAt:new Date(at).toISOString(),actualAt:scan?.captured_at||null,eventId:scan?.id||null,status:!scan?'missed':Date.parse(scan.captured_at)>at+5*60000?'late':'onTime'});
+          const patrolStart=candidatesForPatrol.sort((a,b)=>a.captured_at.localeCompare(b.captured_at))[0];
+          const checkpointIds=Array.isArray(match?.payload.checkpoint_ids)&&match.payload.checkpoint_ids.length?match.payload.checkpoint_ids:null;
+          const completed=!patrolStart?false:!checkpointIds?null:checkpointIds.every(checkpointId=>scans.some(scan=>scan.payload.shift_id===patrolStart.payload.shift_id&&scan.payload.round_id===patrolStart.payload.round_id&&scan.payload.checkpoint_id===checkpointId));
+          patrol.push({label,window:`${p.start_time}–${p.end_time}`,guard:p.any_guard?'Any assigned guard':names.get(p.guard_id)||'Guard',expectedAt:new Date(at).toISOString(),actualAt:patrolStart?.captured_at||null,eventId:patrolStart?.id||null,status:!patrolStart?'missed':Date.parse(patrolStart.captured_at)>at+5*60000?'late':'onTime',completion:completed});
         }
       }
     }
@@ -52,9 +55,22 @@ export function ownerHealth({site,plans=[],events=[],incidents=[],classification
     const worst=[...affected].sort((a,b)=>b[1]-a[1])[0];
     return {expected,missed,late,onTime:expected-missed-late,score:expected?Math.round(100*(expected-missed-.5*late)/expected):null,missedPct:expected?Math.round(100*missed/expected):null,latePct:expected?Math.round(100*late/expected):null,mostAffected:worst?.[1]>0?worst[0]:null,mostAffectedWindow:worst?.[1]>0?rows.find(r=>r.label===worst[0])?.window:null,rows};
   };
+  const guardMetric=metric(guard);
+  const patrolMetric=metric(patrol);
+  const completionKnown=patrol.filter(row=>row.completion!==null);
+  const completed=patrol.filter(row=>row.completion===true).length;
+  const incomplete=patrol.filter(row=>row.completion===false).length;
+  const completionUnknown=patrol.length-completionKnown.length;
+  // Completion carries 70% of the composite. An on-time start carries 30%.
+  // A missing checkpoint snapshot leaves the score unknown rather than
+  // allowing a patrol-start record to imply a completed patrol.
+  patrolMetric.completed=completed;
+  patrolMetric.incomplete=incomplete;
+  patrolMetric.completionUnknown=completionUnknown;
+  patrolMetric.score=!patrolMetric.expected||completionUnknown?null:Math.round(100*((.7*completed/patrolMetric.expected)+(.3*patrolMetric.onTime/patrolMetric.expected)));
   const reports=incidents.filter(i=>inRange(i.captured_at));
   const classified=reports.map(i=>({id:i.id,report:i.report,at:i.captured_at,...classifications.find(c=>c.incident_id===i.id)}));
   const security=classified.filter(c=>c.category==='security').length,p1=classified.filter(c=>c.category==='security'&&c.priority==='P1').length;
   const unclassified=classified.filter(c=>!c.category).length,total=reports.length;
-  return {from:new Date(start+3600000).toISOString().slice(0,10),to:new Date(end-1+3600000).toISOString().slice(0,10),unknownDays,anyShifts,lateGraceMinutes:5,guard:metric(guard),patrol:metric(patrol),risk:{total,security,p1,unclassified,securityPct:total?Math.round(security*100/total):null,p1Pct:total?Math.round(p1*100/total):null,label:!total?'No reports':p1?'Elevated':security?'Security reported':unclassified?'Awaiting classification':'No classified security reports',outstanding:incidents.filter(i=>i.status!=='Resolved').length,rows:classified}};
+  return {from:new Date(start+3600000).toISOString().slice(0,10),to:new Date(end-1+3600000).toISOString().slice(0,10),unknownDays,anyShifts,lateGraceMinutes:5,guard:guardMetric,patrol:patrolMetric,risk:{total,security,p1,unclassified,securityPct:total?Math.round(security*100/total):null,p1Pct:total?Math.round(p1*100/total):null,label:!total?'No reports':p1?'Elevated':security?'Security reported':unclassified?'Awaiting classification':'No classified security reports',outstanding:incidents.filter(i=>i.status!=='Resolved').length,rows:classified}};
 }

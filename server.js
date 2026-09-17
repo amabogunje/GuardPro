@@ -64,7 +64,13 @@ const post = (url, ...handlers) => {
         fail("Too many attempts; wait ten minutes", 429);
       if (url === "/api/ai" && !(await rate("ai:" + req.user.id, 3600000, 20)))
         fail("Hourly AI pilot limit reached", 429);
-      await transaction(() => handler(req, res));
+      // Multipart uploads can wait on private Blob storage. Do not keep the
+      // pilot-wide database lock while that external operation is in flight:
+      // a delayed photo or recording must not delay another guard's shift or
+      // patrol record. Upload routes retain database constraints and their
+      // existing idempotent media identifiers for finalization.
+      if (req.file) await handler(req, res);
+      else await transaction(() => handler(req, res));
       res.json = original;
       res.json(response);
     } catch (error) {
@@ -100,6 +106,17 @@ app.use((req, res, next) => {
   )
     return res.status(403).json({ error: "Origin denied" });
   next();
+});
+// This deliberately reveals only whether the service can reach its database.
+// It is suitable for an uptime monitor and must never return credentials,
+// tenant data, storage paths or a list of configured services.
+app.get("/api/health", async (_req, res, next) => {
+  try {
+    await one("SELECT 1 AS ready");
+    res.json({ status: "ok" });
+  } catch (error) {
+    next(error);
+  }
 });
 const fail = (m, status = 400) => {
   throw Object.assign(new Error(m), { status });
@@ -390,6 +407,28 @@ app.get("/api/state", async (req, res) => {
   ]);
   const byContext = new Map(contexts.map((c) => [c.event_id, c]));
   const byEvent = new Map(events.map((e) => [e.id, e]));
+  // A guard needs the work that is in progress, rather than a complete
+  // property history. Keeping this boundary on the server matters on a
+  // shared phone: hiding a prior report in the UI is not enough.
+  const activeGuardShiftIds = new Set(
+    u.role === "guard"
+      ? shifts.filter((s) => s.user_id === u.id && !s.ended_at).map((s) => s.id)
+      : [],
+  );
+  const payloadFor = (event) => {
+    try {
+      return JSON.parse(event.payload || "{}");
+    } catch {
+      return {};
+    }
+  };
+  const guardEventInActiveShift = (event) => {
+    if (event.user_id !== u.id) return false;
+    if (event.kind === "start") return activeGuardShiftIds.has(event.id);
+    return activeGuardShiftIds.has(payloadFor(event).shift_id);
+  };
+  const guardIncidentInActiveShift = (incident) =>
+    guardEventInActiveShift(byEvent.get(incident.id) || {});
   const readableMessage = (id) => {
     if (!messagingEnabled) return false;
     const c = byContext.get(id);
@@ -437,12 +476,16 @@ app.get("/api/state", async (req, res) => {
     shiftPlans: u.role === "guard" ? sites.flatMap(s=>effectivePlans(shiftPlans.filter(p=>p.site_id===s.id)).filter(p=>p.guard_id===u.id||p.any_guard).map(p=>p.template_id?{...p,guard_ids:JSON.stringify(p.any_guard?["*"]:[u.id])}:p)) : shiftPlans,
     siteLocations,
     checkpoints,
-    shifts: shifts.filter((s) => u.role !== "guard" || s.user_id === u.id),
+    shifts: shifts.filter(
+      (s) =>
+        u.role !== "guard" ||
+        (s.user_id === u.id && activeGuardShiftIds.has(s.id)),
+    ),
     events: events
       .filter((e) =>
         e.kind === "message"
           ? readableMessage(e.id)
-          : u.role !== "guard" || e.user_id === u.id || e.kind === "end",
+          : u.role !== "guard" || guardEventInActiveShift(e),
       )
       .map((e) => ({
         ...e,
@@ -466,8 +509,7 @@ app.get("/api/state", async (req, res) => {
       })),
     incidents: incidents
       .filter(
-        (i) =>
-          u.role !== "guard" || i.user_id === u.id || i.status !== "Resolved",
+        (i) => u.role !== "guard" || guardIncidentInActiveShift(i),
       )
       .map((i) => ({
         ...i,
@@ -480,8 +522,11 @@ app.get("/api/state", async (req, res) => {
         })(),
         classification: classifications.find(c=>c.incident_id===i.id)||null,
         media: media.filter((m) => m.incident_id === i.id).map(displayMedia),
-        history: history.filter((h) => h.incident_id === i.id),
-        revisions: revisions.filter((r) => r.incident_id === i.id),
+        // Supervisors and owners need the resolution history. Guards receive
+        // their current report itself, but not internal workflow comments or
+        // revision history.
+        history: u.role === "guard" ? [] : history.filter((h) => h.incident_id === i.id),
+        revisions: u.role === "guard" ? [] : revisions.filter((r) => r.incident_id === i.id),
       })),
     summaries: summaries.filter(
       (s) => u.role === "supervisor" || s.status === "Approved",
@@ -1013,59 +1058,48 @@ const findMedia = async (id) =>
   (await one("SELECT *,incident_id AS target FROM media WHERE id=?", id)) ||
   (await one("SELECT *,event_id AS target FROM message_media WHERE id=?", id));
 post("/api/media/:incident/:id", upload.single("file"), async (req, res) => {
-  const { record, table, column } = await mediaTarget(
-    req.user,
-    req.params.incident,
-    true,
-  );
-  if (
-    req.user.role === "owner" ||
-    (table === "message_media" && req.user.id !== record.user_id)
-  )
-    fail("Read only", 403);
   if (!/^[a-zA-Z0-9-]{8,80}$/.test(req.params.id)) fail("Invalid media ID");
-  const prev = await findMedia(req.params.id);
-  if (prev) {
-    if (prev.target !== req.params.incident) fail("Conflict", 409);
-    return res.json({ ok: true, duplicate: true });
-  }
   validateFile(req.file);
-  const used =
-    (
-      await one(
-        "SELECT COALESCE(sum(size),0) n FROM media m JOIN incidents i ON i.id=m.incident_id WHERE i.site_id=?",
-        record.site_id,
-      )
-    ).n +
-    (
-      await one(
-        "SELECT COALESCE(sum(size),0) n FROM message_media m JOIN events e ON e.id=m.event_id WHERE e.site_id=?",
-        record.site_id,
-      )
-    ).n;
-  if (used + req.file.size > 1073741824)
-    fail("Site pilot media quota reached (1 GB)", 429);
-  if (
-    (await one(`SELECT count(*) n FROM ${table} WHERE ${column}=?`, record.id))
-      .n >= (table === "message_media" ? 5 : 6)
-  )
-    fail("Attachment limit reached");
-  const file = await saveMedia(
-    req.params.id,
-    req.file.buffer,
-    req.file.mimetype,
-  );
-  await run(
-    `INSERT INTO ${table} VALUES(?,?,?,?,?,?,?)`,
-    req.params.id,
-    record.id,
-    req.user.id,
-    req.file.mimetype,
-    file,
-    req.file.size,
-    text(req.body.source, 40),
-  );
-  res.json({ ok: true });
+  const prepared = await transaction(async () => {
+    const { record, table, column } = await mediaTarget(req.user, req.params.incident, true);
+    if (req.user.role === "owner" || (table === "message_media" && req.user.id !== record.user_id))
+      fail("Read only", 403);
+    const prev = await findMedia(req.params.id);
+    if (prev) {
+      if (prev.target !== req.params.incident) fail("Conflict", 409);
+      return { duplicate: true };
+    }
+    const reservation = await one("SELECT * FROM media_uploads WHERE id=?", req.params.id);
+    if (reservation && (reservation.target_id !== record.id || reservation.table_name !== table || reservation.user_id !== req.user.id))
+      fail("Conflict", 409);
+    if (!reservation) {
+      const used = (await one("SELECT COALESCE(sum(size),0) n FROM media m JOIN incidents i ON i.id=m.incident_id WHERE i.site_id=?", record.site_id)).n +
+        (await one("SELECT COALESCE(sum(size),0) n FROM message_media m JOIN events e ON e.id=m.event_id WHERE e.site_id=?", record.site_id)).n +
+        (await one("SELECT COALESCE(sum(size),0) n FROM media_uploads WHERE site_id=? AND status='pending'", record.site_id)).n;
+      if (used + req.file.size > 1073741824) fail("Site pilot media quota reached (1 GB)", 429);
+      if ((await one(`SELECT count(*) n FROM ${table} WHERE ${column}=?`, record.id)).n >= (table === "message_media" ? 5 : 6)) fail("Attachment limit reached");
+      await run("INSERT INTO media_uploads VALUES(?,?,?,?,?,?,?,?,?,?,?)", req.params.id, record.id, record.site_id, req.user.id, table, req.file.mimetype, req.file.size, text(req.body.source, 40), now(), "pending", null);
+    }
+    return { record, table };
+  });
+  if (prepared.duplicate) return res.json({ ok: true, duplicate: true });
+  const file = await saveMedia("uploads/" + req.params.id, req.file.buffer, req.file.mimetype);
+  const finalized = await transaction(async () => {
+    const prev = await findMedia(req.params.id);
+    if (prev) {
+      if (prev.target !== req.params.incident) fail("Conflict", 409);
+      await run("UPDATE media_uploads SET status='finalized',path=? WHERE id=?", file, req.params.id);
+      return true;
+    }
+    const reservation = await one("SELECT * FROM media_uploads WHERE id=? AND status='pending'", req.params.id);
+    if (!reservation || reservation.target_id !== prepared.record.id || reservation.table_name !== prepared.table)
+      fail("Upload reservation unavailable", 409);
+    const column = prepared.table === "media" ? "incident_id" : "event_id";
+    await run(`INSERT INTO ${prepared.table} VALUES(?,?,?,?,?,?,?)`, req.params.id, prepared.record.id, req.user.id, req.file.mimetype, file, req.file.size, text(req.body.source, 40));
+    await run("UPDATE media_uploads SET status='finalized',path=? WHERE id=?", file, req.params.id);
+    return false;
+  });
+  res.json({ ok: true, duplicate: finalized });
 });
 if (process.env.VERCEL && !process.env.MEDIA_SIGNING_SECRET)
   throw new Error("MEDIA_SIGNING_SECRET is required");

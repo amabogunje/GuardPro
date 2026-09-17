@@ -2,7 +2,7 @@
 
 **Provided by Integrated Systems and Devices Limited — ISDL.**
 
-**Hosted fictional demo:** https://guardpro-nine.vercel.app — use the demo accounts below. Shared demo credentials are displayed on sign-in; use fictional information only. Hosted release: `v0.2.0-vercel-demo`. [Deployment setup and limits](docs/VERCEL.md).
+**Hosted pilot:** https://guardpro-nine.vercel.app. Production is a clean self-service pilot environment; create an owner account rather than expecting demo credentials. Local/demo environments may contain fictional seed accounts only. [Deployment setup and limits](docs/VERCEL.md).
 
 A working guard-supervision MVP for existing guards. It records attendance, patrol activity, approved incident reports, handovers and follow-up. It does not replace CCTV, physical access control or emergency response. All seeded people, properties and events are fictional.
 
@@ -64,7 +64,7 @@ Without credentials, audio is still recorded, retained and playable, but **no tr
 npm test
 ```
 
-Tests launch an isolated server on port 3101 and create a separate `data/test-*` database. Browser tests use installed Chrome at `C:/Program Files/Google/Chrome/Application/chrome.exe`; override `CHROME_PATH` for another machine. For Linux, for example, set `CHROME_PATH=/usr/bin/google-chrome`. The production app on port 3000 is not modified by these tests.
+Tests launch an isolated server on an operating-system-selected local port and create a separate `data/test-*` database. Browser tests use installed Chrome at `C:/Program Files/Google/Chrome/Application/chrome.exe`; override `CHROME_PATH` for another machine. For Linux, for example, set `CHROME_PATH=/usr/bin/google-chrome`. The production app is not modified by these tests.
 
 Coverage includes authentication, cookie-only access denial, customer/site/media isolation, duplicate active shifts, complete patrol counts, report approval, invalid media then successful retry, exactly-once events/attachments, incident transitions, notification receipt, summary approval/source counts, a 390×844 viewport, encrypted offline reload/sign-out/reconnection, interrupted media, microphone denial and synthetic audio capture. Browser screenshots are stored in the isolated test directory. Synthetic microphone audio is a test fixture, not a real guard recording or AI transcript.
 

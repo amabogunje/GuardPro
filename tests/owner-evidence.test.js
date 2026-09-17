@@ -45,3 +45,15 @@ test('owner activity labels the completed historical period and patrol starts as
   const classified=ownerHealth({now:Date.parse('2026-09-09T12:00:00Z'),site:{id:'s'},plans:[],events:[],incidents:[{id:'i',captured_at:'2026-09-04T12:00:00Z',status:'Resolved'}],classifications:[{incident_id:'i',category:'maintenance',priority:null}],users:[]});
   assert.equal(classified.risk.label,'No classified security reports');
 });
+
+test('patrol health weights completed checkpoints above start timing',()=>{
+  const scheduled='2026-09-08T09:00:00.000Z';
+  const base={now:Date.parse('2026-09-09T12:00:00Z'),site:{id:'s'},users:[{id:'g',name:'Bala'}],incidents:[],classifications:[],plans:[{site_id:'s',guard_id:'g',start_time:'08:00',end_time:'16:00',schedule:'10:00',created_at:'2026-09-08T00:00:00Z'}]};
+  const start={id:'shift',kind:'start',user_id:'g',captured_at:'2026-09-08T07:00:00.000Z',payload:{checkpoint_ids:['a','b']}};
+  const patrol={id:'patrol',kind:'patrol_start',user_id:'g',captured_at:'2026-09-08T09:07:00.000Z',payload:{shift_id:'shift',round_id:'round',scheduled_for:scheduled}};
+  const scans=['a','b'].map(checkpoint_id=>({id:checkpoint_id,kind:'scan',user_id:'g',captured_at:'2026-09-08T09:08:00.000Z',payload:{shift_id:'shift',round_id:'round',checkpoint_id}}));
+  const complete=ownerHealth({...base,events:[start,patrol,...scans]}).patrol;
+  assert.deepEqual([complete.expected,complete.completed,complete.incomplete,complete.late,complete.score],[1,1,0,1,70]);
+  const incomplete=ownerHealth({...base,events:[start,{...patrol,captured_at:'2026-09-08T09:00:00.000Z'}]}).patrol;
+  assert.deepEqual([incomplete.completed,incomplete.incomplete,incomplete.late,incomplete.score],[0,1,0,30]);
+});

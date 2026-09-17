@@ -8,15 +8,36 @@ export const cloudMedia = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 if (process.env.VERCEL && !cloudMedia)
   throw new Error("Private Blob storage must be configured");
 export const maxUploadBytes = 4 * 1024 * 1024;
+let testFailureConsumed = false;
 export async function saveMedia(key, buffer, contentType) {
+  // Test-only delay used to prove an external upload cannot hold the write
+  // transaction. It is never configured by the application runtime.
+  const testDelay = Number(process.env.TEST_MEDIA_UPLOAD_DELAY_MS || 0);
+  if (Number.isFinite(testDelay) && testDelay > 0)
+    await new Promise((resolve) => setTimeout(resolve, testDelay));
+  if (process.env.TEST_MEDIA_UPLOAD_FAIL_ONCE === "true" && !testFailureConsumed) {
+    testFailureConsumed = true;
+    throw Object.assign(new Error("Test media store unavailable"), { status: 503 });
+  }
   if (cloudMedia) {
-    const blob = await put("guardpro/" + key, buffer, {
-      access: "private",
-      contentType,
-      addRandomSuffix: false,
-      allowOverwrite: true,
-    });
-    return blob.url;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), Number(process.env.MEDIA_UPLOAD_TIMEOUT_MS || 30000));
+    try {
+      const blob = await put("guardpro/" + key, buffer, {
+        access: "private",
+        contentType,
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        abortSignal: controller.signal,
+      });
+      return blob.url;
+    } catch (error) {
+      if (controller.signal.aborted)
+        throw Object.assign(new Error("Media upload timed out; retry shortly"), { status: 503 });
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
   const file = path.resolve(process.env.DATA_DIR || "data", "media", key);
   await fs.mkdir(path.dirname(file), { recursive: true });

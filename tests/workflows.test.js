@@ -113,6 +113,11 @@ test("cookie alone cannot unlock API after shared-phone sign-out", async () => {
   const r = await fetch(base + "/api/state", { headers: { cookie: guard } });
   assert.equal(r.status, 401);
 });
+test("service health endpoint exposes no operational or customer detail", async () => {
+  const response = await fetch(base + "/api/health");
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { status: "ok" });
+});
 test("authentication, guard scope, duplicate shift, complete scheduled round and end", async () => {
   await req("/api/state", null, null, 401);
   await req("/api/events", guard, event("start", {}, "other"), 403);
@@ -1505,6 +1510,21 @@ test("guard history is collapsed, scoped to the shift and read-only, including o
     { status: "Acknowledged" },
     403,
   );
+  const guardState = await req("/api/state", guard);
+  assert.deepEqual(guardState.shifts.map((s) => s.id), [current.id]);
+  assert.equal(
+    guardState.events.some((e) => e.id === old.id),
+    false,
+    "a guard must not receive a prior-shift event from the API",
+  );
+  assert.equal(
+    guardState.incidents.some((i) => i.id === old.id),
+    false,
+    "a guard must not receive a prior-shift report from the API",
+  );
+  const guardedCurrent = guardState.incidents.find((i) => i.id === currentReport.id);
+  assert.deepEqual(guardedCurrent.history, []);
+  assert.deepEqual(guardedCurrent.revisions, []);
   const browser = await chromium.launch({
     executablePath:
       process.env.CHROME_PATH ||

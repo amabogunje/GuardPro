@@ -10,13 +10,13 @@ Use OS volume encryption and restricted file permissions for the server data dir
 
 ## Retention and recovery decisions before pilot
 
-No automatic deletion runs in this MVP. Agree a short pilot retention window, for example a **proposed** 30–90 days subject to customer requirements and qualified local advice. Define separate treatment of unresolved cases, media, summaries and audit evidence. Decide who can approve deletion, how backups expire and how deletion is verified. Do not infer Nigerian legal compliance from the presence of encryption or a retention proposal.
+The accepted free-pilot retention period is **one year**. No automatic deletion runs in this MVP. Define separate treatment of unresolved cases, media, summaries and audit evidence; decide who can authorize export/deletion, how backups expire and how deletion is verified. Do not infer Nigerian legal compliance from the presence of encryption or a retention proposal.
 
-Back up the SQLite database consistently with its WAL and the media directory. Prefer a SQLite online backup or stop the server during a coordinated copy. Encrypt backups, restrict access and test restoring both DB and media. A database-only restore loses supporting files. Maintain a daily disk-capacity check and reconcile unreferenced filesystem objects after failures.
+Production uses Neon Postgres and private Vercel Blob storage, so a usable recovery rehearsal must restore both a database backup and its matching private media inventory into separate non-production resources. A database-only restore loses supporting files. For a local SQLite demonstration, copy the database consistently with its WAL and private media directory. Encrypt backups, restrict access and test restoring both data and media.
 
-On device loss: revoke server sessions and assignments through controlled operator database maintenance, record the action, notify the responsible customer, and use the device's existing management/remote-wipe facility if available. This app cannot remotely erase an offline browser. Unsynchronized work may be unrecoverable. On password loss: do not reset or clear storage until the old vault's pending work has been addressed. A managed recovery workflow is still needed.
+On device loss: disable the user to revoke server sessions and assignments, record the action, notify the responsible customer, and use the device's existing management/remote-wipe facility if available. This app cannot remotely erase an offline browser. Unsynchronized work may be unrecoverable. On password loss: do not reset or clear storage until the old vault's pending work has been addressed.
 
-On customer offboarding: export the agreed records/media, obtain confirmation, remove assignments and sessions, disable access, then delete the customer's dependent rows and private files in a reviewed operator procedure consistent with the agreed retention policy. Remove retained copies from managed devices and expire backups. There is deliberately no one-click destructive offboarding feature in this pilot.
+On customer offboarding: export the agreed records/media, obtain confirmation, remove assignments and sessions, disable access, then delete the customer's dependent rows and private files in a reviewed operator procedure consistent with the agreed retention policy. Remove retained copies from managed devices and expire backups. There is deliberately no one-click destructive offboarding feature in this pilot. See [the pilot operations runbook](PILOT-OPERATIONS-RUNBOOK.md) for the executable checklist.
 
 ## Cost model
 
