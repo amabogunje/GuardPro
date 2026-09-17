@@ -1,6 +1,6 @@
 # Guard experience MVP — v0.1.0-guard-mvp
 
-Checkpoint requested on 5 September 2026. Brand: Guard Companion, provided by Integrated Systems and Devices Limited (ISDL).
+Checkpoint requested on 5 September 2026. Brand: Guard Patrol, provided by Integrated Systems and Devices Limited (ISDL).
 
 ## Included
 

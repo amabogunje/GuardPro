@@ -1850,7 +1850,7 @@ if (!process.env.VERCEL) {
   const listener = app.listen(Number(process.env.PORT || 3000), host, () => {
     const address = listener.address();
     const port = typeof address === "object" && address ? address.port : process.env.PORT || 3000;
-    console.log(`Guard Companion running at http://${host}:${port}`);
+    console.log(`Guard Patrol running at http://${host}:${port}`);
   });
 }
 export default app;

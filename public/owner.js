@@ -11,7 +11,7 @@ export function ownerPage(root,{page,site,user,state,api,esc,icon,brand,siteSele
   if(page==='home') {
     host.innerHTML=`<nav class="actions supervisor-actions settings-tabs owner-actions" aria-label="Owner actions">${action('property','location','Property')}${action('supervisors','person','Supervisors')}${action('subscription','payment','Subscription')}</nav><div id="ownerOverview" aria-live="polite"><p role="status">Loading your property overview…</p></div>`;
     const overview=host.querySelector('#ownerOverview');
-    if(!site){overview.innerHTML='<section class="card"><h2>Welcome to Guard Companion</h2><p>Start by adding your property, then choose who will supervise your guards.</p><button class="primary" data-page="property">Add your property</button></section>';return;}
+    if(!site){overview.innerHTML='<section class="card"><h2>Welcome to Guard Patrol</h2><p>Start by adding your property, then choose who will supervise your guards.</p><button class="primary" data-page="property">Add your property</button></section>';return;}
     api('/api/owner-overview/'+encodeURIComponent(site.id)).then(d=>{
       if(!overview.isConnected)return;
       const incomplete=!d.setup.propertyConfigured||!d.setup.supervisorConfigured;

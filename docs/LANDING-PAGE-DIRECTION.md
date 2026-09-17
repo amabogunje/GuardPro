@@ -1,4 +1,4 @@
-# Guard Companion landing page
+# Guard Patrol landing page
 
 Updated 17 September 2026. The public landing page is served at `/`; the installed operational app is served at the stable `/app` route.
 
@@ -12,7 +12,7 @@ Lead message: **Keep up with your guards. Even when you’re away.** Supporting 
 
 ## Commercial decisions and page flow
 
-The user confirmed Guard Companion as the brand, the free-tier launch, and permission to show a future paid tier as Coming soon. The existing approved free boundary is one property and five guards/supervisors combined. Paid pricing and capabilities remain unannounced. Start free links to `/app?signup=1`; existing sessions retain their app experience.
+The user confirmed Guard Patrol as the brand, the free-tier launch, and permission to show a future paid tier as Coming soon. The existing approved free boundary is one property and five guards/supervisors combined. Paid pricing and capabilities remain unannounced. Start free links to `/app?signup=1`; existing sessions retain their app experience.
 
 Flow: hero and illustrative activity records → three audience contexts → three practical benefits → setup/report/review routine → free and coming-soon plans → practical FAQs → repeated signup action and provider identity.
 

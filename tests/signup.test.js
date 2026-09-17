@@ -200,7 +200,7 @@ test("landing signup entry opens account creation while ordinary entry retains s
 
     await page.goto(base);
     await page.getByText("Illustrative image", { exact: false }).waitFor();
-    await page.getByText("Guard Companion does not provide emergency response.", { exact: true }).waitFor();
+    await page.getByText("Guard Patrol does not provide emergency response.", { exact: true }).waitFor();
 
     await page.goto(base + "/app");
     await page.getByRole("heading", { name: "Welcome back", exact: true }).waitFor();

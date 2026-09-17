@@ -1,6 +1,6 @@
 # Pilot operations runbook
 
-This runbook applies to the free Guard Companion pilot: no more than five customer owners, fewer than 25 guards and supervisors in total, one property per owner, and no live AI transcription. The product owner is the named support and recovery owner.
+This runbook applies to the free Guard Patrol pilot: no more than five customer owners, fewer than 25 guards and supervisors in total, one property per owner, and no live AI transcription. The product owner is the named support and recovery owner.
 
 It is an operating procedure, not a statement of legal compliance or a promise of monitoring, emergency response, availability, or recovery time.
 
@@ -16,7 +16,7 @@ It is an operating procedure, not a statement of legal compliance or a promise o
 - **Support/recovery owner:** product owner.
 - **Pilot support route:** publish one ISDL-controlled support email or telephone/WhatsApp contact before inviting a customer. Do not represent the app's disabled in-app messaging as support.
 - **Initial response target (proposed):** acknowledge a pilot support request within one business day; investigate an outage as soon as the support owner is available. This must be accepted or replaced before launch.
-- For a guard safety concern, follow the site's existing emergency procedures. Guard Companion does not dispatch police, provide an in-app emergency alarm, or guarantee monitoring.
+- For a guard safety concern, follow the site's existing emergency procedures. Guard Patrol does not dispatch police, provide an in-app emergency alarm, or guarantee monitoring.
 - For an upload issue, preserve the browser/app state and retry once connected. Do not clear browser storage, reset credentials, or remove the account until pending work is reconciled or the guard confirms it can be lost.
 - For suspected unauthorized access, disable the affected user in the supervisor/owner settings, record the action, and rotate the account password using the recovery procedure. A disabled user is denied server access immediately; an offline browser cannot be remotely wiped.
 

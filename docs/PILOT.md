@@ -12,7 +12,7 @@ Use a small supervised trial. Explain that this service helps supervise employed
 - With airplane mode enabled, capture audio/photo, save, reload, unlock and sign out. Another account must not see decrypted records. Reconnect and retry twice; exactly one server record should exist.
 - Interrupt the photo upload, close/reopen the app, and retry. Confirm the report remains visible while the attachment is pending, then becomes playable/viewable after synchronization.
 - Test nearly full storage, browser eviction warning behavior and session expiration. Do not clear app/browser storage until all work is synchronized. Record device/browser versions.
-- Confirm that no in-app emergency alarm or urgent telephone action is shown. Follow the site's existing emergency procedure outside Guard Companion when testing an urgent safety scenario.
+- Confirm that no in-app emergency alarm or urgent telephone action is shown. Follow the site's existing emergency procedure outside Guard Patrol when testing an urgent safety scenario.
 - Have the owner inspect the report and original media. Have the supervisor acknowledge, assign and resolve. Check the actor/timestamp timeline and resolution photo.
 - Generate a daily summary, open source records, check counts, approve, and inspect it as owner. Submit a delayed record and generate a revised daily summary rather than changing the approved historical snapshot.
 - AI transcription is disabled for this pilot. Confirm original recordings remain playable and guard-entered text remains the source of record.

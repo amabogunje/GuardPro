@@ -1,9 +1,9 @@
-# Guard Companion free pilot — customer notice (draft)
+# Guard Patrol free pilot — customer notice (draft)
 
 **Status:** Implemented as the public `/customer-notice.html` content. ISDL must approve the wording and set the deployment-only `PILOT_SUPPORT_CONTACT` before public signup is opened.
 **Version:** 2026-09-17
 
-Guard Companion, provided by Integrated Systems and Devices Limited (ISDL), helps you supervise guards you already employ. It records guard shift starts and ends, patrol/checkpoint activity, reported problems, supervisor resolution notes and supporting recordings or photos.
+Guard Patrol, provided by Integrated Systems and Devices Limited (ISDL), helps you supervise guards you already employ. It records guard shift starts and ends, patrol/checkpoint activity, reported problems, supervisor resolution notes and supporting recordings or photos.
 
 ## What the pilot includes
 
@@ -17,7 +17,7 @@ Owners and supervisors with access to the property can see its security records.
 
 ## Important limits
 
-Guard Companion does not replace CCTV, physical access control, emergency response, a security provider, or site emergency procedures. A patrol record or checkpoint scan does not prove that a property is secure. Location may be unavailable or inaccurate. Mobile-browser uploads may wait until the device reconnects and the app is opened again.
+Guard Patrol does not replace CCTV, physical access control, emergency response, a security provider, or site emergency procedures. A patrol record or checkpoint scan does not prove that a property is secure. Location may be unavailable or inaccurate. Mobile-browser uploads may wait until the device reconnects and the app is opened again.
 
 For urgent safety concerns, guards must follow the site's existing emergency procedure. The pilot does not dispatch police, provide an in-app emergency alarm, guarantee monitoring, or guarantee that a record was delivered or reviewed.
 
@@ -25,7 +25,7 @@ For urgent safety concerns, guards must follow the site's existing emergency pro
 
 Pilot records are retained for one year unless ISDL tells you in writing that a different requirement applies. The public notice displays the deployment-configured `PILOT_SUPPORT_CONTACT` for support, an export request, or leaving the pilot. ISDL will verify the requesting owner before providing an export or ending access.
 
-Before using Guard Companion, please provide the property address, assign responsible supervisors, and explain these point-in-time collections and the site procedure to participating guards.
+Before using Guard Patrol, please provide the property address, assign responsible supervisors, and explain these point-in-time collections and the site procedure to participating guards.
 
 ---
 

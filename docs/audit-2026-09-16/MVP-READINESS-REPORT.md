@@ -1,4 +1,4 @@
-# Guard Companion: independent sellable-MVP readiness review
+# Guard Patrol: independent sellable-MVP readiness review
 
 **Date:** 16 September 2026  
 **Code reviewed:** `6f80c7c`  

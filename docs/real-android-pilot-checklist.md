@@ -1,4 +1,4 @@
-# Guard Companion cross-role mobile and Android pilot checklist
+# Guard Patrol cross-role mobile and Android pilot checklist
 
 Record the device model, Android version, browser version, site, user role, operator, date and result for every item. Run the relevant section with a representative guard, supervisor and owner.
 

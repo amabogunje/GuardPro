@@ -78,7 +78,7 @@ before(async () => {
     await new Promise((resolve, reject) => {
       server.stdout.on("data", (d) => {
         const match = String(d).match(
-          /Guard Companion running at http:\/\/127\.0\.0\.1:(\d+)/,
+          /Guard Patrol running at http:\/\/127\.0\.0\.1:(\d+)/,
         );
         if (match) {
           base = `http://127.0.0.1:${match[1]}`;

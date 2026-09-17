@@ -14,7 +14,7 @@ The pilot retains a coherent core: guard capture, supervisor review and owner vi
 
 The landing FAQ still says guards should call a configured contact for urgent help (`public/landing.html`). This contradicts D4/R-003 and the current guard interface, which exposes no in-app urgent telephone route.
 
-**Acceptance:** Replace the FAQ with the existing customer-notice boundary: for urgent safety concerns, follow the property's existing emergency procedures; Guard Companion does not provide emergency response. Verify the rendered landing page and notice agree after deployment.
+**Acceptance:** Replace the FAQ with the existing customer-notice boundary: for urgent safety concerns, follow the property's existing emergency procedures; Guard Patrol does not provide emergency response. Verify the rendered landing page and notice agree after deployment.
 
 ### X8 follow-up — make the ISDL support route usable
 

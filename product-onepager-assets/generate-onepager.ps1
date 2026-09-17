@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 
 $root = "C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro"
 $outDir = Join-Path $root "product-onepager-assets"
-$output = Join-Path $outDir "guard-companion-one-pager.png"
+$output = Join-Path $outDir "guard-patrol-one-pager.png"
 
 $W = 1600
 $H = 2100
@@ -111,7 +111,7 @@ StrokeRound 78 70 1444 340 42 $line 2
 $icon = [System.Drawing.Image]::FromFile((Join-Path $root "public\icon-512.png"))
 $g.DrawImage($icon, 124, 112, 82, 82)
 $icon.Dispose()
-TextBox "Guard Companion" 230 104 500 54 36 $dark "Bold"
+TextBox "Guard Patrol" 230 104 500 54 36 $dark "Bold"
 TextBox "Provided by Integrated Systems and Devices Limited - ISDL" 232 156 680 38 22 $muted
 TextBox "PROFESSIONAL GUARD SUPERVISION" 1000 112 420 60 20 $teal "Bold" "Far"
 TextBox "Know which guards are on duty, which patrols were missed, and what needs attention now." 124 204 1250 104 40 $dark "Bold"

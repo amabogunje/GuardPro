@@ -94,4 +94,4 @@ These are not superseded by the new landing review:
 
 ## Launch posture after remediation
 
-Once the P1 items and operating gates are evidenced, launch as a bounded **free, one-property, up-to-five non-owner-user pilot**. Continue to state that Guard Companion supervises existing guards; it does not replace CCTV, physical access control, security providers, site emergency procedures, or emergency response.
+Once the P1 items and operating gates are evidenced, launch as a bounded **free, one-property, up-to-five non-owner-user pilot**. Continue to state that Guard Patrol supervises existing guards; it does not replace CCTV, physical access control, security providers, site emergency procedures, or emergency response.

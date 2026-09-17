@@ -1,4 +1,4 @@
-# Guard Companion — Guard Pro pilot
+# Guard Patrol — Guard Pro pilot
 
 **Provided by Integrated Systems and Devices Limited — ISDL.**
 
@@ -8,7 +8,7 @@ A working guard-supervision MVP for existing guards. It records attendance, patr
 
 ## Run locally
 
-In-app messaging and the in-app urgent telephone-contact route are disabled and hidden for this MVP. The retained message tables and feature flag support a future release only; no pilot workflow or customer-facing copy relies on them. Guard Companion does not provide emergency response or an in-app emergency alarm.
+In-app messaging and the in-app urgent telephone-contact route are disabled and hidden for this MVP. The retained message tables and feature flag support a future release only; no pilot workflow or customer-facing copy relies on them. Guard Patrol does not provide emergency response or an in-app emergency alarm.
 
 Requires **Node.js 24** and npm. SQLite is included with Node; no database service or Docker is needed.
 
@@ -18,7 +18,7 @@ Copy-Item .env.example .env
 npm start
 ```
 
-Open **http://127.0.0.1:3000** for the public landing page, or **http://127.0.0.1:3000/app** for the Guard Companion application. Use the same host consistently: `localhost` and `127.0.0.1` have separate cookies and offline storage. The server binds only to this computer by default. Hosted setup is documented in [Vercel deployment](docs/VERCEL.md).
+Open **http://127.0.0.1:3000** for the public landing page, or **http://127.0.0.1:3000/app** for the Guard Patrol application. Use the same host consistently: `localhost` and `127.0.0.1` have separate cookies and offline storage. The server binds only to this computer by default. Hosted setup is documented in [Vercel deployment](docs/VERCEL.md).
 
 Set `PILOT_SUPPORT_CONTACT` to an ISDL-managed email address, telephone number, or WhatsApp contact before enabling public signup. It appears in the customer notice; telephone contacts are tap-to-call. Without it the server rejects account creation rather than collecting a new customer’s information without a support route. Self-service owner accounts sign in with email; guards and supervisors may sign in with email or WhatsApp number.
 

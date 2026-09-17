@@ -1,6 +1,6 @@
 # Operator fallback provisioning
 
-The normal first-customer journey is self-service: select **Create an account** on the Guard Companion sign-in screen, then complete the guided account and first-property setup. It creates an owner account, customer, property, confirmed location and isolated workspace without access to demo properties.
+The normal first-customer journey is self-service: select **Create an account** on the Guard Patrol sign-in screen, then complete the guided account and first-property setup. It creates an owner account, customer, property, confirmed location and isolated workspace without access to demo properties.
 
 This controlled command remains an internal ISDL support fallback when a customer cannot complete self-service setup. It creates the same one customer, one owner and one property scope.
 

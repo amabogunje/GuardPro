@@ -45,7 +45,7 @@ npx vercel promote <preview-url> --yes
 
 ## Public routes and deployment boundaries
 
-The public root `/` serves the Guard Companion landing page. The operational application is at `/app`; installable app manifests also start there. The production sign-in screen does not expose fictional credentials or prefill a demo identity. Local demo credentials remain documented for local development only.
+The public root `/` serves the Guard Patrol landing page. The operational application is at `/app`; installable app manifests also start there. The production sign-in screen does not expose fictional credentials or prefill a demo identity. Local demo credentials remain documented for local development only.
 
 Production (`guardpro_pilot`) and Preview (`guardpro_preview`) use separate clean schemas and private Blob stores. Keep Vercel deployment protection enabled for previews.
 
