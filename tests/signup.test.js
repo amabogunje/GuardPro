@@ -151,12 +151,20 @@ test("mobile signup wizard creates the account and retains a narrow layout", asy
   try {
     await page.goto(base + "/app");
     await page.getByRole("button", { name: "Create an account", exact: true }).click();
-    await page.locator("#signupOwnerName").fill("Wizard Owner");
-    await page.locator("#signupCustomerName").fill("Wizard Customer");
+    await page.locator("#signupFirstName").fill("Wizard");
+    await page.locator("#signupLastName").fill("Owner");
     await page.locator("#signupEmail").fill(email);
     await page.locator("#signupPassword").fill("Wizard-signup-password!");
     await page.locator("#signupPasswordConfirm").fill("Wizard-signup-password!");
     await page.locator('input[name="notice_accepted"]').check();
+    await page.reload();
+    await page.locator("#signupAccount").waitFor();
+    assert.equal(await page.locator("#signupFirstName").inputValue(), "Wizard");
+    assert.equal(await page.locator("#signupLastName").inputValue(), "Owner");
+    assert.equal(await page.locator("#signupEmail").inputValue(), email);
+    assert.equal(await page.locator('input[name="notice_accepted"]').isChecked(), true);
+    await page.locator("#signupPassword").fill("Wizard-signup-password!");
+    await page.locator("#signupPasswordConfirm").fill("Wizard-signup-password!");
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await page.locator("#signupPropertyName").fill("Wizard House");
     await page.locator("#signupAddress").fill("2 Wizard Close, Ikeja, Lagos, Nigeria");

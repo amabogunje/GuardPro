@@ -900,7 +900,7 @@ progress::-webkit-progress-value {
 .signup-confirm {
   display: flex;
   gap: 12px;
-  align-items: flex-start;
+  align-items: center;
   margin-top: 20px;
   line-height: 1.4;
 }

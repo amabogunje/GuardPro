@@ -188,6 +188,7 @@ let signupStep = 0,
   signupDraft = {},
   customerNoticeVersion = "2026-09-17",
   signupMessage = "";
+const signupDraftKey = "guard-patrol.signup-draft.v1";
 const root = document.querySelector("#app"),
   $ = (s) => document.querySelector(s),
   uuid = () => crypto.randomUUID(),
@@ -210,6 +211,37 @@ const root = document.querySelector("#app"),
           timeStyle: "short",
         })
       : "Not yet received";
+function saveSignupDraft() {
+  // A shared device must never retain a password. Keep only non-sensitive setup fields.
+  const { password, password_confirm, ...safeDraft } = signupDraft;
+  sessionStorage.setItem(signupDraftKey, JSON.stringify({ step: signupStep, draft: safeDraft }));
+}
+function clearSignupDraft() {
+  sessionStorage.removeItem(signupDraftKey);
+}
+function restoreSignupDraft() {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(signupDraftKey) || "null");
+    if (!saved || ![1, 2].includes(saved.step) || !saved.draft) return false;
+    signupDraft = saved.draft;
+    // Passwords are intentionally not restored, so return to the account step after a reload.
+    signupStep = saved.step === 2 ? 1 : saved.step;
+    return true;
+  } catch {
+    clearSignupDraft();
+    return false;
+  }
+}
+function captureSignupDraft(form) {
+  if (!form || !["signupAccount", "signupProperty"].includes(form.id)) return;
+  const values = Object.fromEntries(new FormData(form));
+  delete values.password;
+  delete values.password_confirm;
+  signupDraft = { ...signupDraft, ...values };
+  if (form.id === "signupAccount") signupDraft.notice_accepted = values.notice_accepted === "on";
+  if (form.id === "signupProperty") signupDraft.confirmed = values.confirmed === "on";
+  saveSignupDraft();
+}
 function overviewCalendar(month, selectedDay) {
   const first = new Date(month + "-01T12:00:00Z");
   const count = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
@@ -263,11 +295,11 @@ const persist = () => save(vault),
 watchMaterial(root);
 function login() {
   const signup = signupStep === 1
-    ? `<div class="card signup-card"><span class="eyebrow">Set up Guard Patrol</span><p class="signup-step">Step 1 of 2</p><h1>Create your account</h1><p class="muted">Create the owner account for your property. You can add a supervisor after setup.</p><form id="signupAccount"><label class="label" for="signupOwnerName">Your name</label><input id="signupOwnerName" name="owner_name" autocomplete="name" maxlength="120" required value="${esc(signupDraft.owner_name || "")}"><label class="label" for="signupCustomerName">Customer or household name</label><input id="signupCustomerName" name="customer_name" maxlength="120" required value="${esc(signupDraft.customer_name || "")}"><label class="label" for="signupEmail">Email address</label><input id="signupEmail" name="email" type="email" autocomplete="email" required value="${esc(signupDraft.email || "")}"><p class="field-help">Owner accounts use an email address to sign in. Guards and supervisors may use email or a WhatsApp number.</p><label class="label" for="signupPassword">Password</label><input id="signupPassword" name="password" type="password" autocomplete="new-password" minlength="12" required><p class="field-help">Use at least 12 characters.</p><label class="label" for="signupPasswordConfirm">Confirm password</label><input id="signupPasswordConfirm" name="password_confirm" type="password" autocomplete="new-password" minlength="12" required><input type="hidden" name="notice_version" value="${esc(signupDraft.notice_version || customerNoticeVersion)}"><p class="field-help">Read the <a href="/customer-notice.html" target="_blank" rel="noopener">customer notice</a> before continuing.</p><label class="signup-confirm"><input type="checkbox" name="notice_accepted" required ${signupDraft.notice_accepted ? "checked" : ""}><span>I have read and accept the customer notice.</span></label><button class="primary wide">Continue</button><button type="button" class="text-action wide" data-action="cancelSignup">Back to sign in</button></form></div>`
+    ? `<div class="card signup-card"><span class="eyebrow">Set up Guard Patrol</span><p class="signup-step">Step 1 of 2</p><h1>Create your account</h1><p class="muted">Create the owner account for your property. You can add a supervisor after setup.</p><form id="signupAccount"><label class="label" for="signupFirstName">First name</label><input id="signupFirstName" name="first_name" autocomplete="given-name" maxlength="60" required value="${esc(signupDraft.first_name || "")}"><label class="label" for="signupLastName">Last name</label><input id="signupLastName" name="last_name" autocomplete="family-name" maxlength="60" required value="${esc(signupDraft.last_name || "")}"><label class="label" for="signupEmail">Email address</label><input id="signupEmail" name="email" type="email" autocomplete="email" required value="${esc(signupDraft.email || "")}"><p class="field-help">Owner accounts use an email address to sign in. Guards and supervisors may use email or a WhatsApp number.</p><label class="label" for="signupPassword">Password</label><input id="signupPassword" name="password" type="password" autocomplete="new-password" minlength="12" required><p class="field-help">Use at least 12 characters.</p><label class="label" for="signupPasswordConfirm">Confirm password</label><input id="signupPasswordConfirm" name="password_confirm" type="password" autocomplete="new-password" minlength="12" required><input type="hidden" name="notice_version" value="${esc(signupDraft.notice_version || customerNoticeVersion)}"><p class="field-help">Read the <a href="/customer-notice.html" target="_blank" rel="noopener">customer notice</a> before continuing.</p><label class="signup-confirm"><input type="checkbox" name="notice_accepted" required ${signupDraft.notice_accepted ? "checked" : ""}><span>I have read and accept the customer notice.</span></label><button class="primary wide">Continue</button><button type="button" class="text-action wide" data-action="cancelSignup">Back to sign in</button></form></div>`
     : signupStep === 2
       ? `<div class="card signup-card"><span class="eyebrow">Set up Guard Patrol</span><p class="signup-step">Step 2 of 2</p><h1>Add your first property</h1><p class="muted">This is where your guards will check in and record patrols.</p><form id="signupProperty"><label class="label" for="signupPropertyName">Property name</label><input id="signupPropertyName" name="property_name" maxlength="120" required value="${esc(signupDraft.property_name || "")}" placeholder="For example, Oak House"><label class="label" for="signupAddress">Full property address</label><textarea id="signupAddress" name="address" maxlength="500" required placeholder="Street, area, city and state">${esc(signupDraft.address || "")}</textarea><div class="location-row"><label class="label" for="signupLatitude">Latitude<input id="signupLatitude" name="latitude" type="number" step="any" required value="${esc(signupDraft.latitude || "")}"></label><label class="label" for="signupLongitude">Longitude<input id="signupLongitude" name="longitude" type="number" step="any" required value="${esc(signupDraft.longitude || "")}"></label></div><button type="button" class="location-action wide" data-action="signupLocation">Use my current position</button><p id="signupLocationStatus" class="field-help">Use this while you are at the property, or enter its coordinates manually.</p><label class="label" for="signupRadius">Allowed check-in area (metres)</label><input id="signupRadius" name="radius_m" type="number" min="20" max="5000" required value="${esc(signupDraft.radius_m || "100")}"><label class="signup-confirm"><input type="checkbox" name="confirmed" required ${signupDraft.confirmed ? "checked" : ""}><span>I confirm this is the correct property location.</span></label><p class="field-help">Location is collected only when guards check in or scan checkpoints on duty. Guard Patrol does not continuously track guards.</p><button class="primary wide">Create account</button><button type="button" class="text-action wide" data-action="signupBack">Back</button></form></div>`
       : `<div class="card"><span class="eyebrow">Professional guard supervision</span><h1>Welcome back</h1><p class="muted">Sign in to access your security workspace.</p>${signupMessage ? `<p class="notice pending" role="status">${esc(signupMessage)}</p>` : ""}<form id="login"><label class="label" for="email">Email or WhatsApp number</label><input id="email" name="email" type="text" autocomplete="username" required><label class="label" for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required><button class="primary wide">Sign in</button></form><div class="signup-entry"><p class="muted">New to Guard Patrol?</p><button class="wide" type="button" data-action="startSignup">Create an account</button></div></div>`;
-  root.innerHTML = `<main class="login">${brand()}${signup}<footer>Provided by Integrated Systems and Devices Limited — ISDL<br>Guard supervision. Guard Patrol does not provide emergency response.</footer></main>`;
+  root.innerHTML = `<main class="login">${brand()}${signup}<footer>Provided by Integrated Systems and Devices Limited<br>Guard Patrol does not provide emergency response.</footer></main>`;
 }
 
 async function beginSignup() {
@@ -277,13 +309,16 @@ async function beginSignup() {
       throw new Error("Account creation is temporarily unavailable until ISDL configures its support contact.");
     customerNoticeVersion = onboarding.noticeVersion;
     signupMessage = "";
+    if (!restoreSignupDraft()) signupDraft = { notice_version: customerNoticeVersion };
     signupStep = 1;
-    signupDraft = { notice_version: customerNoticeVersion };
+    signupDraft.notice_version = customerNoticeVersion;
+    saveSignupDraft();
     login();
-    $("#signupOwnerName")?.focus();
+    $("#signupFirstName")?.focus();
   } catch (error) {
     signupStep = 0;
     signupDraft = {};
+    clearSignupDraft();
     signupMessage = error.message || "Account creation is temporarily unavailable.";
     login();
   }
@@ -1494,8 +1529,16 @@ document.addEventListener("submit", async (e) => {
       await completeSignIn(b, online);
     } else if (f.id === "signupAccount") {
       if (b.password !== b.password_confirm) throw new Error("Passwords do not match");
-      signupDraft = { ...signupDraft, ...b, notice_accepted: b.notice_accepted === "on" };
+      const ownerName = [b.first_name, b.last_name].map((name) => String(name || "").trim()).filter(Boolean).join(" ");
+      signupDraft = {
+        ...signupDraft,
+        ...b,
+        owner_name: ownerName,
+        customer_name: ownerName,
+        notice_accepted: b.notice_accepted === "on",
+      };
       signupStep = 2;
+      saveSignupDraft();
       login();
       $("#signupPropertyName")?.focus();
     } else if (f.id === "signupProperty") {
@@ -1504,6 +1547,7 @@ document.addEventListener("submit", async (e) => {
       const credentials = { email: signupDraft.email, password: signupDraft.password };
       signupStep = 0;
       signupDraft = {};
+      clearSignupDraft();
       await completeSignIn(credentials, online);
       toast("Your account and first property are ready. Add a supervisor when you are ready.");
     } else if (f.id === "shiftForm") {
@@ -1674,6 +1718,7 @@ document.addEventListener("submit", async (e) => {
   }
 });
 document.addEventListener("input", async (e) => {
+  captureSignupDraft(e.target.form);
   if (e.target.id === "report") updateReportSubmit();
   if (["report", "event_time"].includes(e.target.id))
     try {
@@ -1684,6 +1729,7 @@ document.addEventListener("input", async (e) => {
 });
 document.addEventListener("change", async (e) => {
   try {
+    captureSignupDraft(e.target.form);
     if (e.target.id === "overviewDate") {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) return;
       if (e.target.value > new Date(Date.now() + 3600000).toISOString().slice(0, 10)) {
@@ -1807,13 +1853,15 @@ document.addEventListener("click", async (e) => {
     if (a === "cancelSignup") {
       signupStep = 0;
       signupDraft = {};
+      clearSignupDraft();
       login();
       return;
     }
     if (a === "signupBack") {
       const propertyForm = $("#signupProperty");
-      signupDraft = { ...signupDraft, ...Object.fromEntries(new FormData(propertyForm)) };
+      captureSignupDraft(propertyForm);
       signupStep = 1;
+      saveSignupDraft();
       login();
       $("#signupPassword")?.focus();
       return;
@@ -1831,6 +1879,7 @@ document.addEventListener("click", async (e) => {
       );
       $("#signupLatitude").value = String(position.coords.latitude);
       $("#signupLongitude").value = String(position.coords.longitude);
+      captureSignupDraft($("#signupProperty"));
       status.textContent = "Current position added. Confirm the address and location before continuing.";
       return;
     }
@@ -2619,6 +2668,10 @@ async function initialize() {
         entryUrl.searchParams.delete("signup");
         history.replaceState(null, "", entryUrl.pathname + entryUrl.search + entryUrl.hash);
         await beginSignup();
+        return;
+      }
+      if (restoreSignupDraft()) {
+        login();
         return;
       }
       login();
