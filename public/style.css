@@ -2975,6 +2975,9 @@ html { scrollbar-gutter: stable; }
 .team-actions { display:flex; align-items:center; gap:10px; }
 .team-remove { width:100%; min-height:44px; margin-top:12px; border:1px solid #a84a43; border-radius:0; background:white; color:#8e342d; font-weight:700; }
 .team-remove[data-confirm="true"] { background:#fbe9e7; }
+.team-credentials { display:grid; grid-template-columns:auto 1fr; gap:8px 12px; margin:16px 0; }
+.team-credentials dt { color:#596775; font-size:13px; }
+.team-credentials dd { margin:0; overflow-wrap:anywhere; font-weight:700; }
 .owner-fact { display:flex; align-items:center; gap:10px; padding:12px 0; margin:4px 0; font-size:14px; }
 .owner-fact svg { width:22px; height:22px; }
 .owner-freshness { color:#586a72; font-size:13px; }

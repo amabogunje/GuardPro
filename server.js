@@ -1623,6 +1623,7 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
     fail("Customer management only", 403);
   let b = req.body,
     s = b.site_id;
+  let generatedPassword = null;
   if (b.kind === "customer")
     fail("Customer onboarding is not available here", 403);
   if (b.kind === "additional_site" && req.user.role !== "owner")
@@ -1744,11 +1745,10 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
         randomBytes(8).toString("hex"),
       );
     else if (b.kind === "user") {
-      if (
-        !["guard", "owner", "supervisor"].includes(b.role) ||
-        String(b.password || "").length < 12
-      )
-        fail("Role and password of at least 12 characters required");
+      if (!["guard", "owner", "supervisor"].includes(b.role))
+        fail("Choose a guard or supervisor role");
+      if (b.password && String(b.password).length < 12)
+        fail("Use a password of at least 12 characters");
       if (req.file) {
         if (!["image/jpeg", "image/png"].includes(req.file.mimetype) || req.file.size > 2 * 1024 * 1024) fail("Profile photos must be JPEG or PNG, up to 2 MB");
         validateFile(req.file);
@@ -1756,12 +1756,13 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
       let uid = id();
       await enforceFreeUserLimit(s);
       const contact=await teamContact(b,uid);
+      generatedPassword = b.password ? null : randomBytes(18).toString("base64url");
       await run(
         "INSERT INTO users VALUES(?,?,?,?,?)",
         uid,
         text(b.name, 120),
         contact.email,
-        hash(b.password),
+        hash(generatedPassword || b.password),
         b.role,
       );
       await run("INSERT INTO assignments VALUES(?,?)", uid, s);
@@ -1802,7 +1803,7 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
     } else fail("Unknown action");
   }
   await audit(req.user, "admin " + b.kind, { site: s, name: b.name });
-  res.json({ ok: true });
+  res.json({ ok: true, ...(generatedPassword ? { initial_password: generatedPassword } : {}) });
 });
 settingsRoutes({app,post,all,one,run,requireSite,fail,id,now,audit});
 app.get("/media/profile/:user", async (req, res) => {

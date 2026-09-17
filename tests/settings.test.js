@@ -414,8 +414,9 @@ test("settings tabs fit phone and desktop; checkpoint editing and QR labels work
             await p.locator('#add-member').click();
             await p.locator('#team-editor input[name="name"]').fill('Mobile phone guard');
             await p.locator('#team-editor input[name="whatsapp"]').fill('08032345678');
-            await p.locator('#team-editor input[name="password"]').fill('Pilot-only-2026!');
-            await p.locator('#team-save').click();await p.locator('#team-search').waitFor();
+            assert.equal(await p.locator('#team-save').isEnabled(),true);
+            await p.locator('#team-save').click();await p.getByText('Temporary password',{exact:true}).waitFor();
+            await p.getByRole('button',{name:'Done',exact:true}).click();await p.locator('#team-search').waitFor();
             await p.locator('#team-search').fill('+2348032345678');
             await p.getByRole('button',{name:'Edit Mobile phone guard',exact:true}).waitFor();
             await p.locator('#team-search').fill('');
@@ -552,6 +553,10 @@ test('phone-only team accounts can sign in; aliases preserve the same encrypted 
   const auth=await request('/api/login',null,{email:phone,password});
   await request('/api/admin',supervisor,{kind:'user',site_id:'oak',name:'Duplicate',role:'guard',whatsapp:'+234 801 234 5678',email:'',password},409);
   await request('/api/admin',supervisor,{kind:'user',site_id:'oak',name:'Invalid',role:'guard',whatsapp:'123',email:'',password},400);
+  const generated=await request('/api/admin',supervisor,{kind:'user',site_id:'oak',name:'Generated password guard',role:'guard',whatsapp:'08092345678',email:''});
+  assert.match(generated.initial_password,/^[A-Za-z0-9_-]{20,}$/);
+  const generatedLogin=await fetch(base+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'08092345678',password:generated.initial_password})});
+  assert.equal(generatedLogin.status,200);
   await request('/api/admin',supervisor,{kind:'update_user',site_id:'oak',user_id:member.id,name:member.name,role:'guard',whatsapp:phone,email,disabled:'false'});
   const emailAuth=await request('/api/login',null,{email,password});
   assert.equal(auth.vaultAccount,emailAuth.vaultAccount);
