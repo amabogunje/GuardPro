@@ -19,7 +19,7 @@ let selectedLocationShift=null;
 import { renderSettings, resetSettings, selectSettings } from "./settings.js";
 import { closeCheckpoints } from "./checkpoints.js";
 import { currentPlan } from "./shift-plans.js";
-import { supervisorSetupTasks } from "./supervisor-setup.js";
+import { nextSupervisorSetupTask } from "./supervisor-setup.js";
 let attentionPage = 0, attentionOrder = "newest", attentionScope = "";
 let selectedOverviewShift = null;
 import {
@@ -975,13 +975,13 @@ function renderDashboard() {
       site: site(),
       plans: state.shiftPlans || [],
     });
-    const setupTasks = supervisorSetupTasks({
+    const setupTask = nextSupervisorSetupTask({
       windows,
       users: state.users,
       checkpoints: cps(),
     });
-    if (setupTasks.length) {
-      t.querySelector(".stats").innerHTML = `<section class="card stat supervisor-setup-status"><div class="kpi-label">${icon("admin")}<span>Finish setting up</span></div><p>Complete these steps before Guard Patrol starts measuring this property.</p><div class="supervisor-setup-actions">${setupTasks.map(task => `<button type="button" data-page="setup" data-settings-tab="${task.tab}"><span>${icon(task.icon)}</span><span><strong>${task.title}</strong><small>${task.text}</small></span></button>`).join("")}</div></section>`;
+    if (setupTask) {
+      t.querySelector(".stats").innerHTML = `<section class="card stat supervisor-setup-status"><div class="kpi-label">${icon(setupTask.icon)}<span>${setupTask.title}</span></div><p>${setupTask.text}</p><button type="button" data-page="setup" data-settings-tab="${setupTask.tab}">${setupTask.action}</button></section>`;
       t.querySelector(":scope > .grid").innerHTML = `<section class="card attention-card"><div class="attention-section"><div class="attention-heading"><h2>Needs your attention</h2></div><div class="attention-list"><p class="empty">Complete the setup steps above to begin tracking this property.</p></div></div></section><section class="card guards-this-shift"><h2>Guards this shift</h2><p class="empty">Guard activity will appear after setup is complete.</p></section>`;
     } else {
     const selected =

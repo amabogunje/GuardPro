@@ -2098,37 +2098,6 @@ summary:focus-visible {
   justify-self: start;
   min-height: 44px;
 }
-.supervisor-setup-actions {
-  display: grid;
-  gap: 8px;
-}
-.supervisor-mobile .supervisor-setup-actions button {
-  display: flex;
-  width: 100%;
-  min-height: 56px;
-  padding: 10px 12px;
-  gap: 10px;
-  align-items: center;
-  text-align: left;
-  color: #263e5c;
-  background: #eaf3fb;
-}
-.supervisor-setup-actions button > span:first-child {
-  display: inline-flex;
-  flex: 0 0 24px;
-}
-.supervisor-setup-actions button > span:last-child {
-  display: grid;
-  gap: 2px;
-}
-.supervisor-setup-actions strong,
-.supervisor-setup-actions small {
-  font-size: 13px;
-  line-height: 1.25;
-}
-.supervisor-setup-actions small {
-  color: #596775;
-}
 .supervisor-mobile .stats .stat[data-tone] {
   background: transparent;
   color: #263e5c;

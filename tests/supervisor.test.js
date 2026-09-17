@@ -495,20 +495,12 @@ test("shift overview scopes attendance and patrols without inventing a default s
   assert.equal(overnight.start, Date.parse("2026-09-04T15:00:00Z"));
 });
 
-test("supervisor setup guidance identifies each missing configuration step", async () => {
-  const { supervisorSetupTasks } = await import("../public/supervisor-setup.js");
-  assert.deepEqual(
-    supervisorSetupTasks({ windows: [], users: [{ role: "owner" }], checkpoints: [] }).map((task) => task.tab),
-    ["shifts", "team", "checkpoints"],
-  );
-  assert.deepEqual(
-    supervisorSetupTasks({ windows: [{ key: "day" }], users: [{ role: "guard" }], checkpoints: [] }).map((task) => task.tab),
-    ["checkpoints"],
-  );
-  assert.deepEqual(
-    supervisorSetupTasks({ windows: [{ key: "day" }], users: [{ role: "guard" }], checkpoints: [{ id: "gate" }] }),
-    [],
-  );
+test("supervisor setup guidance presents one next configuration step in operational order", async () => {
+  const { nextSupervisorSetupTask } = await import("../public/supervisor-setup.js");
+  assert.equal(nextSupervisorSetupTask({ windows: [], users: [{ role: "owner" }], checkpoints: [] }).tab, "shifts");
+  assert.equal(nextSupervisorSetupTask({ windows: [{ key: "day" }], users: [{ role: "owner" }], checkpoints: [] }).tab, "checkpoints");
+  assert.equal(nextSupervisorSetupTask({ windows: [{ key: "day" }], users: [{ role: "owner" }], checkpoints: [{ id: "gate" }] }).tab, "team");
+  assert.equal(nextSupervisorSetupTask({ windows: [{ key: "day" }], users: [{ role: "guard" }], checkpoints: [{ id: "gate" }] }), null);
 });
 
 test("attendance is tied to the selected occurrence and retains valid overnight coverage", async () => {
