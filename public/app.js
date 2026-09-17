@@ -16,9 +16,10 @@ function renderOwnerPage() {
 import { locationGroups, gpsReview } from './gps-review.js';
 import { propertyEditor } from './property-location.js';
 let selectedLocationShift=null;
-import { renderSettings, resetSettings } from "./settings.js";
+import { renderSettings, resetSettings, selectSettings } from "./settings.js";
 import { closeCheckpoints } from "./checkpoints.js";
 import { currentPlan } from "./shift-plans.js";
+import { supervisorSetupTasks } from "./supervisor-setup.js";
 let attentionPage = 0, attentionOrder = "newest", attentionScope = "";
 let selectedOverviewShift = null;
 import {
@@ -974,9 +975,14 @@ function renderDashboard() {
       site: site(),
       plans: state.shiftPlans || [],
     });
-    if (!windows.length) {
-      t.querySelector(".stats").innerHTML = `<section class="card stat supervisor-setup-status"><div class="kpi-label">${icon("shifts")}<span>Shift setup required</span></div><p>Set up your first shift before Guard Patrol measures check-ins or patrols for this property.</p><button type="button" class="primary" data-page="setup">Set up shifts</button></section>`;
-      t.querySelector(":scope > .grid").innerHTML = `<section class="card attention-card"><div class="attention-section"><div class="attention-heading"><h2>Needs your attention</h2></div><div class="attention-list"><p class="empty">Nothing needs your attention.</p></div></div></section><section class="card guards-this-shift"><h2>Guards this shift</h2><p class="empty">No shift has been set up.</p></section>`;
+    const setupTasks = supervisorSetupTasks({
+      windows,
+      users: state.users,
+      checkpoints: cps(),
+    });
+    if (setupTasks.length) {
+      t.querySelector(".stats").innerHTML = `<section class="card stat supervisor-setup-status"><div class="kpi-label">${icon("admin")}<span>Finish setting up</span></div><p>Complete these steps before Guard Patrol starts measuring this property.</p><div class="supervisor-setup-actions">${setupTasks.map(task => `<button type="button" data-page="setup" data-settings-tab="${task.tab}"><span>${icon(task.icon)}</span><span><strong>${task.title}</strong><small>${task.text}</small></span></button>`).join("")}</div></section>`;
+      t.querySelector(":scope > .grid").innerHTML = `<section class="card attention-card"><div class="attention-section"><div class="attention-heading"><h2>Needs your attention</h2></div><div class="attention-list"><p class="empty">Complete the setup steps above to begin tracking this property.</p></div></div></section><section class="card guards-this-shift"><h2>Guards this shift</h2><p class="empty">Guard activity will appear after setup is complete.</p></section>`;
     } else {
     const selected =
       windows.find((w) => w.key === selectedOverviewShift) ||
@@ -1843,7 +1849,10 @@ document.addEventListener("click", async (e) => {
       if (b.dataset.page === "message") { selectedChat = null; supervisorMessageId = null; }
       if (b.dataset.page === "incidents") selectedProblemId = null;
       if (b.dataset.page === "ownerProblems") ownerEvidenceProblemId = b.dataset.ownerProblemId || null;
-      if(b.dataset.page === "setup" && page !== "setup") resetSettings();
+      if(b.dataset.page === "setup" && page !== "setup") {
+        resetSettings();
+        selectSettings(b.dataset.settingsTab);
+      }
       page = b.dataset.page;
       if (["report", "message"].includes(page) && vault[draftKey()]?.site_id)
         siteId = vault[draftKey()].site_id;

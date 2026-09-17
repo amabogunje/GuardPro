@@ -5,6 +5,9 @@ let selected = "shifts";
 export function resetSettings() {
   selected = "shifts";
 }
+export function selectSettings(tab) {
+  if (["shifts", "checkpoints", "team"].includes(tab)) selected = tab;
+}
 export async function renderSettings(
   host,
   { site, state, api, esc, icon, done },
