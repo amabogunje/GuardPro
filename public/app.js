@@ -2610,6 +2610,13 @@ async function initialize() {
   try {
     const restored = await restore();
     if (!restored) {
+      // The marketing page can open signup without changing installed-app startup.
+      if (new URLSearchParams(location.search).get("signup") === "1") {
+        signupStep = 1;
+        const entryUrl = new URL(location.href);
+        entryUrl.searchParams.delete("signup");
+        history.replaceState(null, "", entryUrl.pathname + entryUrl.search + entryUrl.hash);
+      }
       login();
       return;
     }

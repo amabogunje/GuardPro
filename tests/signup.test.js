@@ -160,6 +160,35 @@ test("mobile signup wizard creates the account and retains a narrow layout", asy
     }));
     assert.ok(layout.main <= 600, JSON.stringify(layout));
     assert.equal(layout.overflow, false);
+
+    // A marketing signup link must not displace an existing owner's session.
+    await page.goto(base + "/?signup=1");
+    await page.getByRole("heading", { name: "Hello, Wizard Owner.", exact: true }).waitFor();
+    assert.equal(await page.locator("#signupAccount").count(), 0);
+  } finally {
+    await context.close();
+  }
+});
+
+test("landing signup entry opens account creation while ordinary entry retains sign-in", async () => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  try {
+    await page.goto(base);
+    await page.getByRole("heading", { name: "Welcome back", exact: true }).waitFor();
+    assert.equal(await page.locator("#signupAccount").count(), 0);
+
+    await page.goto(base + "/landing.html");
+    await page.getByRole("link", { name: /^Start free/ }).first().click();
+    await page.getByRole("heading", { name: "Create your account", exact: true }).waitFor();
+    assert.equal(await page.locator("#login").count(), 0);
+    assert.equal(new URL(page.url()).searchParams.has("signup"), false);
+
+    await page.getByRole("button", { name: "Back to sign in", exact: true }).click();
+    await page.getByRole("heading", { name: "Welcome back", exact: true }).waitFor();
+    await page.reload();
+    await page.getByRole("heading", { name: "Welcome back", exact: true }).waitFor();
+    assert.equal(await page.locator("#signupAccount").count(), 0);
   } finally {
     await context.close();
   }
