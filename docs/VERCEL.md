@@ -31,6 +31,8 @@ npm run db:migrate
 
 The PostgreSQL migration runs as an explicit administrative operation, not on every request or deployment. Grant the runtime role access to newly added tables in future migrations. Do not use the restricted runtime connection to run DDL. Keep `SEED_DEMO` off for real customer deployments; existing demo passwords are not reset by seeding.
 
+For Preview or Production, do **not** use `vercel env run` for migrations: Vercel protects the administrative connection string and a local fallback can point the command at the wrong schema. Authenticate the Neon CLI, retrieve a direct owner connection for the `guardpro-db` main branch, set the intended `DATABASE_SCHEMA` explicitly, and run `node migrate.js` without `SEED_DEMO`. Confirm the target table exists in that schema before deploying code that depends on it.
+
 For local verification against cloud services, `npm run start:cloud` reads `.env.local`. This workstation also has an ignored `.env.runtime` holding the restricted demo connection, usable with `node --env-file=.env.runtime server.js`. Do not overwrite the migration connection with the restricted role.
 
 ```powershell
