@@ -163,6 +163,12 @@ img {
   color: var(--muted);
   margin-top: 19px;
 }
+#supportContact[href] {
+  color: var(--green);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .hero-visual {
   position: relative;
   min-width: 0;

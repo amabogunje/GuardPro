@@ -15,7 +15,6 @@ Record the device model, Android version, browser version, site, user role, oper
 - Start/end a shift, complete a QR patrol, and try NFC only on a browser/device that supports it.
 - Capture voice and photos offline, reload, reconnect, interrupt one upload, retry, and verify one server record with the expected media.
 - Lock the screen during recording/upload; test low storage and weak/interrupted connectivity.
-- Verify the Call supervisor link opens the phone dialler without claiming contact was reached.
 
 ## Supervisor checks
 

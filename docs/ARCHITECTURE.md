@@ -24,7 +24,7 @@ Append-only events preserve capture and receipt times, location quality, handove
 
 ## Patrols and summaries
 
-Shift start is a single action and does not require handover acknowledgement. The guard remains on Home with start time, elapsed timer, and scheduled end, plus patrol, reporting, instructions and messaging actions. The most recently configured daily shift plan for the guard/site is snapshotted into the start event as `scheduled_end_at`, including overnight shifts. The browser clock calculates elapsed time from the persisted start timestamp, so reopening does not reset it. These shift times display in Africa/Lagos; missing plans are labeled explicitly. The fictional Bala demo gets a 06:00–18:00 schedule only if no plan is already configured. End-shift notes remain optional in the end-shift form, and earlier history is preserved.
+Shift start is a single action and does not require handover acknowledgement. The guard remains on Home with start time, elapsed timer, scheduled end, patrol, reporting and instructions actions. The most recently configured daily shift plan for the guard/site is snapshotted into the start event as `scheduled_end_at`, including overnight shifts. The browser clock calculates elapsed time from the persisted start timestamp, so reopening does not reset it. These shift times display in Africa/Lagos; missing plans are labeled explicitly. The fictional Bala demo gets a 06:00–18:00 schedule only if no plan is already configured. End-shift notes remain optional in the end-shift form, and earlier history is preserved.
 
 Checkpoint QR labels contain random codes (readable codes for seeded examples). Camera scanning uses the browser's BarcodeDetector API where available; manual label entry is always available. Location is sampled only for start/end/scan actions, with permission denial and poor accuracy recorded for review. Device clock differences over a day are flagged. There is no background GPS or assertion that a scan proves security. QR codes can be copied; pilot supervision must interpret records accordingly.
 
@@ -32,11 +32,9 @@ Round IDs group checkpoints independently from scheduled time slots. Completing 
 
 Daily counts come from SQL/event records, never model arithmetic. Source IDs are available as clickable record controls and in downloaded JSON. Narrative drafts use the AI adapter when configured, otherwise a deterministic template. Approval rejects stale counts if source activity has changed since draft creation. Approved summaries are immutable snapshots; later delayed records require a new draft and approval. There is no email customer delivery: approved summaries become visible in the owner's dashboard.
 
-## Notifications
+## Notifications and messages
 
-Guards can message assigned supervisors only after starting a shift. Messages require a shift and use the encrypted, idempotent event queue. Two-way conversations distinguish saved, submitted, seen and acknowledged. Owners cannot retrieve these private conversations or media; messages are excluded from customer summary sources.
-
-Incident/urgent-alert events transactionally enqueue notifications for assigned supervisors. The supervisor home view polls while visible, and acknowledges receipt only after rendering. Failed receipt requests retry on subsequent polls. The UI separately shows submitted, delivered-to-app and acknowledged. Guard views can inspect their notification status. There is no SMS, WhatsApp, push or simulated external delivery adapter. This actual database inbox is the pilot adapter; future providers should implement durable jobs, provider receipt IDs, retry schedules and failure reporting.
+In-app messaging and message notifications are disabled for the pilot through `ENABLE_MESSAGING=false`. Historical message data is retained for integrity, but the app removes message controls and the server rejects new message events. The pilot also has no in-app urgent-help or telephone-contact action. There is no SMS, WhatsApp, push, police dispatch, emergency alarm, guaranteed monitoring, or background browser delivery.
 
 ## Shared device and offline constraints
 
@@ -46,9 +44,9 @@ The vault encrypts the entire small pilot dataset, with media represented as bas
 
 ## What is real, optional and still needed
 
-Working locally: role enforcement; customer separation; shifts and handovers; patrols/QR sheets; audio/photo capture; text review and confirmation; private media; encrypted offline queue; retries; supervisor follow-up; administration; deterministic counts; approved summaries; in-app notifications; downloads.
+Working locally: role enforcement; customer separation; shifts and handovers; patrols/QR sheets; audio/photo capture; text review and confirmation; private media; encrypted offline queue; retries; supervisor follow-up; administration; deterministic counts; activity reports; and downloads.
 
-Optional/unverified against paid service: live AI transcription and narrative generation. No API credential was provided; unavailable means unavailable. English only has been implemented, and real Nigerian English recordings still require evaluation. Pidgin and other languages are not advertised.
+Disabled for this pilot: AI transcription/narratives and in-app messaging. Audio is retained without fabricated transcript text. English remains the only future AI evaluation target; Pidgin and other languages are not advertised.
 
 Before deployment: real contacts/accounts, HTTPS, backup/restore and monitoring, security review, effective-dated schedules, account revocation/recovery/admin tooling, media scanning/metadata policy, retention/deletion implementation, pagination for larger data, stronger rate limits across multiple processes, and real-device tests. Authentication has no MFA or password-reset service. Do not characterize this MVP as production-ready or legally compliant.
 
@@ -91,6 +89,10 @@ Shift instructions: owners and supervisors publish reusable audio and/or typed i
 
 Guards download current and active-shift audio into their own encrypted vault during synchronization. Already downloaded recordings play offline. Uncached recordings need a connection; no speech synthesis or fabricated audio is used. Microphone permission denial falls back to typed instructions. Foreground patrol reminders remain automatic; mobile browsers do not guarantee vibration or notifications while backgrounded or locked. Test microphone capture, playback volume and offline replay on pilot Android devices.
 
+### Retired messaging implementation detail
+
+The following message-storage notes are historical implementation detail only. They do not describe a visible or enabled pilot feature: `ENABLE_MESSAGING=false` hides every message entry point and the server rejects new message events.
+
 Supervisor messages now reuse the incident voice/photo composer with a separate encrypted draft per shift. Guards can send voice or text plus up to four optional photos, during their shift. Message media is stored separately in message_media (migration 006), never as an incident; only the conversation’s guard and assigned supervisors can access it. Media downloads use authorized, expiring session-bound URLs. Attachment retries use existing stable IDs and the encrypted offline queue. The inbox displays audio players, pictures, and pending attachment state. Ordinary message receipt remains distinct from acknowledgement; these messages do not trigger external delivery or emergency dispatch. Offboarding must delete message_media files and records as well as messages. Photo/audio limits and the shared 1 GB site media quota apply.
 
 Shift conversations (migration 007): each message has a relational message_context linking its guard and required shift for new records. Existing guard messages are backfilled by capture time. Assigned supervisors may send text, voice and photos to a guard's chosen shift, including archived shifts; a guard sees only their current active shift’s conversation records and media. Guards cannot browse previous-shift conversations; messaging is disabled on the off-duty home. Supervisor history remains available. Supervisors can select across assigned guards and shifts, or open a conversation from an inbox notification. Replies create in-app notifications for the guard. Seen status records a conversation being displayed, not proof audio was listened to. Foreground conversations refresh approximately every five seconds, updating the message list without replacing the composer or interrupting playback. No background delivery guarantee or external messaging service is implied.
@@ -108,4 +110,4 @@ Previous messages and unread indicator: the current-shift message list is newest
 Session restoration: signing in stores a temporary vault unlock key and page selection in tab-scoped sessionStorage, bounded by the 12-hour session expiry. Refresh decrypts saved work, restores the page, and checks the server session when connected. Offline refresh uses the saved account until expiry. No password is stored. Explicit sign-out removes the key and invalidates restored sibling tabs via a shared epoch; pending work remains encrypted. Browser session recovery may retain tab storage, so shared-phone users must explicitly sign out. This convenience does not protect an unlocked tab from someone using the phone or from same-origin script compromise. A new independent tab requires sign-in. Existing users must sign in once after installing this update.
 
 
-Supervisor mobile workspace: all supervisor pages share the guard canvas (maximum 600px, including on desktop), a compact brand/sign-out header and a greeting-level Home action. Home links to messages, problems, instructions, patrol schedules, daily reports and team management. Dates and synchronization details are expandable; uncertainty about pending records remains visible. Owner management includes supervisor creation; guard creation is reserved for supervisors.
+Supervisor mobile workspace: all supervisor pages share the guard canvas (maximum 600px, including on desktop), a compact brand/sign-out header and a greeting-level Home action. Home links to problems, reports and settings. Dates and synchronization details are expandable; uncertainty about pending records remains visible. Owner management includes supervisor creation; guard creation is reserved for supervisors.

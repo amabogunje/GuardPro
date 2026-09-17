@@ -185,7 +185,9 @@ let vault = { state: null, queue: [], draft: null },
   roundId = null,
   slot = null;
 let signupStep = 0,
-  signupDraft = {};
+  signupDraft = {},
+  customerNoticeVersion = "2026-09-17",
+  signupMessage = "";
 const root = document.querySelector("#app"),
   $ = (s) => document.querySelector(s),
   uuid = () => crypto.randomUUID(),
@@ -261,11 +263,30 @@ const persist = () => save(vault),
 watchMaterial(root);
 function login() {
   const signup = signupStep === 1
-    ? `<div class="card signup-card"><span class="eyebrow">Set up Guard Companion</span><p class="signup-step">Step 1 of 2</p><h1>Create your account</h1><p class="muted">Create the owner account for your property. You can add a supervisor after setup.</p><form id="signupAccount"><label class="label" for="signupOwnerName">Your name</label><input id="signupOwnerName" name="owner_name" autocomplete="name" maxlength="120" required value="${esc(signupDraft.owner_name || "")}"><label class="label" for="signupCustomerName">Customer or household name</label><input id="signupCustomerName" name="customer_name" maxlength="120" required value="${esc(signupDraft.customer_name || "")}"><label class="label" for="signupEmail">Email address</label><input id="signupEmail" name="email" type="email" autocomplete="email" required value="${esc(signupDraft.email || "")}"><label class="label" for="signupPassword">Password</label><input id="signupPassword" name="password" type="password" autocomplete="new-password" minlength="12" required><p class="field-help">Use at least 12 characters.</p><label class="label" for="signupPasswordConfirm">Confirm password</label><input id="signupPasswordConfirm" name="password_confirm" type="password" autocomplete="new-password" minlength="12" required><button class="primary wide">Continue</button><button type="button" class="text-action wide" data-action="cancelSignup">Back to sign in</button></form></div>`
+    ? `<div class="card signup-card"><span class="eyebrow">Set up Guard Companion</span><p class="signup-step">Step 1 of 2</p><h1>Create your account</h1><p class="muted">Create the owner account for your property. You can add a supervisor after setup.</p><form id="signupAccount"><label class="label" for="signupOwnerName">Your name</label><input id="signupOwnerName" name="owner_name" autocomplete="name" maxlength="120" required value="${esc(signupDraft.owner_name || "")}"><label class="label" for="signupCustomerName">Customer or household name</label><input id="signupCustomerName" name="customer_name" maxlength="120" required value="${esc(signupDraft.customer_name || "")}"><label class="label" for="signupEmail">Email address</label><input id="signupEmail" name="email" type="email" autocomplete="email" required value="${esc(signupDraft.email || "")}"><p class="field-help">Owner accounts use an email address to sign in. Guards and supervisors may use email or a WhatsApp number.</p><label class="label" for="signupPassword">Password</label><input id="signupPassword" name="password" type="password" autocomplete="new-password" minlength="12" required><p class="field-help">Use at least 12 characters.</p><label class="label" for="signupPasswordConfirm">Confirm password</label><input id="signupPasswordConfirm" name="password_confirm" type="password" autocomplete="new-password" minlength="12" required><input type="hidden" name="notice_version" value="${esc(signupDraft.notice_version || customerNoticeVersion)}"><p class="field-help">Read the <a href="/customer-notice.html" target="_blank" rel="noopener">customer notice</a> before continuing.</p><label class="signup-confirm"><input type="checkbox" name="notice_accepted" required ${signupDraft.notice_accepted ? "checked" : ""}><span>I have read and accept the customer notice.</span></label><button class="primary wide">Continue</button><button type="button" class="text-action wide" data-action="cancelSignup">Back to sign in</button></form></div>`
     : signupStep === 2
       ? `<div class="card signup-card"><span class="eyebrow">Set up Guard Companion</span><p class="signup-step">Step 2 of 2</p><h1>Add your first property</h1><p class="muted">This is where your guards will check in and record patrols.</p><form id="signupProperty"><label class="label" for="signupPropertyName">Property name</label><input id="signupPropertyName" name="property_name" maxlength="120" required value="${esc(signupDraft.property_name || "")}" placeholder="For example, Oak House"><label class="label" for="signupAddress">Full property address</label><textarea id="signupAddress" name="address" maxlength="500" required placeholder="Street, area, city and state">${esc(signupDraft.address || "")}</textarea><div class="location-row"><label class="label" for="signupLatitude">Latitude<input id="signupLatitude" name="latitude" type="number" step="any" required value="${esc(signupDraft.latitude || "")}"></label><label class="label" for="signupLongitude">Longitude<input id="signupLongitude" name="longitude" type="number" step="any" required value="${esc(signupDraft.longitude || "")}"></label></div><button type="button" class="location-action wide" data-action="signupLocation">Use my current position</button><p id="signupLocationStatus" class="field-help">Use this while you are at the property, or enter its coordinates manually.</p><label class="label" for="signupRadius">Allowed check-in area (metres)</label><input id="signupRadius" name="radius_m" type="number" min="20" max="5000" required value="${esc(signupDraft.radius_m || "100")}"><label class="signup-confirm"><input type="checkbox" name="confirmed" required ${signupDraft.confirmed ? "checked" : ""}><span>I confirm this is the correct property location.</span></label><p class="field-help">Location is collected only when guards check in or scan checkpoints on duty. Guard Companion does not continuously track guards.</p><button class="primary wide">Create account</button><button type="button" class="text-action wide" data-action="signupBack">Back</button></form></div>`
-      : `<div class="card"><span class="eyebrow">Professional guard supervision</span><h1>Welcome back</h1><p class="muted">Sign in to access your security workspace.</p><form id="login"><label class="label" for="email">Email or WhatsApp number</label><input id="email" name="email" type="text" autocomplete="username" required value="bala@demo.isdl"><label class="label" for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required><button class="primary wide">Sign in</button></form><div class="signup-entry"><p class="muted">New to Guard Companion?</p><button class="wide" type="button" data-action="startSignup">Create an account</button></div><details><summary>Fictional pilot accounts</summary><p>Guard: bala@demo.isdl<br>Owner: owner@demo.isdl<br>Supervisor: supervisor@demo.isdl<br>Separate customer: other@demo.isdl</p><p>Password: <code>Pilot-only-2026!</code></p></details></div>`;
-  root.innerHTML = `<main class="login">${brand()}${signup}<footer>Provided by Integrated Systems and Devices Limited — ISDL<br>Guard supervision. For emergencies, use your normal telephone contacts.</footer></main>`;
+      : `<div class="card"><span class="eyebrow">Professional guard supervision</span><h1>Welcome back</h1><p class="muted">Sign in to access your security workspace.</p>${signupMessage ? `<p class="notice pending" role="status">${esc(signupMessage)}</p>` : ""}<form id="login"><label class="label" for="email">Email or WhatsApp number</label><input id="email" name="email" type="text" autocomplete="username" required><label class="label" for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required><button class="primary wide">Sign in</button></form><div class="signup-entry"><p class="muted">New to Guard Companion?</p><button class="wide" type="button" data-action="startSignup">Create an account</button></div></div>`;
+  root.innerHTML = `<main class="login">${brand()}${signup}<footer>Provided by Integrated Systems and Devices Limited — ISDL<br>Guard supervision. Guard Companion does not provide emergency response.</footer></main>`;
+}
+
+async function beginSignup() {
+  try {
+    const onboarding = await api("/api/public/onboarding");
+    if (!onboarding.signupAvailable)
+      throw new Error("Account creation is temporarily unavailable until ISDL configures its support contact.");
+    customerNoticeVersion = onboarding.noticeVersion;
+    signupMessage = "";
+    signupStep = 1;
+    signupDraft = { notice_version: customerNoticeVersion };
+    login();
+    $("#signupOwnerName")?.focus();
+  } catch (error) {
+    signupStep = 0;
+    signupDraft = {};
+    signupMessage = error.message || "Account creation is temporarily unavailable.";
+    login();
+  }
 }
 
 async function completeSignIn(credentials, online) {
@@ -455,9 +476,6 @@ function render() {
 }
 function syncBar() {
   return `<div class="row"><small>${navigator.onLine ? "● Connection available" : "● Offline · saved on this phone"}</small><button data-action="sync">↻ ${pending().length} waiting to upload</button></div>`;
-}
-function call(showDemoNote = true) {
-  return `<a class="button call" href="tel:${esc(site().phone)}">☎ Call supervisor</a>${showDemoNote ? "<small>Demo contact: replace with a real number before the pilot.</small>" : ""}`;
 }
 function shiftInstructions() {
   const current = shift();
@@ -661,8 +679,7 @@ function renderGuard() {
   if (page === "message" && s) return renderMessage();
   if (!s && page !== "shift") {
     page = "home";
-    const help = site().phone ? `<a class="call wide" href="tel:${esc(String(site().phone).replace(/[^+\d]/g,""))}">Call supervisor</a>` : '<p class="muted">Use your usual supervisor contact if you need help before your shift.</p>';
-    root.innerHTML = `<main class="guard off-duty"><header class="topbar">${brand()}<button data-action="logout" aria-label="Sign out">Sign out</button></header><div class="off-duty-identity"><p class="eyebrow">${esc(site().name)}</p><h1>Hello, ${esc(user.name)}.</h1></div>${state.sites.length > 1 ? siteSelect() : ""}<section class="card shift"><div class="row"><h2>Start your shift</h2>${pill("Off duty")}</div><button class="primary" data-action="shift">Click here</button></section>${help}</main>`;
+    root.innerHTML = `<main class="guard off-duty"><header class="topbar">${brand()}<button data-action="logout" aria-label="Sign out">Sign out</button></header><div class="off-duty-identity"><p class="eyebrow">${esc(site().name)}</p><h1>Hello, ${esc(user.name)}.</h1></div>${state.sites.length > 1 ? siteSelect() : ""}<section class="card shift"><div class="row"><h2>Start your shift</h2>${pill("Off duty")}</div><button class="primary" data-action="shift">Click here</button></section></main>`;
     return;
   }
   root.innerHTML = `<main class="guard on-duty"><header class="topbar">${brand()}<button data-action="logout" aria-label="Sign out">Sign out</button></header><div class="duty-identity"><p class="eyebrow">${esc(site().name)}</p><div class="greeting-row"><h1>Hello, ${esc(user.name)}.</h1>${page === "savedReport" ? '<button class="back" data-page="report">Reports</button>' : page !== "home" ? '<button class="back" data-page="home">Home</button>' : ""}</div></div>${state.sites.length > 1 ? siteSelect() : ""}<div id="guardPage"></div></main>`;
@@ -683,8 +700,7 @@ function renderGuard() {
     const failed = queued.filter(q => q.status === "failed").length;
     const conflicts = queued.filter(q => q.status === "conflict").length;
     const syncState = !queued.length ? "All saved records synchronized." : conflicts ? `${conflicts} saved record${conflicts === 1 ? "" : "s"} need supervisor review.` : failed ? `${failed} saved record${failed === 1 ? "" : "s"} need${failed === 1 ? "s" : ""} retry.` : `${queued.length} saved record${queued.length === 1 ? "" : "s"} waiting to upload.`;
-    const help = site().phone ? `<a class="call wide" href="tel:${esc(String(site().phone).replace(/[^+\d]/g,""))}">Call supervisor</a>` : "";
-    target.innerHTML = `<section class="card shift duty-card"><div class="row"><h2>You are on duty</h2>${pill("On duty")}</div><div class="shift-facts"><div><span>Shift started</span><strong>${esc(localDate(s.started_at))}</strong></div><div class="elapsed"><span>Time on duty</span><strong id="shiftTimer" role="timer" aria-label="Time on duty" data-started="${s.started_at}">${elapsedShift(s.started_at)}</strong></div><div><span>Shift ends</span><strong>${end ? esc(localDate(end)) : "Not scheduled — ask your supervisor"}</strong></div></div><button class="primary" data-action="shift">End shift</button></section><div class="actions"><button data-page="round" data-md="true" id="patrolButton" aria-label="Start patrol">${icon("round")}<span class="button-label">Start patrol</span><small id="patrolCountdown"></small></button><button data-page="report">Report a problem</button><button data-page="instructions">Hear instructions</button><button id="messageSupervisorButton" data-page="message" data-md="true" aria-label="Message supervisor" ${unread ? 'aria-describedby="unreadMessages"' : ""}>${icon("message")}<span class="button-label">Message supervisor</span>${unread ? `<span class="message-unread" id="unreadMessages" role="status" aria-label="${unread} unread messages">${unread} new</span>` : ""}</button></div><p class="muted" role="status">${syncState}</p>${queued.length ? '<button data-action="retryPending" class="checkpoint-text-action">Retry saved records</button>' : ""}${help}`;
+    target.innerHTML = `<section class="card shift duty-card"><div class="row"><h2>You are on duty</h2>${pill("On duty")}</div><div class="shift-facts"><div><span>Shift started</span><strong>${esc(localDate(s.started_at))}</strong></div><div class="elapsed"><span>Time on duty</span><strong id="shiftTimer" role="timer" aria-label="Time on duty" data-started="${s.started_at}">${elapsedShift(s.started_at)}</strong></div><div><span>Shift ends</span><strong>${end ? esc(localDate(end)) : "Not scheduled — ask your supervisor"}</strong></div></div><button class="primary" data-action="shift">End shift</button></section><div class="actions"><button data-page="round" data-md="true" id="patrolButton" aria-label="Start patrol">${icon("round")}<span class="button-label">Start patrol</span><small id="patrolCountdown"></small></button><button data-page="report">Report a problem</button><button data-page="instructions">Hear instructions</button><button id="messageSupervisorButton" data-page="message" data-md="true" aria-label="Message supervisor" ${unread ? 'aria-describedby="unreadMessages"' : ""}>${icon("message")}<span class="button-label">Message supervisor</span>${unread ? `<span class="message-unread" id="unreadMessages" role="status" aria-label="${unread} unread messages">${unread} new</span>` : ""}</button></div><p class="muted" role="status">${syncState}</p>${queued.length ? '<button data-action="retryPending" class="checkpoint-text-action">Retry saved records</button>' : ""}`;
   } else if (page === "shift")
     target.innerHTML = `<section class="card"><h2>End your shift</h2><form id="shiftForm"><p>Ready to finish your shift?</p><label class="label">Handover notes (optional)</label><textarea name="note" placeholder="Anything the next guard should know?"></textarea><button class="primary wide">Confirm end shift</button></form></section>`;
   else if (page === "round") {
@@ -1099,7 +1115,7 @@ function incidentCard(i, full = false) {
   return `<article class="item"><div class="row"><strong>${esc(i.report)}</strong>${pill(i.status, i.status === "Resolved" ? "" : "pending")}</div><p class="muted">Event: ${esc(i.event_time || "Not stated")} · Received ${date(i.received_at)}</p><p>${esc(i.responsible || "Supervisor follow-up")} ${i.next_action ? "· " + esc(i.next_action) : ""}</p>${full ? `<p class="source">Captured: ${date(i.captured_at)} · Record ${i.id}</p><div class="media">${i.media.map((m) => `<button data-action="media" data-id="${m.id}" data-mime="${m.mime}">${m.mime.startsWith("audio") ? "▶ Listen to original" : "▧ View photo"} · ${esc(m.source)}</button>`).join("")}</div><div class="timeline">${i.history.map((h) => `<p><strong>${esc(h.status)}</strong> · ${esc(h.name)}<br><small>${date(h.at)}</small><br>${esc(h.note)}</p>`).join("")}</div><details><summary>Original transcript and approved revisions</summary><p>${esc(i.transcript || "No AI transcript; guard supplied text.")}</p>${i.revisions.map((r) => `<p>${date(r.at)} · ${esc(r.content)}</p>`).join("")}</details>${user.role === "supervisor" && i.status !== "Resolved" ? `<form class="transition" data-id="${i.id}"><input type="hidden" name="status" value="${{ Reported: "Acknowledged", Acknowledged: "Assigned", Assigned: "Resolved" }[i.status]}">${i.status === "Acknowledged" ? '<label class="label">Responsible person</label><input name="responsible" required placeholder="e.g. Site supervisor / repair contractor"><label class="label">Next action</label><input name="next_action" required placeholder="Arrange replacement lock">' : ""}<label class="label">${i.status === "Assigned" ? "Resolution note" : "Follow-up note"}</label><textarea name="note" ${i.status === "Assigned" ? "required" : ""}></textarea>${i.status === "Assigned" ? '<label class="label">Optional resolution photo</label><input type="file" name="resolution" accept="image/jpeg,image/png">' : ""}<button class="primary">${{ Reported: "Acknowledge issue", Acknowledged: "Assign follow-up", Assigned: "Resolve with note" }[i.status]}</button></form>` : ""}` : `<button data-page="incidents">Review issue →</button>`}</article>`;
 }
 function renderAdmin(t) {
-  t.innerHTML = `<div class="grid" style="margin-top:20px"><section class="card"><h2>Instructions & schedule</h2><form class="adminForm"><input type="hidden" name="kind" value="site"><input type="hidden" name="instructions" value="${esc(site().instructions)}"><button type="button" data-page="instructionSetup">Edit shift instructions</button><label class="label">Supervisor telephone</label><input name="phone" value="${esc(site().phone)}"><label class="label">Daily scheduled rounds (24-hour, comma separated)</label><input name="schedule" pattern="([01][0-9]|2[0-3]):[0-5][0-9](,([01][0-9]|2[0-3]):[0-5][0-9])*" value="${esc(site().schedule)}" required><button class="primary">Save site settings</button></form></section><section class="card"><h2>Patrol checkpoints</h2>${cps()
+  t.innerHTML = `<div class="grid" style="margin-top:20px"><section class="card"><h2>Instructions & schedule</h2><form class="adminForm"><input type="hidden" name="kind" value="site"><input type="hidden" name="instructions" value="${esc(site().instructions)}"><button type="button" data-page="instructionSetup">Edit shift instructions</button><label class="label">Daily scheduled rounds (24-hour, comma separated)</label><input name="schedule" pattern="([01][0-9]|2[0-3]):[0-5][0-9](,([01][0-9]|2[0-3]):[0-5][0-9])*" value="${esc(site().schedule)}" required><button class="primary">Save site settings</button></form></section><section class="card"><h2>Patrol checkpoints</h2>${cps()
     .map((c) => `<p>${esc(c.name)} · <code>${esc(c.code)}</code></p>`)
     .join(
       "",
@@ -1478,7 +1494,7 @@ document.addEventListener("submit", async (e) => {
       await completeSignIn(b, online);
     } else if (f.id === "signupAccount") {
       if (b.password !== b.password_confirm) throw new Error("Passwords do not match");
-      signupDraft = { ...signupDraft, ...b };
+      signupDraft = { ...signupDraft, ...b, notice_accepted: b.notice_accepted === "on" };
       signupStep = 2;
       login();
       $("#signupPropertyName")?.focus();
@@ -1785,10 +1801,7 @@ document.addEventListener("click", async (e) => {
     }
     let a = b.dataset.action;
     if (a === "startSignup") {
-      signupStep = 1;
-      signupDraft = {};
-      login();
-      $("#signupOwnerName")?.focus();
+      await beginSignup();
       return;
     }
     if (a === "cancelSignup") {
@@ -1988,16 +2001,6 @@ document.addEventListener("click", async (e) => {
     } else if (a === "refresh") {
       await refresh();
       render();
-    } else if (a === "alert") {
-      await enqueue("alert", {
-        message: "Guard requested urgent supervisor attention",
-      });
-      await sync();
-      toast(
-        navigator.onLine
-          ? "Alert saved; check upload status. Use a normal telephone call for urgent help."
-          : "Saved offline only. Call your supervisor by telephone.",
-      );
     } else if (a === "listenReport") speak($("#report").value);
     else if (a === "transcribe") {
       await saveDraftFromForm();
@@ -2612,10 +2615,11 @@ async function initialize() {
     if (!restored) {
       // The marketing page can open signup without changing installed-app startup.
       if (new URLSearchParams(location.search).get("signup") === "1") {
-        signupStep = 1;
         const entryUrl = new URL(location.href);
         entryUrl.searchParams.delete("signup");
         history.replaceState(null, "", entryUrl.pathname + entryUrl.search + entryUrl.hash);
+        await beginSignup();
+        return;
       }
       login();
       return;

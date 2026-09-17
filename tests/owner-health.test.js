@@ -21,7 +21,7 @@ test('health uses historical expected slots, weighted missed/late and capture ti
  event('s1','start','2026-09-04T05:00:00Z','g1'),event('s2','start','2026-09-04T05:10:00Z','g2'),event('s3','start','2026-09-05T05:00:00Z','g2'),
  event('p1','patrol_start','2026-09-04T08:00:00Z','g1',{shift_id:'s1',scheduled_for:'2026-09-04T08:00:00.000Z'}),event('p2','patrol_start','2026-09-04T08:10:00Z','g2',{shift_id:'s2',scheduled_for:'2026-09-04T08:00:00.000Z'})]};
  const h=ownerHealth(input);assert.equal(h.guard.expected,4);assert.equal(h.guard.missed,1);assert.equal(h.guard.late,1);assert.equal(h.guard.score,63);
- assert.equal(h.patrol.expected,4);assert.equal(h.patrol.missed,2);assert.equal(h.patrol.late,1);assert.equal(h.patrol.score,38);
+ assert.equal(h.patrol.expected,4);assert.equal(h.patrol.missed,2);assert.equal(h.patrol.late,1);assert.equal(h.patrol.score,null);assert.equal(h.patrol.completionUnknown,2);
  assert.equal(h.guard.mostAffected,'Day shift');assert.ok(h.unknownDays>0);
 });
 test('unconfigured and Any attendance do not become perfect health',()=>{

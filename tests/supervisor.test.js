@@ -283,7 +283,7 @@ test("supervisor pages retain a mobile canvas on phone and desktop", async () =>
       const p = await ctx.newPage();
       const errors = [];
       p.on("pageerror", (e) => errors.push(e.message));
-      await p.goto(base);
+      await p.goto(base + "/app");
       await p.locator("#email").fill("supervisor@demo.isdl");
       await p.locator("#password").fill("Pilot-only-2026!");
       await p.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -724,7 +724,7 @@ test("supervisor single recipient and five-message inbox pagination and sorting"
   try {
     const ctx = await browser.newContext({viewport:{width:360,height:800}});
     const p = await ctx.newPage();
-    await p.goto(base);
+    await p.goto(base + "/app");
     await p.locator("#email").fill("supervisor@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button",{name:"Sign in",exact:true}).click();
@@ -782,7 +782,7 @@ test("reported problems use compact outstanding and previous lists with detail n
   try {
     const ctx=await browser.newContext({viewport:{width:360,height:800}});
     const p=await ctx.newPage();
-    await p.goto(base);
+    await p.goto(base + "/app");
     await p.locator("#email").fill("supervisor@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button",{name:"Sign in",exact:true}).click();
@@ -831,7 +831,7 @@ test("supervisor views daily, monthly and custom activity reports and downloads 
   try {
     const ctx=await browser.newContext({viewport:{width:360,height:800},acceptDownloads:true});
     const p=await ctx.newPage();
-    await p.goto(base);
+    await p.goto(base + "/app");
     await p.locator("#email").fill("supervisor@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button",{name:"Sign in",exact:true}).click();

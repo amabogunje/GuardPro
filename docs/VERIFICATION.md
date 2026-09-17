@@ -1,5 +1,7 @@
 # Verification record
 
+> Historical verification record. Some entries describe retired messaging, AI, acknowledgement/assignment, or demo-root flows from earlier revisions. The current pilot scope is defined by `README.md` and `docs/MVP-REMEDIATION-PLAN.md`; do not use historical entries as a claim that those features are enabled today.
+
 Local verification on 5 September 2026, Node 24.14.1 and installed Google Chrome on Windows.
 
 `npm test`: **18 passed, 0 failed** after the report-history update, including the following integrated checks:

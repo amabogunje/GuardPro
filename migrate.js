@@ -8,7 +8,7 @@ export async function migrate() {
       await exec(`CREATE SCHEMA IF NOT EXISTS ${schema}`);
       await exec(fs.readFileSync("migrations/postgres/001.sql", "utf8"));
     } else
-      for (const number of ["001", "002", "004", "005", "006", "007", "008", "009", "010", "011", "012", "013", "014", "015", "016", "017", "018", "019"])
+      for (const number of ["001", "002", "004", "005", "006", "007", "008", "009", "010", "011", "012", "013", "014", "015", "016", "017", "018", "019", "020"])
         await exec(fs.readFileSync(`migrations/${number}.sql`, "utf8"));
     if (postgres) await exec(fs.readFileSync("migrations/010.sql", "utf8"));
     if (postgres) await exec(fs.readFileSync("migrations/011.sql", "utf8"));
@@ -31,8 +31,10 @@ $$;
     if (postgres) await exec(fs.readFileSync("migrations/postgres/002.sql", "utf8"));
     if (postgres) {
       await exec(fs.readFileSync("migrations/019.sql", "utf8"));
+      await exec(fs.readFileSync("migrations/020.sql", "utf8"));
       await exec(fs.readFileSync("migrations/postgres/003.sql", "utf8"));
       await exec(fs.readFileSync("migrations/postgres/004.sql", "utf8"));
+      await exec(fs.readFileSync("migrations/postgres/005.sql", "utf8"));
       await exec(`
 DO $$
 BEGIN

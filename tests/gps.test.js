@@ -41,7 +41,7 @@ test('owner-only address setup and durable capture-time assessments',async()=>{
 });
 test('supervisor reviews grouped GPS flags without changing problems',async()=>{
  const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
- try{const context=await browser.newContext({viewport:{width:360,height:900}}),p=await context.newPage();const errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto(base);await p.locator('#email').fill('supervisor@demo.isdl');await p.locator('#password').fill('Pilot-only-2026!');await p.getByRole('button',{name:'Sign in',exact:true}).click();
+ try{const context=await browser.newContext({viewport:{width:360,height:900}}),p=await context.newPage();const errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto(base+'/app');await p.locator('#email').fill('supervisor@demo.isdl');await p.locator('#password').fill('Pilot-only-2026!');await p.getByRole('button',{name:'Sign in',exact:true}).click();
  // The overview shows only three attention rows at once. Use the stable location-review
  // entry point so an unrelated, newer item cannot hide this review workflow.
  await p.locator('[data-action="locationHistory"]').click();await p.getByRole('heading',{name:'Location review',exact:true}).waitFor();
@@ -56,7 +56,7 @@ test('supervisor reviews grouped GPS flags without changing problems',async()=>{
 test('owner property form saves an address and confirmed map position',async()=>{
  const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
  try {const p=await browser.newPage();await p.route('https://www.openstreetmap.org/**',route=>route.fulfill({contentType:'text/html',body:'Map test fixture'}));
- await p.goto(base);await p.locator('#email').fill('owner@demo.isdl');await p.locator('#password').fill('Pilot-only-2026!');await p.getByRole('button',{name:'Sign in',exact:true}).click();await p.getByRole('button',{name:'Property',exact:true}).click();await p.getByRole('button',{name:'Edit property location',exact:true}).click();
+ await p.goto(base+'/app');await p.locator('#email').fill('owner@demo.isdl');await p.locator('#password').fill('Pilot-only-2026!');await p.getByRole('button',{name:'Sign in',exact:true}).click();await p.getByRole('button',{name:'Property',exact:true}).click();await p.getByRole('button',{name:'Edit property location',exact:true}).click();
  const form=p.locator('.property-editor form').first();
  await p.evaluate(()=>{navigator.geolocation.getCurrentPosition=(success)=>setTimeout(()=>success({coords:{latitude:6.62,longitude:3.36,accuracy:20}}),100);});
  await form.getByRole('button',{name:'Use my position',exact:true}).click();

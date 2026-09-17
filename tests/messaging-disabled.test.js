@@ -28,6 +28,7 @@ test("MVP hides messaging for every role and rejects new messages", async () => 
       const headers = {cookie:login.headers.get("set-cookie").split(";")[0],"X-Session-Proof":auth.proof,"Content-Type":"application/json"};
       const state = await (await fetch(base+"/api/state",{headers})).json();
       assert.equal(state.features.messaging,false);
+      assert.equal("phone" in state.sites[0], false);
       const send = await fetch(base+"/api/events",{method:"POST",headers,body:JSON.stringify({id:randomUUID(),site_id:"oak",kind:"message",captured_at:new Date().toISOString(),payload:{text:"Disabled message"}})});
       assert.equal(send.status,403);
       if(role==="bala") {
@@ -36,7 +37,7 @@ test("MVP hides messaging for every role and rejects new messages", async () => 
       }
       const ctx = await browser.newContext({viewport:{width:360,height:800}});
       const p = await ctx.newPage();
-      await p.goto(base);
+      await p.goto(base+"/app");
       await p.locator("#email").fill(role+"@demo.isdl");
       await p.locator("#password").fill("Pilot-only-2026!");
       await p.getByRole("button",{name:"Sign in",exact:true}).click();
@@ -46,7 +47,7 @@ test("MVP hides messaging for every role and rejects new messages", async () => 
       if(role==="bala") {
         assert.equal(await p.locator(".actions > button").count(),3);
         assert.equal(await p.getByRole("button",{name:"Emergency",exact:true}).count(),0);
-        assert.equal(await p.getByRole("link",{name:"Call supervisor",exact:true}).count(),1);
+        assert.equal(await p.getByRole("link",{name:"Call supervisor",exact:true}).count(),0);
         await p.getByRole("button",{name:"Hear instructions",exact:true}).click();
         assert.equal(await p.locator('[data-page="message"]').count(),0);
       }

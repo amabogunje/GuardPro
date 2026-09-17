@@ -34,6 +34,10 @@ import {
 } from "node:crypto";
 if (!postgres) await migrate();
 const messagingEnabled = process.env.ENABLE_MESSAGING === "true";
+const customerNoticeVersion = "2026-09-17";
+const pilotSupportContact = String(process.env.PILOT_SUPPORT_CONTACT || "")
+  .trim()
+  .slice(0, 160);
 const now = () => new Date().toISOString(),
   id = () => randomUUID();
 const hash = (p) => {
@@ -118,6 +122,15 @@ app.get("/api/health", async (_req, res, next) => {
     next(error);
   }
 });
+// This reveals only public onboarding information. The support route comes
+// from deployment configuration so the public app never invents one.
+app.get("/api/public/onboarding", (_req, res) => {
+  res.json({
+    noticeVersion: customerNoticeVersion,
+    supportContact: pilotSupportContact || null,
+    signupAvailable: Boolean(pilotSupportContact),
+  });
+});
 const fail = (m, status = 400) => {
   throw Object.assign(new Error(m), { status });
 };
@@ -197,6 +210,16 @@ post("/api/signup", async (req, res) => {
   const propertyName = text(req.body.property_name, 120);
   const email = loginId(req.body.email);
   const password = String(req.body.password || "");
+  if (!pilotSupportContact)
+    fail(
+      "Sign-up is temporarily unavailable while ISDL configures its support contact.",
+      503,
+    );
+  if (
+    req.body.notice_accepted !== true ||
+    req.body.notice_version !== customerNoticeVersion
+  )
+    fail("Read and accept the current customer notice before creating an account.");
   if (!ownerName || !customerName || !propertyName) fail("Enter your name, customer name and property name");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fail("Use a valid email address");
   if (password.length < 12) fail("Use a password of at least 12 characters");
@@ -217,7 +240,15 @@ post("/api/signup", async (req, res) => {
   await run("INSERT INTO assignments VALUES(?,?)", ownerId, siteId);
   await run("INSERT INTO site_locations VALUES(?,?,?,?)", siteId, property.latitude, property.longitude, property.radius_m);
   await run("INSERT INTO property_locations VALUES(?,?,?,?,?,?,?,?)", id(), siteId, property.address, property.latitude, property.longitude, property.radius_m, ownerId, createdAt);
-  await audit({ id: ownerId }, "customer.self_registered", { customer_id: customerId, site_id: siteId });
+  await run(
+    "INSERT INTO customer_notice_acceptances VALUES(?,?,?,?,?,?)",
+    id(), customerId, ownerId, customerNoticeVersion, createdAt, pilotSupportContact,
+  );
+  await audit(
+    { id: ownerId },
+    "customer.self_registered",
+    { customer_id: customerId, site_id: siteId, notice_version: customerNoticeVersion },
+  );
   res.json({ ...(await issueSession(res, { id: ownerId, name: ownerName, role: "owner", email })), customerId, siteId });
 });
 app.use(["/api", "/media"], async (req, res, next) => {
@@ -459,7 +490,7 @@ app.get("/api/state", async (req, res) => {
     ownerSupervision,
     user: u,
     features: { messaging: messagingEnabled },
-    sites: sites.map((s) => ({
+    sites: sites.map(({ phone: _phone, ...s }) => ({
       ...s,
       ...(u.role !== "guard"
         ? {
@@ -1700,8 +1731,7 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
       )
         fail("Use comma-separated times HH:MM");
       await run(
-        "UPDATE sites SET phone=?,schedule=? WHERE id=?",
-        text(b.phone, 30),
+        "UPDATE sites SET schedule=? WHERE id=?",
         text(b.schedule, 2000),
         s,
       );
@@ -1797,6 +1827,13 @@ app.get("/api/qr/:site", async (req, res) => {
     ),
   );
 });
+// Keep public acquisition separate from the installed operational app. The
+// landing page is the intentional public entry; app bookmarks and installed
+// PWAs use /app, which always serves the application shell.
+app.get("/", (_req, res) => res.sendFile("landing.html", { root: "public" }));
+app.get(["/app", "/app/"], (_req, res) =>
+  res.sendFile("index.html", { root: "public" }),
+);
 app.use(express.static("public", { etag: true }));
 app.use((err, req, res, next) => {
   console.error(err.message);

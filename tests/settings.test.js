@@ -341,7 +341,7 @@ test("settings tabs fit phone and desktop; checkpoint editing and QR labels work
         p = await context.newPage(),
         errors = [];
       p.on("pageerror", (e) => errors.push(e.message));
-      await p.goto(base);
+      await p.goto(base + "/app");
       await p.locator("#email").fill("supervisor@demo.isdl");
       await p.locator("#password").fill("Pilot-only-2026!");
       await p.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -568,7 +568,7 @@ test('phone-only team accounts can sign in; aliases preserve the same encrypted 
     await context.setOffline(true);
     assert.equal(await page.evaluate(async()=> (await window.testVault.unlock('+234 801 234 5678','Pilot-only-2026!')).queue[0].id),'pending-record');
     await context.setOffline(false);
-    await page.goto(base);await page.locator('#email').fill(phone);await page.locator('#password').fill(password);await page.getByRole('button',{name:'Sign in',exact:true}).click();
+    await page.goto(base+'/app');await page.locator('#email').fill(phone);await page.locator('#password').fill(password);await page.getByRole('button',{name:'Sign in',exact:true}).click();
     await page.getByRole('button',{name:'Sign out',exact:true}).waitFor();
     await context.close();
   } finally {await browser.close();}

@@ -21,6 +21,8 @@ const payload = (suffix, overrides = {}) => ({
   longitude: "3.351",
   radius_m: "100",
   confirmed: true,
+  notice_version: "2026-09-17",
+  notice_accepted: true,
   ...overrides,
 });
 
@@ -53,6 +55,7 @@ before(async () => {
       DATABASE_URL: "",
       VERCEL: "",
       BLOB_READ_WRITE_TOKEN: "",
+      PILOT_SUPPORT_CONTACT: "+234 818 335 4052",
     },
     stdio: "pipe",
   });
@@ -113,22 +116,31 @@ test("self-service signup creates an isolated owner, customer and first property
   const audit = db
     .prepare("SELECT actor,action,detail FROM audit WHERE action='customer.self_registered' AND actor=?")
     .get(first.body.id);
+  const acceptance = db
+    .prepare("SELECT notice_version,support_contact FROM customer_notice_acceptances WHERE customer_id=?")
+    .get(first.body.customerId);
   db.close();
   assert.equal(audit.action, "customer.self_registered");
   assert.deepEqual(JSON.parse(audit.detail), {
     customer_id: first.body.customerId,
     site_id: first.body.siteId,
+    notice_version: "2026-09-17",
   });
+  assert.equal(acceptance.notice_version, "2026-09-17");
+  assert.equal(acceptance.support_contact, "+234 818 335 4052");
 });
 
-test("signup rejects duplicate identities and an unconfirmed location", async () => {
+test("signup rejects duplicate identities and an unaccepted customer notice", async () => {
   const suffix = randomUUID();
   const duplicate = await signup(payload("duplicate-" + suffix, { email: existingEmail }));
   assert.equal(duplicate.response.status, 409);
   assert.match(duplicate.body.error, /already uses this email/i);
-  const unconfirmed = await signup(payload("unconfirmed-" + suffix, { confirmed: false }));
-  assert.equal(unconfirmed.response.status, 400);
-  assert.match(unconfirmed.body.error, /confirm the map position/i);
+  const unaccepted = await signup(payload("unaccepted-" + suffix, { notice_accepted: false }));
+  assert.equal(unaccepted.response.status, 400);
+  assert.match(unaccepted.body.error, /accept the current customer notice/i);
+  const staleNotice = await signup(payload("stale-notice-" + suffix, { notice_version: "2026-01-01" }));
+  assert.equal(staleNotice.response.status, 400);
+  assert.match(staleNotice.body.error, /accept the current customer notice/i);
 });
 
 test("mobile signup wizard creates the account and retains a narrow layout", async () => {
@@ -137,13 +149,14 @@ test("mobile signup wizard creates the account and retains a narrow layout", asy
   const suffix = randomUUID();
   const email = `wizard-${suffix}@pilot.invalid`;
   try {
-    await page.goto(base);
+    await page.goto(base + "/app");
     await page.getByRole("button", { name: "Create an account", exact: true }).click();
     await page.locator("#signupOwnerName").fill("Wizard Owner");
     await page.locator("#signupCustomerName").fill("Wizard Customer");
     await page.locator("#signupEmail").fill(email);
     await page.locator("#signupPassword").fill("Wizard-signup-password!");
     await page.locator("#signupPasswordConfirm").fill("Wizard-signup-password!");
+    await page.locator('input[name="notice_accepted"]').check();
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await page.locator("#signupPropertyName").fill("Wizard House");
     await page.locator("#signupAddress").fill("2 Wizard Close, Ikeja, Lagos, Nigeria");
@@ -162,7 +175,7 @@ test("mobile signup wizard creates the account and retains a narrow layout", asy
     assert.equal(layout.overflow, false);
 
     // A marketing signup link must not displace an existing owner's session.
-    await page.goto(base + "/?signup=1");
+    await page.goto(base + "/app?signup=1");
     await page.getByRole("heading", { name: "Hello, Wizard Owner.", exact: true }).waitFor();
     assert.equal(await page.locator("#signupAccount").count(), 0);
   } finally {
@@ -175,12 +188,30 @@ test("landing signup entry opens account creation while ordinary entry retains s
   const page = await context.newPage();
   try {
     await page.goto(base);
+    await page.getByRole("heading", { name: /Keep up with/i }).waitFor();
+    assert.equal(new URL(page.url()).pathname, "/");
+    assert.equal(await page.locator("#login").count(), 0);
+
+    await page.goto(base + "/customer-notice.html");
+    await page.getByRole("heading", { name: "Before you create an account", exact: true }).waitFor();
+    const support = page.getByRole("link", { name: "+234 818 335 4052", exact: true });
+    await support.waitFor();
+    assert.equal(await support.getAttribute("href"), "tel:+2348183354052");
+
+    await page.goto(base);
+    await page.getByText("Illustrative image", { exact: false }).waitFor();
+    await page.getByText("Guard Companion does not provide emergency response.", { exact: true }).waitFor();
+
+    await page.goto(base + "/app");
     await page.getByRole("heading", { name: "Welcome back", exact: true }).waitFor();
     assert.equal(await page.locator("#signupAccount").count(), 0);
+    assert.equal(await page.locator("#email").inputValue(), "");
+    assert.equal(await page.getByText("Fictional pilot accounts", { exact: true }).count(), 0);
 
     await page.goto(base + "/landing.html");
     await page.getByRole("link", { name: /^Start free/ }).first().click();
     await page.getByRole("heading", { name: "Create your account", exact: true }).waitFor();
+    await page.getByText("Owner accounts use an email address to sign in.", { exact: false }).waitFor();
     assert.equal(await page.locator("#login").count(), 0);
     assert.equal(new URL(page.url()).searchParams.has("signup"), false);
 

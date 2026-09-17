@@ -17,7 +17,7 @@ after(async()=>{await browser?.close();server?.kill();});
 async function signedIn(width){
  const context=await browser.newContext({viewport:{width,height:900}}),p=await context.newPage();
  await p.route('https://www.openstreetmap.org/**',route=>route.fulfill({contentType:'text/html',body:'Map fixture'}));
- await p.goto(base);await p.locator('#email').fill('owner@demo.isdl');await p.locator('#password').fill('Pilot-only-2026!');await p.getByRole('button',{name:'Sign in',exact:true}).click();await p.locator('.owner-health').waitFor();
+ await p.goto(base+'/app');await p.locator('#email').fill('owner@demo.isdl');await p.locator('#password').fill('Pilot-only-2026!');await p.getByRole('button',{name:'Sign in',exact:true}).click();await p.locator('.owner-health').waitFor();
  return {context,p};
 }
 async function geometry(p){
@@ -54,7 +54,7 @@ test('owner KPIs are display-only and supervisor mode persists without changing 
 test('owner has read-only activity and problem evidence without switching role', {concurrency:false}, async()=>{
  const {context,p}=await signedIn(390),errors=[];p.on('pageerror',e=>errors.push(e.message));
  try {
-  await p.getByRole('button',{name:'Activity evidence',exact:true}).click();await p.getByRole('heading',{name:'Activity evidence',exact:true}).waitFor();await p.getByText('Scheduled patrol starts',{exact:true}).waitFor();await p.getByText(/does not confirm all checkpoints or a completed patrol/).waitFor();await geometry(p);
+  await p.getByRole('button',{name:'Activity evidence',exact:true}).click();await p.getByRole('heading',{name:'Activity evidence',exact:true}).waitFor();await p.getByText('Scheduled patrol coverage',{exact:true}).waitFor();await p.getByText(/Completion contributes 70% and on-time starts 30%/).waitFor();await geometry(p);
   await p.getByRole('button',{name:'Home',exact:true}).click();await p.getByRole('button',{name:'Reported problems',exact:true}).click();await p.getByRole('heading',{name:'Unresolved problems',exact:true}).waitFor();await p.locator('.owner-problem-row').first().click();await p.getByText('This is read-only evidence. Switch to supervisor view only if you need to manage the problem.',{exact:true}).waitFor();assert.equal(await p.locator('.problemResolve').count(),0);await geometry(p);assert.deepEqual(errors,[]);
  } finally {await context.close();}
 });

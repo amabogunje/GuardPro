@@ -16,7 +16,7 @@ It is an operating procedure, not a statement of legal compliance or a promise o
 - **Support/recovery owner:** product owner.
 - **Pilot support route:** publish one ISDL-controlled support email or telephone/WhatsApp contact before inviting a customer. Do not represent the app's disabled in-app messaging as support.
 - **Initial response target (proposed):** acknowledge a pilot support request within one business day; investigate an outage as soon as the support owner is available. This must be accepted or replaced before launch.
-- For a guard safety concern, direct the guard to the configured site telephone contact and local emergency procedures. Guard Companion does not dispatch police or guarantee monitoring.
+- For a guard safety concern, follow the site's existing emergency procedures. Guard Companion does not dispatch police, provide an in-app emergency alarm, or guarantee monitoring.
 - For an upload issue, preserve the browser/app state and retry once connected. Do not clear browser storage, reset credentials, or remove the account until pending work is reconciled or the guard confirms it can be lost.
 - For suspected unauthorized access, disable the affected user in the supervisor/owner settings, record the action, and rotate the account password using the recovery procedure. A disabled user is denied server access immediately; an offline browser cannot be remotely wiped.
 
@@ -58,7 +58,7 @@ Do not invite another pilot customer or raise user/history limits until the prod
 Before signup is opened to customers, publish and version short onboarding material that explains:
 
 - the service records shift, patrol, report, point-in-time location and supporting media information;
-- guards should use the configured telephone contact and local procedure for urgent safety concerns;
+- the pilot provides no in-app urgent-help action; guards follow the site's existing emergency procedure for urgent safety concerns;
 - the free tier includes one property and up to five guards/supervisors, with no payment collected during the pilot;
 - the service helps supervise guards and does not replace CCTV, access control, emergency response or a security provider's own duties;
 - data is retained for one year, how a customer asks for support/export/offboarding, and how the customer is notified of material service changes.

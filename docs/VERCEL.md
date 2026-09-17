@@ -15,7 +15,7 @@ GuardPro uses the existing Vercel account and Neon integration, with a dedicated
 
 ## Environment and migrations
 
-Required hosted variables: `DATABASE_URL` (restricted pooled connection), `DATABASE_SCHEMA=guardpro`, `BLOB_READ_WRITE_TOKEN` (private store), `MEDIA_SIGNING_SECRET` (32 random bytes or more), `COOKIE_SECURE=true`. Optional real AI variables are in `.env.example`; AI is not enabled for this demo.
+Required hosted variables: `DATABASE_URL` (restricted pooled connection), `DATABASE_SCHEMA=guardpro_pilot`, `BLOB_READ_WRITE_TOKEN` (private store), `MEDIA_SIGNING_SECRET` (32 random bytes or more), `COOKIE_SECURE=true`, and `PILOT_SUPPORT_CONTACT` (an ISDL-managed public support route). AI is disabled for this pilot.
 
 Keep credentials in Vercel's secret settings. `.env.local`, `.env.runtime`, the data directory and `.vercel` are ignored by Git and deployment uploads. Never paste credentials into chat or commit them.
 
@@ -43,11 +43,11 @@ npx vercel promote <preview-url> --yes
 
 `test:cloud` uses real Neon and Blob, a new `test_<timestamp>` schema, and a separate local server on port 3102. It never resets the clean `guardpro` demo schema. Tests retain their isolated schemas and tiny synthetic media for inspection; periodically remove only identified test artifacts through a reviewed maintenance operation. The adapter remains the same as production. Never point regression tests at real customer data.
 
-## Demo and deployment boundaries
+## Public routes and deployment boundaries
 
-The shared fictional accounts and password in README.md are deliberately visible on the demo sign-in screen. Anyone given the demo URL can use those accounts, including supervisor administration. Use fictional information only. Create individual accounts and remove shared demo access before a customer pilot.
+The public root `/` serves the Guard Companion landing page. The operational application is at `/app`; installable app manifests also start there. The production sign-in screen does not expose fictional credentials or prefill a demo identity. Local demo credentials remain documented for local development only.
 
-Production and previews currently use the same clean demo schema. Do not use this arrangement for real customer production: give previews their own Neon branch/schema and storage credentials. Keep Vercel deployment protection enabled for previews.
+Production (`guardpro_pilot`) and Preview (`guardpro_preview`) use separate clean schemas and private Blob stores. Keep Vercel deployment protection enabled for previews.
 
 There is no browser guarantee of patrol reminders or synchronization while the app is closed. Camera, NFC, microphone permissions, Android install behavior and mobile data interruptions still need the device checklist. AI transcription is unconfigured, not simulated; original recordings and typed reports work.
 

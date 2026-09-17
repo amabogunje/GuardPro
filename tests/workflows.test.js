@@ -300,7 +300,7 @@ test("Android viewport: offline capture, reload, shared sign-out, interrupted up
       p = await ctx.newPage(),
       errors = [];
     p.on("pageerror", (e) => errors.push(e.message));
-    await p.goto(base);
+    await p.goto(base + "/app");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in" }).click();
     await p.getByRole("heading", { name: "Hello, Bala." }).waitFor();
@@ -417,7 +417,7 @@ test("voice recording, permission fallbacks, owner mobile and supervisor adminis
       p = await ctx.newPage(),
       errors = [];
     p.on("pageerror", (e) => errors.push(e.message));
-    await p.goto(base);
+    await p.goto(base + "/app");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in" }).click();
     await p.getByRole("heading", { name: "Hello, Bala." }).waitFor();
@@ -536,7 +536,7 @@ test("Material layouts: every page at compact, medium and expanded widths", asyn
         p = await context.newPage(),
         errors = [];
       p.on("pageerror", (e) => errors.push(e.message));
-      await p.goto(base);
+      await p.goto(base + "/app");
       await p.locator("#email").fill(role + "@demo.isdl");
       await p.locator("#password").fill("Pilot-only-2026!");
       await p.getByRole("button", { name: "Sign in" }).click();
@@ -643,7 +643,7 @@ test("off-duty messaging is disabled; duty actions return after check-in", async
         reducedMotion: "reduce",
       }),
       p = await ctx.newPage();
-    await p.goto(base);
+    await p.goto(base + "/app");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in" }).click();
     await p.getByRole("heading", { name: "Hello, Bala." }).waitFor();
@@ -675,7 +675,7 @@ test("off-duty messaging is disabled; duty actions return after check-in", async
           text,
         );
       assert.equal(await p.getByRole("button", { name: "Message supervisor" }).count(), 0);
-      assert.equal(await p.getByRole("link", { name: "Call supervisor" }).count(), 1);
+      assert.equal(await p.getByRole("link", { name: "Call supervisor" }).count(), 0);
       assert.equal(
         await p
           .getByRole("button", { name: "Click here", exact: true })
@@ -799,7 +799,7 @@ test("shift supervisor messages survive offline reload, arrive once and stay cus
       await p.getByRole("button", { name: "Sign in" }).click();
       await p.getByRole("heading", { name: "Hello, Bala." }).waitFor();
     };
-    await p.goto(base);
+    await p.goto(base + "/app");
     await signIn();
     if (
       await p.getByRole("button", { name: "End shift", exact: true }).count()
@@ -998,7 +998,7 @@ test("mobile patrol countdown, five-minute reminder, overdue and offline start s
       }),
       p = await ctx.newPage();
     await p.clock.install({ time: new Date(now) });
-    await p.goto(base);
+    await p.goto(base + "/app");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in", exact: true }).click();
     await p.getByRole("heading", { name: "Hello, Bala." }).waitFor();
@@ -1161,7 +1161,7 @@ test("patrol mobile: selected QR/NFC auto-save, resume, hidden manual exception"
         async scan() {}
       };
     });
-    await p.goto(base);
+    await p.goto(base + "/app");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in", exact: true }).click();
     await p.getByRole("button", { name: "Start patrol", exact: true }).click();
@@ -1292,7 +1292,7 @@ test("simplified report: camera photo and audio-only submission with aligned Hom
         viewport: { width: 390, height: 844 },
       }),
       p = await ctx.newPage();
-    await p.goto(base);
+    await p.goto(base + "/app");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in", exact: true }).click();
     await p
@@ -1405,7 +1405,7 @@ test("cancel confirmations preserve shift and report; typed-only reports need no
         viewport: { width: 390, height: 844 },
       }),
       p = await ctx.newPage();
-    await p.goto(base);
+    await p.goto(base + "/app");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in", exact: true }).click();
     const clickConfirm = async (action, message, accept) => {
@@ -1536,7 +1536,7 @@ test("guard history is collapsed, scoped to the shift and read-only, including o
         viewport: { width: 390, height: 844 },
       }),
       p = await ctx.newPage();
-    await p.goto(base);
+    await p.goto(base + "/app");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in", exact: true }).click();
     await p
@@ -1628,7 +1628,7 @@ test("recorded shift instructions: owner publishes, scoped private playback, off
         viewport: { width: 390, height: 844 },
       }),
       p = await ctx.newPage();
-    await p.goto(base);
+    await p.goto(base + "/app");
     await p.locator("#email").fill("owner@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -1682,7 +1682,7 @@ test("recorded shift instructions: owner publishes, scoped private playback, off
         viewport: { width: 390, height: 844 },
       }),
       g = await gc.newPage();
-    await g.goto(base);
+    await g.goto(base + "/app");
     await g.locator("#password").fill("Pilot-only-2026!");
     await g.getByRole("button", { name: "Sign in", exact: true }).click();
     await g
@@ -1729,7 +1729,7 @@ test("recorded shift instructions: owner publishes, scoped private playback, off
         viewport: { width: 390, height: 844 },
       }),
       t = await tc.newPage();
-    await t.goto(base);
+    await t.goto(base + "/app");
     await t.locator("#password").fill("Pilot-only-2026!");
     await t.getByRole("button", { name: "Sign in", exact: true }).click();
     await t
@@ -1749,7 +1749,7 @@ test("recorded shift instructions: owner publishes, scoped private playback, off
         );
       };
     });
-    await d.goto(base);
+    await d.goto(base + "/app");
     await d.locator("#email").fill("owner@demo.isdl");
     await d.locator("#password").fill("Pilot-only-2026!");
     await d.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -1794,7 +1794,7 @@ test("voice supervisor messages: photo, offline reload, failed upload retry and 
         .getByRole("button", { name: "Message supervisor", exact: true })
         .click();
     };
-    await p.goto(base);
+    await p.goto(base + "/app");
     await signIn();
     assert.equal(
       await p.getByText("What would you like to say?", { exact: true }).count(),
@@ -1901,7 +1901,7 @@ test("voice supervisor messages: photo, offline reload, failed upload retry and 
         viewport: { width: 390, height: 844 },
       }),
       sp = await sc.newPage();
-    await sp.goto(base);
+    await sp.goto(base + "/app");
     await sp.locator("#email").fill("supervisor@demo.isdl");
     await sp.locator("#password").fill("Pilot-only-2026!");
     await sp.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -2046,7 +2046,7 @@ test("two-way shift chat: current guard view, supervisor history and named repli
         viewport: { width: 390, height: 844 },
       }),
       sp = await sc.newPage();
-    await sp.goto(base);
+    await sp.goto(base + "/app");
     await sp.locator("#email").fill("supervisor@demo.isdl");
     await sp.locator("#password").fill("Pilot-only-2026!");
     await sp.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -2108,7 +2108,7 @@ test("two-way shift chat: current guard view, supervisor history and named repli
         viewport: { width: 390, height: 844 },
       }),
       g = await gc.newPage();
-    await g.goto(base);
+    await g.goto(base + "/app");
     await g.locator("#password").fill("Pilot-only-2026!");
     await g.getByRole("button", { name: "Sign in", exact: true }).click();
     await g
@@ -2239,7 +2239,7 @@ test("empty current conversation stays hidden until a named supervisor sends the
         viewport: { width: 390, height: 844 },
       }),
       p = await ctx.newPage();
-    await p.goto(base);
+    await p.goto(base + "/app");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in", exact: true }).click();
     await p
@@ -2322,7 +2322,7 @@ test("newest messages first and current-shift unread badge persists and clears o
       await p.getByRole("button", { name: "Sign in", exact: true }).click();
       await p.getByRole("heading", { name: "Hello, Bala." }).waitFor();
     };
-    await p.goto(base);
+    await p.goto(base + "/app");
     await signIn();
     await p.getByText("2 new", { exact: true }).waitFor();
     await p.screenshot({
@@ -2401,7 +2401,7 @@ test("refresh restores each role, offline drafts, and explicit sign-out still lo
           viewport: { width: 390, height: 844 },
         }),
         p = await ctx.newPage();
-      await p.goto(base);
+      await p.goto(base + "/app");
       await p.locator("#email").fill(role + "@demo.isdl");
       await p.locator("#password").fill("Pilot-only-2026!");
       await p.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -2480,7 +2480,7 @@ test("refresh restores each role, offline drafts, and explicit sign-out still lo
     }
     const ctx = await browser.newContext(),
       p = await ctx.newPage();
-    await p.goto(base);
+    await p.goto(base + "/app");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in", exact: true }).click();
     await p.getByRole("button", { name: "Sign out", exact: true }).waitFor();
@@ -2507,7 +2507,7 @@ test("sign-out invalidates a restored second tab", async () => {
   try {
     const ctx = await browser.newContext(),
       p = await ctx.newPage();
-    await p.goto(base);
+    await p.goto(base + "/app");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in", exact: true }).click();
     await p.getByRole("button", { name: "Sign out", exact: true }).waitFor();
