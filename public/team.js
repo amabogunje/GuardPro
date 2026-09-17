@@ -36,7 +36,7 @@ export function teamSettings(host,{site,users,reusableUsers=[],api,esc,icon,done
     host.querySelector('#team-next')?.addEventListener('click',()=>{page++;rows();});
   }
   function edit(member) {
-    host.innerHTML=`<section class="card checkpoint-panel team-panel"><div class="checkpoint-heading"><h2>${member?'Edit user':'Add user'}</h2><button type="button" class="checkpoint-text-action" id="team-cancel">Cancel</button></div><form id="team-editor" class="settings-fields"><label>Name<input name="name" required maxlength="120" value="${esc(member?.name||'')}"></label><label>Role<select name="role"><option value="guard">Guard</option><option value="supervisor" ${member?.role==='supervisor'?'selected':''}>Supervisor</option></select></label><label>WhatsApp number<input name="whatsapp" type="tel" autocomplete="tel" placeholder="0801 234 5678" value="${esc(member?.whatsapp||'')}"></label><label>Email (optional)<input name="email" type="email" maxlength="200" autocomplete="email" value="${esc(member?.email||'')}"></label><label>${member?'New password (optional)':'Password (optional)'}<input name="password" type="password" minlength="12" autocomplete="new-password"></label><small>${member?'Leave blank to keep the current password.':'Leave blank to create a temporary password for this user.'}</small><label>Profile photo (optional)<input type="file" name="profile_photo" accept="image/jpeg,image/png"></label><small>JPEG or PNG, up to 2 MB.</small>${member?`<label>Status<select name="disabled"><option value="false">Active</option><option value="true" ${member.disabled?'selected':''}>Inactive</option></select></label><small>Inactive members cannot sign in. Their past records are kept.</small>`:''}<button class="primary" id="team-save" disabled>${member?'Save changes':'Create user'}</button>${member&&allowReuse?'<button type="button" class="team-remove" id="team-unassign">Remove from this property</button>':''}<p class="checkpoint-status" role="status"></p></form></section>`;
+    host.innerHTML=`<section class="card checkpoint-panel team-panel"><div class="checkpoint-heading"><h2>${member?'Edit user':'Add user'}</h2><button type="button" class="checkpoint-text-action" id="team-cancel">Cancel</button></div><form id="team-editor" class="settings-fields"><label>Name *<input name="name" required maxlength="120" value="${esc(member?.name||'')}"></label><label>Role *<select name="role" required><option value="guard">Guard</option><option value="supervisor" ${member?.role==='supervisor'?'selected':''}>Supervisor</option></select></label><label>WhatsApp number *<input name="whatsapp" type="tel" required autocomplete="tel" placeholder="0801 234 5678" value="${esc(member?.whatsapp||'')}"></label><label>Email (optional)<input name="email" type="email" maxlength="200" autocomplete="email" value="${esc(member?.email||'')}"></label><label>${member?'New password (optional)':'Password *'}<input name="password" type="password" minlength="12" ${member?'':'required'} autocomplete="new-password"></label><small>${member?'Leave blank to keep the current password.':'Use at least 12 characters.'}</small><label>Profile photo (optional)<input type="file" name="profile_photo" accept="image/jpeg,image/png"></label><small>JPEG or PNG, up to 2 MB.</small>${member?`<label>Status<select name="disabled"><option value="false">Active</option><option value="true" ${member.disabled?'selected':''}>Inactive</option></select></label><small>Inactive members cannot sign in. Their past records are kept.</small>`:''}<button class="primary" id="team-save" disabled>${member?'Save changes':'Create user'}</button>${member&&allowReuse?'<button type="button" class="team-remove" id="team-unassign">Remove from this property</button>':''}<p class="checkpoint-status" role="status"></p></form></section>`;
     const form=host.querySelector('form'),save=host.querySelector('#team-save');
     if(roleOnly) {
       host.querySelector('h2').textContent=member?'Edit supervisor':'Add supervisor';
@@ -47,8 +47,10 @@ export function teamSettings(host,{site,users,reusableUsers=[],api,esc,icon,done
     const snapshot=()=>JSON.stringify([...new FormData(form)].filter(([key])=>key!=='profile_photo'));
     const baseline=snapshot();let busy=false;
     const update=()=>{
-      const phone=form.elements.whatsapp.value.trim(),email=form.elements.email.value.trim();
-      form.elements.whatsapp.setCustomValidity(phone&&!phoneNumber(phone)?'Enter a valid phone number':!phone&&!email?'Add a WhatsApp number or email':'');
+      const phone=form.elements.whatsapp.value.trim(),password=form.elements.password.value;
+      const status=form.querySelector('[role="status"]');
+      form.elements.whatsapp.setCustomValidity(phone&&!phoneNumber(phone)?'Enter a valid WhatsApp number':!phone?'Enter a WhatsApp number':'');
+      if(!member) status.textContent=!phone?'Enter the required fields.':!phoneNumber(phone)?'Enter a valid WhatsApp number.':!password?'Enter a password of at least 12 characters.':password.length<12?'Password must be at least 12 characters.':'';
       save.disabled=busy||!form.checkValidity()|| (snapshot()===baseline&&!form.elements.profile_photo.files.length);
     };
     form.oninput=update;form.onchange=update;
@@ -67,12 +69,7 @@ export function teamSettings(host,{site,users,reusableUsers=[],api,esc,icon,done
         const body=new FormData(form);body.set('site_id',site.id);body.set('kind',member?'update_user':'user');
         if(member)body.set('user_id',member.id);
         if(!body.get('profile_photo')?.size)body.delete('profile_photo');
-        const result=await api('/api/admin',body);
-        if(!member&&result.initial_password){
-          host.innerHTML=`<section class="card checkpoint-panel team-panel"><h2>User created</h2><p>Give this sign-in information to ${esc(form.elements.name.value)}. The temporary password is shown only now.</p><dl class="team-credentials"><dt>WhatsApp number</dt><dd>${esc(form.elements.whatsapp.value)}</dd><dt>Temporary password</dt><dd>${esc(result.initial_password)}</dd></dl><button class="primary" id="team-created-done">Done</button></section>`;
-          host.querySelector('#team-created-done').onclick=()=>done();
-          return;
-        }
+        await api('/api/admin',body);
         await done();
       } catch(error) {form.querySelector('[role="status"]').textContent=error.message;busy=false;save.textContent=member?'Save changes':'Create user';update();}
     };
