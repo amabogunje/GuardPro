@@ -521,8 +521,8 @@ test("Any guard is exclusive, property-scoped, and does not invent attendance ex
   assert.deepEqual(window.guardIds,[]);
   const kpi=supervisorStatus({site:state.sites[0],selectedShift:window,plans:state.shiftPlans});
   assert.equal(kpi[0].tone,"good");
-  assert.equal(kpi[0].qualifier,"any guard may check in");
-  assert.equal(kpi[0].value,"0 checked in");
+  assert.equal(kpi[0].qualifier,"checked");
+  assert.equal(kpi[0].value,"0");
   const email="any-guard@demo.isdl";
   await request("/api/admin",supervisor,{kind:"user",site_id:"oak",name:"Any guard test",email,password:"Pilot-only-2026!",role:"guard"});
   const newGuard=await login(email);

@@ -10,7 +10,8 @@ test("Any roster reports a count only; named rosters retain their assigned denom
     const shifts=events.map(e=>({id:e.id,site_id:"s",user_id:e.user_id,started_at:e.captured_at,ended_at:"2026-01-02T16:00:00+01:00"}));
     const window=overviewShifts({site,plans,day:"2026-01-02",now})[0];
     const kpi=supervisorStatus({site,plans,selectedShift:window,shifts,now})[0];
-    assert.equal(kpi.value,roster.includes("*")?`${attending.length} checked in`:`${attending.length} of ${total} checked in`);
+    assert.equal(kpi.value,roster.includes("*")?String(attending.length):`${attending.length} of ${total}`);
+    assert.equal(kpi.qualifier,"checked");
     assert.equal(kpi.tone,attending.length<total?"attention":"good");
     const report=activityReport({from:"2026-01-02",to:"2026-01-02",now,site,plans,events,users:[],checkpoints:[],incidents:[],resolutions:[]});
     assert.equal(report.counts.shiftStarts,attending.length);

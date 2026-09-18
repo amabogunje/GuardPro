@@ -148,15 +148,13 @@ export function supervisorStatus({
       value: window.rosterUnknown
         ? "—"
         : window.anyGuard
-          ? `${checked.size} checked in`
-          : `${checked.size} of ${expected.size} checked in`,
+          ? String(checked.size)
+          : `${checked.size} of ${expected.size}`,
       qualifier: window.rosterUnknown
         ? "roster unavailable"
         : overdueOpen.length
           ? `${overdueOpen.length} earlier shift${overdueOpen.length === 1 ? "" : "s"} still open`
-          : window.anyGuard
-            ? "any guard may check in"
-            : "assigned guards",
+          : "checked",
       tone: (attendanceDue && checked.size < expected.size) || overdueOpen.length ? "attention" : "good",
     },
     {

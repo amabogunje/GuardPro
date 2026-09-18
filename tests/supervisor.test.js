@@ -467,13 +467,13 @@ test("shift overview scopes attendance and patrols without inventing a default s
     ],
   };
   let cards = supervisorStatus(input);
-  assert.equal(cards[0].value, "1 of 2 checked in");
+  assert.equal(cards[0].value, "1 of 2");
   const missing = supervisorStatus({
     ...input,
     shifts: [],
     selectedShift: { ...windows[0], guardIds: ["a"] },
   });
-  assert.equal(missing[0].value, "0 of 1 checked in");
+  assert.equal(missing[0].value, "0 of 1");
   assert.equal(missing[0].tone, "attention");
   assert.equal(cards[0].tone, "attention");
   assert.equal(cards[1].tone, "attention");
@@ -481,7 +481,7 @@ test("shift overview scopes attendance and patrols without inventing a default s
   assert.equal(cards[1].value, "1 of 3");
   assert.equal(cards[2].value, "2");
   cards = supervisorStatus({ ...input, selectedShift: windows[1] });
-  assert.equal(cards[0].value, "0 of 1 checked in");
+  assert.equal(cards[0].value, "0 of 1");
   assert.equal(cards[0].tone, "good");
   assert.equal(cards[1].value, "0 of 1");
   assert.equal(cards[2].value, "2");
@@ -526,7 +526,7 @@ test("attendance is tied to the selected occurrence and retains valid overnight 
     shifts: [staleOpen],
     now,
   })[0];
-  assert.equal(stale.value, "0 of 1 checked in");
+  assert.equal(stale.value, "0 of 1");
   assert.equal(stale.tone, "attention");
   assert.equal(stale.qualifier, "1 earlier shift still open");
   assert.equal(
@@ -544,7 +544,7 @@ test("attendance is tied to the selected occurrence and retains valid overnight 
       { site_id: "oak", user_id: "bala", started_at: "2026-09-05T05:02:00Z" },
     ],
   })[0];
-  assert.equal(earlyAndDuplicate.value, "1 of 1 checked in");
+  assert.equal(earlyAndDuplicate.value, "1 of 1");
   assert.equal(earlyAndDuplicate.tone, "good");
 
   const afterShift = supervisorStatus({
@@ -555,7 +555,7 @@ test("attendance is tied to the selected occurrence and retains valid overnight 
       { site_id: "oak", user_id: "bala", started_at: "2026-09-05T17:00:00Z" },
     ],
   })[0];
-  assert.equal(afterShift.value, "0 of 1 checked in");
+  assert.equal(afterShift.value, "0 of 1");
   assert.equal(afterShift.tone, "attention");
 
   const overnight = {
@@ -573,7 +573,7 @@ test("attendance is tied to the selected occurrence and retains valid overnight 
       { site_id: "oak", user_id: "bala", started_at: "2026-09-04T17:02:00Z" },
     ],
   })[0];
-  assert.equal(overnightCard.value, "1 of 1 checked in");
+  assert.equal(overnightCard.value, "1 of 1");
   assert.equal(overnightCard.tone, "good");
 });
 
