@@ -11,7 +11,7 @@ const emptyHealth={
 
 test('fully configured owner keeps the three KPI cards before activity begins',()=>{
   const html=healthCards(emptyHealth,{esc:value=>String(value),icon:name=>`<svg data-icon="${name}"></svg>`});
-  assert.match(html,/No activity has been recorded yet/);
+  assert.match(html,/No activity has been recorded yet\. These measures will update after guards begin patrolling\./);
   assert.equal((html.match(/class="owner-kpi"/g)||[]).length,3);
   assert.equal((html.match(/No data yet/g)||[]).length,3);
   assert.doesNotMatch(html,/Activity will appear here/);
