@@ -191,7 +191,7 @@ test("owner password-reset confirmation changes the password and invalidates the
   assert.equal(newLogin.status, 200);
 });
 
-test("sign-in recovery shows the configured ISDL support route", async () => {
+test("sign-in recovery keeps guard and supervisor help owner-assisted", async () => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   try {
@@ -199,8 +199,8 @@ test("sign-in recovery shows the configured ISDL support route", async () => {
     await page.getByRole("button", { name: "Need help signing in?", exact: true }).click();
     await page.getByRole("heading", { name: "Help signing in", exact: true }).waitFor();
     await page.getByRole("button", { name: "Email me a reset link", exact: true }).waitFor();
-    const support = page.getByRole("link", { name: "Contact ISDL support", exact: true });
-    assert.equal(await support.getAttribute("href"), "tel:+2348183354052");
+    await page.getByText("Ask your owner to reset your password or check the email or WhatsApp number saved for your account.", { exact: true }).waitFor();
+    assert.equal(await page.getByRole("link", { name: "Contact ISDL support", exact: true }).count(), 0);
     await page.getByRole("button", { name: "Back to sign in", exact: true }).click();
     await page.getByRole("button", { name: "Sign in", exact: true }).waitFor();
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));

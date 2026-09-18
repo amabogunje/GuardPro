@@ -305,15 +305,12 @@ function login() {
 }
 
 async function showAccountRecovery() {
-  root.innerHTML = `<main class="login">${brand()}<div class="card account-recovery"><h1>Help signing in</h1><p role="status">Loading support information…</p></div></main>`;
+  root.innerHTML = `<main class="login">${brand()}<div class="card account-recovery"><h1>Help signing in</h1><p role="status">Loading recovery options…</p></div></main>`;
   try {
     const onboarding = await api("/api/public/onboarding");
-    const contact = onboarding.supportContact;
-    const cleaned = String(contact || "").replace(/[^+\d]/g, "");
-    const href = /^\+?\d{7,15}$/.test(cleaned) ? `tel:${cleaned}` : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(contact || "")) ? `mailto:${contact}` : "";
-    root.querySelector(".account-recovery").innerHTML = `<h1>Help signing in</h1><section><h2>Owner: reset your password</h2>${onboarding.ownerPasswordResetAvailable ? `<p>Enter the email address for your owner account. We will send a link to choose a new password.</p><form id="ownerResetRequest"><label class="label">Owner email address<input name="email" type="email" autocomplete="email" required></label><button class="primary wide">Email me a reset link</button><p class="field-help" role="status"></p></form>` : `<p>Owner email recovery is not configured yet. Contact ISDL support for help.</p>`}</section><section><h2>Guard or supervisor</h2><p>Ask your owner to reset your password or check the email or WhatsApp number saved for your account.</p></section>${contact && href ? `<a class="primary wide recovery-contact" href="${esc(href)}">Contact ISDL support</a>` : `<p class="notice pending">ISDL support is not available while this device is offline. Reconnect, then try again.</p>`}<button type="button" class="text-action wide" data-action="backToSignIn">Back to sign in</button>`;
+    root.querySelector(".account-recovery").innerHTML = `<h1>Help signing in</h1><section><h2>Owner: reset your password</h2>${onboarding.ownerPasswordResetAvailable ? `<p>Enter the email address for your owner account. We will send a link to choose a new password.</p><form id="ownerResetRequest"><label class="label">Owner email address<input name="email" type="email" autocomplete="email" required></label><button class="primary wide">Email me a reset link</button><p class="field-help" role="status"></p></form>` : `<p>Owner email recovery is not available right now. Please try again later.</p>`}</section><section><h2>Guard or supervisor</h2><p>Ask your owner to reset your password or check the email or WhatsApp number saved for your account.</p></section><button type="button" class="text-action wide" data-action="backToSignIn">Back to sign in</button>`;
   } catch {
-    root.querySelector(".account-recovery").innerHTML = `<h1>Help signing in</h1><p class="notice pending">Connect to the internet, then try again to see the current ISDL support route.</p><button type="button" class="text-action wide" data-action="backToSignIn">Back to sign in</button>`;
+    root.querySelector(".account-recovery").innerHTML = `<h1>Help signing in</h1><p class="notice pending">Connect to the internet, then try again.</p><button type="button" class="text-action wide" data-action="backToSignIn">Back to sign in</button>`;
   }
 }
 

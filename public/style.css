@@ -870,7 +870,6 @@ progress::-webkit-progress-value {
 .account-recovery h1, .account-recovery h2, .account-recovery p { margin: 0; }
 .account-recovery section { display: grid; gap: 6px; padding-top: 16px; border-top: 1px solid var(--md-outline-variant); }
 .account-recovery h2 { font-size: 18px; }
-.account-recovery .recovery-contact { display: grid; place-items: center; text-decoration: none; }
 .text-action {
   margin-top: 12px;
   color: var(--md-primary);
