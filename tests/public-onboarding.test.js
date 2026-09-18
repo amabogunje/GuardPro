@@ -50,7 +50,16 @@ test("public signup stays unavailable until an ISDL support contact is configure
     noticeVersion: "2026-09-17",
     supportContact: null,
     signupAvailable: false,
+    ownerPasswordResetAvailable: false,
   });
+
+  const reset = await fetch(base + "/api/owner-password-reset/request", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: "owner@example.test" }),
+  });
+  assert.equal(reset.status, 503);
+  assert.match((await reset.json()).error, /not configured/i);
 
   const signup = await fetch(base + "/api/signup", {
     method: "POST",

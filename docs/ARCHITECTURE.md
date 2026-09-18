@@ -38,7 +38,7 @@ In-app messaging and message notifications are disabled for the pilot through `E
 
 ## Shared device and offline constraints
 
-Signing out clears decrypted state and keys from the active app and retains encrypted pending work. Reload starts locked. Each account has its own salt and encrypted vault. An offline sign-in is a local unlock of previously cached assignments, not renewed server authorization. Revoked assignments block sync after reconnection but cannot remotely erase an offline device. Password resets must first sync or recover the old vault with the old password; there is no recovery key or reset UI yet. Use strong individual passwords, OS screen lock and one active app tab per shared phone.
+Signing out clears decrypted state and keys from the active app and retains encrypted pending work. Reload starts locked. Each account has its own salt and encrypted vault. An offline sign-in is a local unlock of previously cached assignments, not renewed server authorization. Revoked assignments block sync after reconnection but cannot remotely erase an offline device. Owners can reset a password by a configured email link; guards and supervisors use an owner-assisted reset. Pending work encrypted with an old password still requires that old credential to recover, and no recovery key exists. Use strong individual passwords, OS screen lock and one active app tab per shared phone.
 
 The vault encrypts the entire small pilot dataset, with media represented as base64. This favors simplicity over storage/memory efficiency; quota exhaustion is surfaced and does not claim a successful save. Synced media bytes are removed from the queue. Browser/OS eviction, cleared storage, lost passwords, or device loss can destroy unsynchronized work. Full native encrypted storage, managed-device remote wipe, dependable background transfer and stronger device attestation require a later native app/device-management effort.
 
@@ -48,7 +48,7 @@ Working locally: role enforcement; customer separation; shifts and handovers; pa
 
 Disabled for this pilot: AI transcription/narratives and in-app messaging. Audio is retained without fabricated transcript text. English remains the only future AI evaluation target; Pidgin and other languages are not advertised.
 
-Before deployment: real contacts/accounts, HTTPS, backup/restore and monitoring, security review, effective-dated schedules, account revocation/recovery/admin tooling, media scanning/metadata policy, retention/deletion implementation, pagination for larger data, stronger rate limits across multiple processes, and real-device tests. Authentication has no MFA or password-reset service. Do not characterize this MVP as production-ready or legally compliant.
+Before deployment: real contacts/accounts, HTTPS, backup/restore and monitoring, security review, effective-dated schedules, account revocation/recovery/admin tooling, media scanning/metadata policy, retention/deletion implementation, pagination for larger data, stronger rate limits across multiple processes, and real-device tests. Authentication has no MFA. Owner email reset requires a configured outbound provider and verified sender; guard and supervisor recovery remains owner-assisted. Do not characterize this MVP as production-ready or legally compliant.
 
 
 ### Patrol schedules and reminders

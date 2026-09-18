@@ -31,6 +31,7 @@ import {
   scryptSync,
   timingSafeEqual,
   createHmac,
+  createHash,
 } from "node:crypto";
 if (!postgres) await migrate();
 const messagingEnabled = process.env.ENABLE_MESSAGING === "true";
@@ -38,6 +39,11 @@ const customerNoticeVersion = "2026-09-17";
 const pilotSupportContact = String(process.env.PILOT_SUPPORT_CONTACT || "")
   .trim()
   .slice(0, 160);
+const passwordResetFrom = String(process.env.RESEND_FROM || "").trim().slice(0, 320);
+const passwordResetConfigured = Boolean(process.env.RESEND_API_KEY && passwordResetFrom);
+const passwordResetBaseUrl = String(process.env.PASSWORD_RESET_BASE_URL || "https://getguardpatrol.com")
+  .trim()
+  .replace(/\/$/, "");
 const now = () => new Date().toISOString(),
   id = () => randomUUID();
 const hash = (p) => {
@@ -129,6 +135,7 @@ app.get("/api/public/onboarding", (_req, res) => {
     noticeVersion: customerNoticeVersion,
     supportContact: pilotSupportContact || null,
     signupAvailable: Boolean(pilotSupportContact),
+    ownerPasswordResetAvailable: passwordResetConfigured,
   });
 });
 const fail = (m, status = 400) => {
@@ -250,6 +257,72 @@ post("/api/signup", async (req, res) => {
     { customer_id: customerId, site_id: siteId, notice_version: customerNoticeVersion },
   );
   res.json({ ...(await issueSession(res, { id: ownerId, name: ownerName, role: "owner", email })), customerId, siteId });
+});
+const resetTokenHash = (token) => createHash("sha256").update(token).digest("hex");
+async function sendOwnerPasswordReset(email, token) {
+  const resetUrl = new URL("/app", passwordResetBaseUrl);
+  resetUrl.searchParams.set("reset", token);
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: passwordResetFrom,
+      to: [email],
+      subject: "Reset your Guard Patrol password",
+      text: `Use this link to reset your Guard Patrol password. It expires in 20 minutes: ${resetUrl}`,
+      html: `<p>Use this link to reset your Guard Patrol password. It expires in 20 minutes.</p><p><a href="${resetUrl}">Reset password</a></p><p>If you did not request this, you can ignore this email.</p>`,
+    }),
+  });
+  if (!response.ok) throw new Error("Email provider rejected password reset");
+}
+app.post("/api/owner-password-reset/request", async (req, res, next) => {
+  try {
+    if (!(await rate("owner-reset:" + req.ip, 3600000, 5))) fail("Too many reset requests; please try again later.", 429);
+    if (!passwordResetConfigured) fail("Owner email recovery is not configured. Contact ISDL support.", 503);
+    const email = loginId(req.body.email);
+    const owner = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+      ? await one("SELECT id,name,email FROM users WHERE role='owner' AND lower(email)=lower(?)", email)
+      : null;
+    if (owner) {
+      const token = randomBytes(32).toString("base64url");
+      const tokenId = id();
+      const createdAt = now();
+      const expiresAt = new Date(Date.now() + 20 * 60 * 1000).toISOString();
+      await transaction(async () => {
+        await run("UPDATE password_reset_tokens SET used_at=? WHERE user_id=? AND used_at IS NULL", createdAt, owner.id);
+        await run("INSERT INTO password_reset_tokens VALUES(?,?,?,?,?,?)", tokenId, owner.id, resetTokenHash(token), expiresAt, null, createdAt);
+        await run("INSERT INTO audit VALUES(?,?,?,?,?)", id(), owner.id, createdAt, "owner.password_reset_requested", JSON.stringify({}));
+      });
+      try {
+        await sendOwnerPasswordReset(owner.email, token);
+      } catch (error) {
+        await transaction(() => run("UPDATE password_reset_tokens SET used_at=? WHERE id=?", now(), tokenId));
+        console.error("Owner password reset email could not be sent");
+        fail("We could not send a reset email. Contact ISDL support.", 503);
+      }
+    }
+    res.json({ ok: true, message: "If that owner email is registered, a password reset link has been sent." });
+  } catch (error) {
+    next(error);
+  }
+});
+post("/api/owner-password-reset/confirm", async (req, res) => {
+  if (!(await rate("owner-reset-confirm:" + req.ip, 3600000, 10))) fail("Too many attempts; please request a new link.", 429);
+  const password = String(req.body.password || "");
+  if (password.length < 12) fail("Use a password of at least 12 characters");
+  const token = String(req.body.token || "");
+  const entry = await one("SELECT * FROM password_reset_tokens WHERE token_hash=? AND used_at IS NULL AND expires_at>?", resetTokenHash(token), now());
+  const owner = entry && await one("SELECT id,role FROM users WHERE id=?", entry.user_id);
+  if (!entry || owner?.role !== "owner") fail("This password reset link is invalid or has expired.", 400);
+  const completedAt = now();
+  await run("UPDATE users SET password=? WHERE id=?", hash(password), owner.id);
+  await run("UPDATE password_reset_tokens SET used_at=? WHERE id=?", completedAt, entry.id);
+  await run("DELETE FROM sessions WHERE user_id=?", owner.id);
+  await run("INSERT INTO audit VALUES(?,?,?,?,?)", id(), owner.id, completedAt, "owner.password_reset_completed", JSON.stringify({}));
+  res.json({ ok: true });
 });
 app.use(["/api", "/media"], async (req, res, next) => {
   let token = (req.headers.cookie || "")

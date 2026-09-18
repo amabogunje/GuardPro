@@ -1,6 +1,6 @@
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { chromium } from "@playwright/test";
@@ -56,6 +56,8 @@ before(async () => {
       VERCEL: "",
       BLOB_READ_WRITE_TOKEN: "",
       PILOT_SUPPORT_CONTACT: "+234 818 335 4052",
+      RESEND_API_KEY: "test-reset-key",
+      RESEND_FROM: "Guard Patrol <pilot@example.test>",
     },
     stdio: "pipe",
   });
@@ -151,6 +153,44 @@ test("signup rejects duplicate identities and an unaccepted customer notice", as
   assert.match(staleNotice.body.error, /accept the current customer notice/i);
 });
 
+test("owner password-reset confirmation changes the password and invalidates the old one", async () => {
+  const suffix = randomUUID();
+  const ownerEmail = `owner-reset-${suffix}@pilot.invalid`;
+  const initialPassword = "Initial-owner-password-2026!";
+  const created = await signup(payload("reset-" + suffix, { email: ownerEmail, password: initialPassword }));
+  assert.equal(created.response.status, 200);
+  const token = "reset-" + randomUUID();
+  const { DatabaseSync } = await import("node:sqlite");
+  const db = new DatabaseSync(path.join(data, "guard.db"));
+  db.prepare("INSERT INTO password_reset_tokens VALUES(?,?,?,?,?,?)").run(
+    randomUUID(),
+    created.body.id,
+    createHash("sha256").update(token).digest("hex"),
+    new Date(Date.now() + 60_000).toISOString(),
+    null,
+    new Date().toISOString(),
+  );
+  db.close();
+  const nextPassword = "New-owner-password-2026!";
+  const confirmation = await fetch(base + "/api/owner-password-reset/confirm", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, password: nextPassword }),
+  });
+  assert.equal(confirmation.status, 200);
+  const revokedSession = await fetch(base + "/api/state", {
+    headers: {
+      cookie: created.response.headers.get("set-cookie").split(";")[0],
+      "X-Session-Proof": created.body.proof,
+    },
+  });
+  assert.equal(revokedSession.status, 401);
+  const oldLogin = await fetch(base + "/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: ownerEmail, password: initialPassword }) });
+  assert.equal(oldLogin.status, 401);
+  const newLogin = await fetch(base + "/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: ownerEmail, password: nextPassword }) });
+  assert.equal(newLogin.status, 200);
+});
+
 test("sign-in recovery shows the configured ISDL support route", async () => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
@@ -158,6 +198,7 @@ test("sign-in recovery shows the configured ISDL support route", async () => {
     await page.goto(base + "/app");
     await page.getByRole("button", { name: "Need help signing in?", exact: true }).click();
     await page.getByRole("heading", { name: "Help signing in", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Email me a reset link", exact: true }).waitFor();
     const support = page.getByRole("link", { name: "Contact ISDL support", exact: true });
     assert.equal(await support.getAttribute("href"), "tel:+2348183354052");
     await page.getByRole("button", { name: "Back to sign in", exact: true }).click();

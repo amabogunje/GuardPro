@@ -17,6 +17,8 @@ GuardPro uses the existing Vercel account and Neon integration, with a dedicated
 
 Required hosted variables: `DATABASE_URL` (restricted pooled connection), `DATABASE_SCHEMA=guardpro_pilot`, `BLOB_READ_WRITE_TOKEN` (private store), `MEDIA_SIGNING_SECRET` (32 random bytes or more), `COOKIE_SECURE=true`, and `PILOT_SUPPORT_CONTACT` (an ISDL-managed public support route). AI is disabled for this pilot.
 
+Owner self-service password recovery additionally requires `RESEND_API_KEY` and `RESEND_FROM`, using a sender domain verified in Resend. Set `PASSWORD_RESET_BASE_URL=https://getguardpatrol.com` for Production; use the protected preview URL for Preview if preview reset links are enabled. Until both email variables are configured, the sign-in help screen honestly directs owners to ISDL support and does not say an email was sent.
+
 Keep credentials in Vercel's secret settings. `.env.local`, `.env.runtime`, the data directory and `.vercel` are ignored by Git and deployment uploads. Never paste credentials into chat or commit them.
 
 For a new setup, provision/link Neon and private Blob first, then pull a development environment containing an administrator connection:

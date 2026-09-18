@@ -9,3 +9,5 @@ Use this procedure when a guard cannot sign in on a shared phone.
 5. If the phone is lost, immediately disable the account. This revokes active sessions. Close any stranded shift through the audited exception-close action and record the reason.
 
 This is an assisted pilot procedure. It does not claim that encrypted work can be recovered after credentials or browser storage are lost.
+
+Owners reset their own password from **Need help signing in?** using the email address on their owner account, when the deployment has a configured email sender. That route expires quickly, is single-use and signs out existing sessions. It does not recover encrypted pending work from an old password.

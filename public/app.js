@@ -188,7 +188,8 @@ let vault = { state: null, queue: [], draft: null },
 let signupStep = 0,
   signupDraft = {},
   customerNoticeVersion = "2026-09-17",
-  signupMessage = "";
+  signupMessage = "",
+  ownerResetToken = new URLSearchParams(location.search).get("reset") || "";
 const signupDraftKey = "guard-patrol.signup-draft.v1";
 const root = document.querySelector("#app"),
   $ = (s) => document.querySelector(s),
@@ -310,10 +311,14 @@ async function showAccountRecovery() {
     const contact = onboarding.supportContact;
     const cleaned = String(contact || "").replace(/[^+\d]/g, "");
     const href = /^\+?\d{7,15}$/.test(cleaned) ? `tel:${cleaned}` : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(contact || "")) ? `mailto:${contact}` : "";
-    root.querySelector(".account-recovery").innerHTML = `<h1>Help signing in</h1><section><h2>Forgot your password?</h2><p>If you are a guard or supervisor, ask your owner or supervisor to set a new temporary password in Users. Owners should contact ISDL support.</p></section><section><h2>Forgot your email or WhatsApp number?</h2><p>Ask your owner or supervisor to check your user details. Owners should contact ISDL support to verify and update their account.</p></section>${contact && href ? `<a class="primary wide recovery-contact" href="${esc(href)}">Contact ISDL support</a>` : `<p class="notice pending">ISDL support is not available while this device is offline. Reconnect, then try again.</p>`}<button type="button" class="text-action wide" data-action="backToSignIn">Back to sign in</button>`;
+    root.querySelector(".account-recovery").innerHTML = `<h1>Help signing in</h1><section><h2>Owner: reset your password</h2>${onboarding.ownerPasswordResetAvailable ? `<p>Enter the email address for your owner account. We will send a link to choose a new password.</p><form id="ownerResetRequest"><label class="label">Owner email address<input name="email" type="email" autocomplete="email" required></label><button class="primary wide">Email me a reset link</button><p class="field-help" role="status"></p></form>` : `<p>Owner email recovery is not configured yet. Contact ISDL support for help.</p>`}</section><section><h2>Guard or supervisor</h2><p>Ask your owner to reset your password or check the email or WhatsApp number saved for your account.</p></section>${contact && href ? `<a class="primary wide recovery-contact" href="${esc(href)}">Contact ISDL support</a>` : `<p class="notice pending">ISDL support is not available while this device is offline. Reconnect, then try again.</p>`}<button type="button" class="text-action wide" data-action="backToSignIn">Back to sign in</button>`;
   } catch {
     root.querySelector(".account-recovery").innerHTML = `<h1>Help signing in</h1><p class="notice pending">Connect to the internet, then try again to see the current ISDL support route.</p><button type="button" class="text-action wide" data-action="backToSignIn">Back to sign in</button>`;
   }
+}
+
+function showOwnerPasswordReset() {
+  root.innerHTML = `<main class="login">${brand()}<div class="card account-recovery"><h1>Choose a new password</h1><p>Set a new password for your owner account.</p><form id="ownerPasswordReset"><label class="label">New password<input name="password" type="password" minlength="12" autocomplete="new-password" required></label><label class="label">Confirm new password<input name="password_confirm" type="password" minlength="12" autocomplete="new-password" required></label><p class="field-help">Use at least 12 characters. This signs out other devices.</p><button class="primary wide">Reset password</button><p class="field-help" role="status"></p></form><button type="button" class="text-action wide" data-action="backToSignIn">Back to sign in</button></div></main>`;
 }
 
 async function beginSignup() {
@@ -1541,7 +1546,20 @@ document.addEventListener("submit", async (e) => {
     btn = e.submitter || f.querySelector("button");
   if (btn) btn.disabled = true;
   try {
-    if (f.id === "activityReportForm") {
+    if (f.id === "ownerResetRequest") {
+      const result = await api("/api/owner-password-reset/request", { email: b.email });
+      f.querySelector('[role="status"]').textContent = result.message;
+    } else if (f.id === "ownerPasswordReset") {
+      if (b.password !== b.password_confirm) throw new Error("Passwords do not match");
+      await api("/api/owner-password-reset/confirm", { token: ownerResetToken, password: b.password });
+      ownerResetToken = "";
+      const clean = new URL(location.href);
+      clean.searchParams.delete("reset");
+      history.replaceState(null, "", clean.pathname + clean.search + clean.hash);
+      signupStep = 0;
+      signupMessage = "Password reset. Sign in with your new password.";
+      login();
+    } else if (f.id === "activityReportForm") {
       await viewActivityReport(f, e.submitter?.value === "download");
     } else if (f.id === "login") {
       let online;
@@ -1882,6 +1900,10 @@ document.addEventListener("click", async (e) => {
       return;
     }
     if (a === "backToSignIn") {
+      ownerResetToken = "";
+      const clean = new URL(location.href);
+      clean.searchParams.delete("reset");
+      history.replaceState(null, "", clean.pathname + clean.search + clean.hash);
       signupStep = 0;
       login();
       return;
@@ -2696,6 +2718,10 @@ async function initialize() {
   root.innerHTML =
     '<main class="login"><p role="status">Restoring your session…</p></main>';
   try {
+    if (ownerResetToken) {
+      showOwnerPasswordReset();
+      return;
+    }
     const restored = await restore();
     if (!restored) {
       // The marketing page can open signup without changing installed-app startup.
