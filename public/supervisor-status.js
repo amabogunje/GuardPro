@@ -81,8 +81,10 @@ export function supervisorStatus({
       { label: "Patrols scheduled", value: "—", qualifier: "set up a shift", tone: "good" },
       { label: "Problems reported", value: String(incidents.filter(i => i.site_id === site.id && i.status !== "Resolved").length), qualifier: "need attention", tone: incidents.some(i => i.site_id === site.id && i.status !== "Resolved") ? "attention" : "good" },
     ];
-  // The denominator is guards due to check in, not a future roster size.
-  const expected = new Set(now >= window.start ? window.guardIds : []);
+  // A named roster gives the supervisor an expected check-in count. An Any
+  // roster deliberately has no denominator, even after the shift starts.
+  const expected = new Set(window.guardIds);
+  const attendanceDue = now >= window.start;
   const eligible = (shift) =>
     shift.site_id === site.id &&
     (window.anyGuard || expected.has(shift.user_id));
@@ -143,13 +145,19 @@ export function supervisorStatus({
   return [
     {
       label: "Guards checked in",
-      value: window.rosterUnknown ? "—" : `${checked.size} of ${window.anyGuard ? checked.size : expected.size}`,
+      value: window.rosterUnknown
+        ? "—"
+        : window.anyGuard
+          ? `${checked.size} checked in`
+          : `${checked.size} of ${expected.size} checked in`,
       qualifier: window.rosterUnknown
         ? "roster unavailable"
         : overdueOpen.length
           ? `${overdueOpen.length} earlier shift${overdueOpen.length === 1 ? "" : "s"} still open`
-          : "expected",
-      tone: checked.size < expected.size || overdueOpen.length ? "attention" : "good",
+          : window.anyGuard
+            ? "any guard may check in"
+            : "assigned guards",
+      tone: (attendanceDue && checked.size < expected.size) || overdueOpen.length ? "attention" : "good",
     },
     {
       label: "Patrols scheduled",

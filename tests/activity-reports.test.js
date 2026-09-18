@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {activityReport,reportWindow} from "../activity-reports.js";
 import {overviewShifts,supervisorStatus} from "../public/supervisor-status.js";
-test("Any uses checked-in guards as its total; named rosters retain absent guards",()=>{
+test("Any roster reports a count only; named rosters retain their assigned denominator",()=>{
   const now=Date.parse("2026-01-02T18:00:00+01:00"),site={id:"s",schedule:""};
   for(const [roster,attending,total] of [[['*'],['a','b'],2],[['a','b'],['a'],2],[['*'],[],0]]) {
     const plans=[{id:"v",template_id:"day",site_id:"s",name:"Day",guard_ids:JSON.stringify(roster),start_time:"08:00",end_time:"16:00",schedule:"",created_at:"2026-01-01T00:00:00Z"}];
@@ -10,7 +10,7 @@ test("Any uses checked-in guards as its total; named rosters retain absent guard
     const shifts=events.map(e=>({id:e.id,site_id:"s",user_id:e.user_id,started_at:e.captured_at,ended_at:"2026-01-02T16:00:00+01:00"}));
     const window=overviewShifts({site,plans,day:"2026-01-02",now})[0];
     const kpi=supervisorStatus({site,plans,selectedShift:window,shifts,now})[0];
-    assert.equal(kpi.value,`${attending.length} of ${total}`);
+    assert.equal(kpi.value,roster.includes("*")?`${attending.length} checked in`:`${attending.length} of ${total} checked in`);
     assert.equal(kpi.tone,attending.length<total?"attention":"good");
     const report=activityReport({from:"2026-01-02",to:"2026-01-02",now,site,plans,events,users:[],checkpoints:[],incidents:[],resolutions:[]});
     assert.equal(report.counts.shiftStarts,attending.length);
