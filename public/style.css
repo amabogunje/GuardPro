@@ -865,6 +865,12 @@ progress::-webkit-progress-value {
 .signup-entry .muted {
   margin: 0 0 10px;
 }
+.account-recovery-link { margin-top: 12px; }
+.account-recovery { display: grid; gap: 18px; }
+.account-recovery h1, .account-recovery h2, .account-recovery p { margin: 0; }
+.account-recovery section { display: grid; gap: 6px; padding-top: 16px; border-top: 1px solid var(--md-outline-variant); }
+.account-recovery h2 { font-size: 18px; }
+.account-recovery .recovery-contact { display: grid; place-items: center; text-decoration: none; }
 .text-action {
   margin-top: 12px;
   color: var(--md-primary);
@@ -2920,6 +2926,7 @@ html { scrollbar-gutter: stable; }
 #settings-panel #team-editor input,#settings-panel #team-editor select { margin: 0; min-height: 48px; padding: 10px 12px; }
 #settings-panel #team-save { margin: 0; min-height: 48px; }
 #settings-panel #team-save:disabled { background: #e6e8ea; color: #737a80; cursor: default; border-color: transparent; }
+#settings-panel .password-reset { border-radius: 0; }
 #settings-panel .shifts-panel #save-shifts { min-height: 48px; width: 100%; margin: 0; }
 #settings-panel .shifts-panel #save-shifts:disabled { background: #e6e8ea; color: #737a80; border-color: transparent; cursor: default; }
 #settings-panel .shifts-panel .settings-fields { padding-bottom: 0; }

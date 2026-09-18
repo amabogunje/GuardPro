@@ -575,4 +575,10 @@ test('phone-only team accounts can sign in; aliases preserve the same encrypted 
     await page.getByRole('button',{name:'Sign out',exact:true}).waitFor();
     await context.close();
   } finally {await browser.close();}
+  const resetPassword='Reset-pilot-password-2026!';
+  await request('/api/admin',supervisor,{kind:'update_user',site_id:'oak',user_id:member.id,name:member.name,role:'guard',whatsapp:phone,email,disabled:'false',password:resetPassword});
+  const oldLogin=await fetch(base+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:phone,password})});
+  assert.equal(oldLogin.status,401);
+  const resetLogin=await fetch(base+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:phone,password:resetPassword})});
+  assert.equal(resetLogin.status,200);
 });

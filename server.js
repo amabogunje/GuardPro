@@ -1693,6 +1693,7 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
       if(b.disabled === "true") await run("INSERT INTO disabled_users VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET actor=excluded.actor,at=excluded.at",target.id,req.user.id,now());
       else await run("DELETE FROM disabled_users WHERE user_id=?",target.id);
       if(b.disabled === "true" || b.password || b.role !== target.role) await run("DELETE FROM sessions WHERE user_id=?",target.id);
+      if(b.password) await audit(req.user,"user.password_reset",{site:s,user_id:target.id});
       if(b.disabled === "true") await audit(req.user,"user.disabled",{user_id:target.id,active_shift:Boolean(await one("SELECT 1 FROM shifts WHERE user_id=? AND ended_at IS NULL",target.id))});
       if(b.disabled === "true" || b.role !== "guard") {
         const assignedSites=await all("SELECT site_id FROM assignments WHERE user_id=?",target.id);

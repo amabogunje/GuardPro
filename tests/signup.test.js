@@ -151,6 +151,23 @@ test("signup rejects duplicate identities and an unaccepted customer notice", as
   assert.match(staleNotice.body.error, /accept the current customer notice/i);
 });
 
+test("sign-in recovery shows the configured ISDL support route", async () => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  try {
+    await page.goto(base + "/app");
+    await page.getByRole("button", { name: "Need help signing in?", exact: true }).click();
+    await page.getByRole("heading", { name: "Help signing in", exact: true }).waitFor();
+    const support = page.getByRole("link", { name: "Contact ISDL support", exact: true });
+    assert.equal(await support.getAttribute("href"), "tel:+2348183354052");
+    await page.getByRole("button", { name: "Back to sign in", exact: true }).click();
+    await page.getByRole("button", { name: "Sign in", exact: true }).waitFor();
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  } finally {
+    await context.close();
+  }
+});
+
 test("mobile signup wizard creates the account and retains a narrow layout", async () => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
