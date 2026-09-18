@@ -3,7 +3,33 @@ import { propertyEditor } from './property-location.js';
 import { teamSettings } from './team.js';
 import { nextSupervisorSetupTask } from './supervisor-setup.js';
 
+let healthInfoPopover=null,healthInfoTrigger=null;
+function closeHealthInfo() {
+  healthInfoPopover?.remove();
+  if(healthInfoTrigger) {
+    healthInfoTrigger.setAttribute('aria-expanded','false');
+    healthInfoTrigger.removeAttribute('aria-describedby');
+  }
+  healthInfoPopover=null;healthInfoTrigger=null;
+}
+function openHealthInfo(trigger) {
+  if(healthInfoTrigger===trigger){closeHealthInfo();return;}
+  closeHealthInfo();
+  const popover=document.createElement('div');
+  popover.className='health-info-popover';popover.id='health-info-popover';popover.setAttribute('role','tooltip');
+  popover.textContent=trigger.dataset.healthInfoDescription||'';
+  document.body.append(popover);healthInfoPopover=popover;healthInfoTrigger=trigger;
+  trigger.setAttribute('aria-expanded','true');trigger.setAttribute('aria-describedby',popover.id);
+  const triggerBox=trigger.getBoundingClientRect(),popoverBox=popover.getBoundingClientRect();
+  const left=Math.max(16,Math.min(triggerBox.left,window.innerWidth-popoverBox.width-16));
+  const below=triggerBox.bottom+8,above=triggerBox.top-popoverBox.height-8;
+  popover.style.left=left+'px';popover.style.top=Math.max(16,below+popoverBox.height<=window.innerHeight-16?below:above)+'px';
+}
+document.addEventListener('pointerdown',event=>{if(healthInfoPopover&&!healthInfoPopover.contains(event.target)&&event.target!==healthInfoTrigger)closeHealthInfo();});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&healthInfoPopover){const trigger=healthInfoTrigger;closeHealthInfo();trigger?.focus();}});
+
 export function ownerPage(root,{page,site,user,state,api,esc,icon,brand,siteSelect,done,navigate,selectedProblemId}) {
+  closeHealthInfo();
   const titles={home:`Hello, ${user.name}.`,property:'Property',supervisors:'Supervisors',subscription:'Subscription',ownerActivity:'Activity evidence',ownerProblems:selectedProblemId?'Problem details':'Reported problems'};
   root.innerHTML=`<main class="guard supervisor-mobile owner-mobile"><header class="topbar">${brand()}<button data-action="logout">Sign out</button></header><div class="duty-identity">${site?`<p class="eyebrow">${esc(site.name)}</p>`:''}<div class="greeting-row"><h1>${esc(titles[page]||'Your property')}</h1>${page!=='home'?'<button class="back" data-page="home">Home</button>':''}</div></div>${state.sites.length>1?siteSelect():''}<div id="ownerContent"></div></main>`;
   const host=root.querySelector('#ownerContent');
@@ -22,6 +48,7 @@ export function ownerPage(root,{page,site,user,state,api,esc,icon,brand,siteSele
       if(setupStep){overview.innerHTML=`<section class="card owner-setup"><p class="eyebrow">Setup</p><h2>${setupStep.title}</h2><p>${setupStep.text}</p><button class="primary" data-page="${setupStep.page}">${setupStep.action}</button></section>`;return;}
       if(supervisorTask){overview.innerHTML=`<section class="card owner-setup owner-supervisor-task"><p class="eyebrow">Supervisor task</p><h2>${supervisorTask.title}</h2><p>${supervisorTask.text}</p><button class="primary" data-action="ownerSupervisorSetup" data-settings-tab="${supervisorTask.tab}">${supervisorTask.action}</button></section>`;return;}
       overview.innerHTML=`${healthCards(d.health,{esc,icon})}<p class="last-record-received owner-dashboard-receipt">Last record received: ${esc(stamp(d.freshness.lastRecordReceived))}</p>${hasCurrentActivity?`<nav class="owner-evidence-links" aria-label="Owner evidence"><button data-page="ownerActivity">Activity evidence</button><button data-page="ownerProblems">Reported problems</button></nav>`:''}`;
+      overview.querySelectorAll('.health-info-trigger').forEach(trigger=>trigger.addEventListener('click',()=>openHealthInfo(trigger)));
     }).catch(error=>{if(overview.isConnected)overview.innerHTML=`<section class="card"><h2>Overview unavailable</h2><p>${esc(error.message)}</p><p>Current activity cannot be confirmed. Reconnect and refresh to try again.</p></section>`;});
   } else if(page==='ownerActivity') {
     host.innerHTML='<section class="card"><p role="status">Loading activity evidence…</p></section>';

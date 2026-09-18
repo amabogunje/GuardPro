@@ -2,7 +2,7 @@ export function healthCards(h,{esc,icon}) {
   const hasMeasuredActivity=Boolean(h.guard.expected||h.patrol.expected||h.risk.total);
   const pct=(v,total)=>total?100*v/total:0;
   const bar=segments=>`<div class="health-bar" aria-hidden="true">${segments.map(([width,color])=>`<span style="width:${width}%;background:${color}"></span>`).join('')}</div>`;
-  const info=(title,description)=>`<details class="health-info"><summary aria-label="About ${title}" title="About ${title}">?</summary><p>${description}</p></details>`;
+  const info=(title,description)=>`<button type="button" data-md="true" class="health-info-trigger" data-health-info-description="${esc(description)}" aria-label="About ${title}" aria-expanded="false" title="About ${title}">${icon('help')}</button>`;
   const heading=(title,description)=>`<div class="health-heading"><strong>${title}</strong>${info(title,description)}</div>`;
   const card=(key,title,glyph,description)=>{
     const m=h[key],patrol=key==='patrol';

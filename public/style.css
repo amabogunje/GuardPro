@@ -3047,10 +3047,10 @@ html { scrollbar-gutter: stable; }
 .health-main > small { font-size:12px; line-height:18px; color:#586772; font-weight:400; }
 .health-heading { display:flex; align-items:center; gap:6px; min-width:0; }
 .health-heading > strong { font-size:15px; line-height:20px; font-weight:600; }
-.health-info { position:relative; flex:0 0 auto; }
-.health-info summary { display:grid; place-items:center; width:18px; height:18px; padding:0; border:1px solid #78909c; border-radius:50%; color:#36536a; font-size:12px; font-weight:700; line-height:1; cursor:pointer; list-style:none; }
-.health-info summary::-webkit-details-marker { display:none; }
-.health-info p { position:absolute; z-index:3; top:24px; left:0; width:min(248px,calc(100vw - 96px)); margin:0; padding:10px 12px; background:#173957; color:white; font-size:12px; font-weight:400; line-height:17px; box-shadow:0 4px 12px rgba(23,57,87,.18); }
+.health-info-trigger { display:inline-grid; place-items:center; box-sizing:border-box; flex:0 0 auto; width:24px; height:24px; min-height:24px; padding:2px; border:0; border-radius:50%; background:transparent; color:#526b7a; box-shadow:none; }
+.health-info-trigger:hover { background:#edf3f5; }
+.health-info-trigger .md-icon { width:20px; height:20px; stroke-width:1.9; }
+.health-info-popover { position:fixed; z-index:50; width:min(280px,calc(100vw - 32px)); margin:0; padding:10px 12px; background:#173957; color:white; font-size:12px; font-weight:400; line-height:17px; box-shadow:0 4px 12px rgba(23,57,87,.18); }
 .health-value { font-size:36px; line-height:1.15; font-weight:650; letter-spacing:-.8px; }
 .health-value.risk-value { font-size:25px; letter-spacing:-.3px; }
 .health-value.health-empty { font-size:21px; line-height:1.25; letter-spacing:0; color:#586772; }
