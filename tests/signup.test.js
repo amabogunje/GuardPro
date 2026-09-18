@@ -57,7 +57,7 @@ before(async () => {
       BLOB_READ_WRITE_TOKEN: "",
       PILOT_SUPPORT_CONTACT: "+234 818 335 4052",
       RESEND_API_KEY: "test-reset-key",
-      RESEND_FROM: "Guard Patrol <pilot@example.test>",
+      RESEND_EMAIL_DOMAIN: "pilot.example.test",
     },
     stdio: "pipe",
   });

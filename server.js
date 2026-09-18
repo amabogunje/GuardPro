@@ -39,9 +39,17 @@ const customerNoticeVersion = "2026-09-17";
 const pilotSupportContact = String(process.env.PILOT_SUPPORT_CONTACT || "")
   .trim()
   .slice(0, 160);
-const passwordResetFrom = String(process.env.RESEND_FROM || "").trim().slice(0, 320);
+const resendEmailDomain = String(process.env.RESEND_EMAIL_DOMAIN || "").trim().replace(/^@/, "").slice(0, 253);
+const passwordResetFrom = String(process.env.RESEND_FROM || (resendEmailDomain ? `Guard Patrol <no-reply@${resendEmailDomain}>` : ""))
+  .trim()
+  .slice(0, 320);
 const passwordResetConfigured = Boolean(process.env.RESEND_API_KEY && passwordResetFrom);
-const passwordResetBaseUrl = String(process.env.PASSWORD_RESET_BASE_URL || "https://getguardpatrol.com")
+const defaultPasswordResetBaseUrl = process.env.VERCEL_ENV === "production"
+  ? "https://getguardpatrol.com"
+  : process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "https://getguardpatrol.com";
+const passwordResetBaseUrl = String(process.env.PASSWORD_RESET_BASE_URL || defaultPasswordResetBaseUrl)
   .trim()
   .replace(/\/$/, "");
 const now = () => new Date().toISOString(),
@@ -130,12 +138,21 @@ app.get("/api/health", async (_req, res, next) => {
 });
 // This reveals only public onboarding information. The support route comes
 // from deployment configuration so the public app never invents one.
-app.get("/api/public/onboarding", (_req, res) => {
+const passwordResetAvailable = async () => {
+  if (!passwordResetConfigured) return false;
+  try {
+    await one("SELECT 1 AS ready FROM password_reset_tokens LIMIT 1");
+    return true;
+  } catch {
+    return false;
+  }
+};
+app.get("/api/public/onboarding", async (_req, res) => {
   res.json({
     noticeVersion: customerNoticeVersion,
     supportContact: pilotSupportContact || null,
     signupAvailable: Boolean(pilotSupportContact),
-    ownerPasswordResetAvailable: passwordResetConfigured,
+    ownerPasswordResetAvailable: await passwordResetAvailable(),
   });
 });
 const fail = (m, status = 400) => {
@@ -281,7 +298,7 @@ async function sendOwnerPasswordReset(email, token) {
 app.post("/api/owner-password-reset/request", async (req, res, next) => {
   try {
     if (!(await rate("owner-reset:" + req.ip, 3600000, 5))) fail("Too many reset requests; please try again later.", 429);
-    if (!passwordResetConfigured) fail("Owner email recovery is not configured. Contact ISDL support.", 503);
+    if (!(await passwordResetAvailable())) fail("Owner email recovery is not configured. Contact ISDL support.", 503);
     const email = loginId(req.body.email);
     const owner = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
       ? await one("SELECT id,name,email FROM users WHERE role='owner' AND lower(email)=lower(?)", email)
