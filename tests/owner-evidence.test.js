@@ -37,7 +37,7 @@ test('owner evidence is owner-only, tenant scoped and retains private media auth
 
 test('owner activity labels the completed historical period and patrol starts as partial evidence',async()=>{
   const activity=await req('/api/owner-evidence/oak?kind=activity',owner);
-  assert.match(activity.period.label,/seven completed Nigerian calendar days/);
+  assert.match(activity.period.label,/seven completed calendar days/);
   assert.equal(activity.period.to<new Date(Date.now()+3600000).toISOString().slice(0,10),true);
   assert.ok(Array.isArray(activity.metrics.patrol.rows));
   const historic=ownerHealth({now:Date.parse('2026-09-09T12:00:00Z'),site:{id:'s'},plans:[],events:[],incidents:[{id:'i',captured_at:'2026-09-04T12:00:00Z',status:'Resolved'}],classifications:[],users:[]});

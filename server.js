@@ -450,7 +450,7 @@ app.get('/api/owner-evidence/:site', async (req,res) => {
     const received=[...events,...incidents].map(r=>r.received_at).filter(Boolean).sort().at(-1)||null;
     const captured=[...events,...incidents].map(r=>r.captured_at).filter(Boolean).sort().at(-1)||null;
     const fresh=received&&captured&&Date.now()-Date.parse(received)<900000&&Date.now()-Date.parse(captured)<900000;
-    res.json({site:{id:site.id,name:site.name},period:{from:health.from,to:health.to,label:`${health.from} to ${health.to} (seven completed Nigerian calendar days)`},current:{lastRecordReceived:received,lastCapturedAt:captured,status:fresh?'recent':'unconfirmed',message:fresh?'Recent activity received':'Current activity unconfirmed; new records may be pending'},metrics:{guard:health.guard,patrol:health.patrol,unknownDays:health.unknownDays,anyShifts:health.anyShifts}});
+    res.json({site:{id:site.id,name:site.name},period:{from:health.from,to:health.to,label:`${health.from} to ${health.to} (seven completed calendar days)`},current:{lastRecordReceived:received,lastCapturedAt:captured,status:fresh?'recent':'unconfirmed',message:fresh?'Recent activity received':'Current activity unconfirmed; new records may be pending'},metrics:{guard:health.guard,patrol:health.patrol,unknownDays:health.unknownDays,anyShifts:health.anyShifts}});
     return;
   }
   const [users,incidents,transitions,classifications]=await Promise.all([
