@@ -35,11 +35,11 @@ test('owner evidence is owner-only, tenant scoped and retains private media auth
   await req('/api/media/'+mediaId+'/link',other,null,403);
 });
 
-test('supervisor triage makes an unresolved P1 security problem visible to its owner only',async()=>{
-  await req('/api/incidents/'+incidentId+'/classification',guard,{category:'security',priority:'P1'},403);
-  await req('/api/incidents/'+incidentId+'/classification',supervisor,{category:'security',priority:'P1'});
+test('a supervisor-resolved P1 security problem appears in its owner’s recent history only',async()=>{
+  await req('/api/incidents/'+incidentId+'/resolve',guard,{category:'security',priority:'P1'},403);
+  await req('/api/incidents/'+incidentId+'/resolve',supervisor,{category:'security',priority:'P1',note:'Resolved in the pilot fixture.'});
   const overview=await req('/api/owner-overview/oak',owner);
-  assert.equal(overview.health.dashboard.urgent.openP1,1);
+  assert.equal(overview.health.dashboard.urgent.reportedP1,1);
   assert.equal(overview.health.dashboard.urgent.tone,'critical');
   await req('/api/owner-overview/other',owner,null,403);
 });

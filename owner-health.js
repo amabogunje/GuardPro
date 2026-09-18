@@ -77,16 +77,12 @@ export function ownerHealth({site,plans=[],events=[],incidents=[],classification
   const unclassified=classified.filter(c=>!c.category).length,total=reports.length;
   const currentWindows=overviewShifts({site,plans,now}).filter(window=>window.current);
   const activeGuards=new Set(shifts.filter(shift=>shift.site_id===site.id&&!shift.ended_at&&Date.parse(shift.started_at)<=now).map(shift=>shift.user_id));
-  const openP1=incidents.filter(incident=>incident.status!=='Resolved').filter(incident=>{
-    const classification=classifications.find(entry=>entry.incident_id===incident.id);
-    return classification?.category==='security'&&classification.priority==='P1';
-  }).length;
   const recentPatrols=patrol.filter(row=>Date.parse(row.expectedAt)>=dayStart-2*DAY&&Date.parse(row.expectedAt)<end);
   const recentCompleted=recentPatrols.filter(row=>row.completion===true).length;
   const recentUnknown=recentPatrols.filter(row=>row.completion===null).length;
   const recentExpected=recentPatrols.length;
   const recentPercentage=recentExpected?Math.round(100*recentCompleted/recentExpected):null;
   const patrolTone=recentPercentage===null?'neutral':recentUnknown?'unconfirmed':recentPercentage>=80?'good':recentPercentage>=30?'attention':'critical';
-  const dashboard={urgent:{openP1,tone:openP1?'critical':'good'},monitoring:{active:activeGuards.size,scheduled:currentWindows.length>0,tone:activeGuards.size?'good':currentWindows.length?'critical':'neutral'},patrols:{expected:recentExpected,completed:recentCompleted,unknown:recentUnknown,percentage:recentPercentage,tone:patrolTone,days:3}};
+  const dashboard={urgent:{reportedP1:p1,tone:p1?'critical':'good'},monitoring:{active:activeGuards.size,scheduled:currentWindows.length>0,tone:activeGuards.size?'good':currentWindows.length?'critical':'neutral'},patrols:{expected:recentExpected,completed:recentCompleted,unknown:recentUnknown,percentage:recentPercentage,tone:patrolTone,days:3}};
   return {from:new Date(start+3600000).toISOString().slice(0,10),to:new Date(end-1+3600000).toISOString().slice(0,10),unknownDays,anyShifts,lateGraceMinutes:5,guard:guardMetric,patrol:patrolMetric,risk:{total,security,p1,unclassified,securityPct:total?Math.round(security*100/total):null,p1Pct:total?Math.round(p1*100/total):null,label:!total?'No reports':p1?'Elevated':security?'Security reported':unclassified?'Awaiting classification':'No classified security reports',outstanding:incidents.filter(i=>i.status!=='Resolved').length,rows:classified},dashboard};
 }

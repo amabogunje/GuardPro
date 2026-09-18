@@ -7,7 +7,7 @@ const emptyHealth={
   guard:{expected:0,score:null,missed:0,late:0,onTime:0,missedPct:0,latePct:0},
   patrol:{expected:0,score:null,completed:0,late:0,incomplete:0,completionUnknown:0},
   risk:{total:0,security:0,unclassified:0,p1:0,label:'No data yet',outstanding:0,securityPct:0,p1Pct:0},
-  dashboard:{urgent:{openP1:0,tone:'good'},monitoring:{active:0,scheduled:false,tone:'neutral'},patrols:{expected:0,completed:0,unknown:0,percentage:null,tone:'neutral',days:3}}
+  dashboard:{urgent:{reportedP1:0,tone:'good'},monitoring:{active:0,scheduled:false,tone:'neutral'},patrols:{expected:0,completed:0,unknown:0,percentage:null,tone:'neutral',days:3}}
 };
 
 test('owner dashboard gives three direct, display-only monitoring answers',()=>{
@@ -15,8 +15,8 @@ test('owner dashboard gives three direct, display-only monitoring answers',()=>{
   assert.equal((html.match(/owner-kpi owner-kpi-/g)||[]).length,3);
   assert.equal((html.match(/class="health-info-trigger"/g)||[]).length,3);
   assert.equal((html.match(/data-icon="help"/g)||[]).length,3);
-  assert.match(html,/Urgent security issues/);
-  assert.match(html,/No P1 issues/);
+  assert.match(html,/Major security issues/);
+  assert.match(html,/No P1 issues reported/);
   assert.match(html,/Monitoring now/);
   assert.match(html,/No shift scheduled/);
   assert.match(html,/Patrols completed/);

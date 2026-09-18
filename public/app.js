@@ -97,13 +97,6 @@ function renderSupervisorProblems(target, reports) {
       target.querySelector('#problemPriorityField').hidden=!security;
       priority.disabled=!security;priority.required=security;if(!security)priority.value='';
     };
-    if(selected.status !== 'Resolved') {
-      const current=selected.classification;
-      const option=(value,label,chosen)=>`<option value="${value}"${chosen===value?' selected':''}>${label}</option>`;
-      target.querySelector('.problemResolve').insertAdjacentHTML('beforebegin',`<form class="problemClassify" data-id="${esc(selected.id)}"><p class="muted">Classify the problem so open P1 security issues appear on the owner dashboard.</p><label class="label">Category</label><select name="category" required><option value="">Choose category</option>${option('security','Security',current?.category)}${option('maintenance','Maintenance',current?.category)}${option('other','Other',current?.category)}</select><div class="problemClassifyPriority" ${current?.category==='security'?'':'hidden'}><label class="label">Security priority</label><select name="priority" ${current?.category==='security'?'required':''}><option value="">Choose priority</option>${option('P1','P1 — Immediate danger',current?.priority)}${option('P2','P2 — Urgent concern',current?.priority)}${option('P3','P3 — Routine concern',current?.priority)}</select></div><button class="secondary wide">Save classification</button></form>`);
-      const classify=target.querySelector('.problemClassify'),classifyCategory=classify.querySelector('[name="category"]'),classifyPriority=classify.querySelector('[name="priority"]');
-      classifyCategory.onchange=()=>{const security=classifyCategory.value==='security';classify.querySelector('.problemClassifyPriority').hidden=!security;classifyPriority.required=security;if(!security)classifyPriority.value='';};
-    }
     if (selected.status === "Resolved") {
       target.insertAdjacentHTML("beforeend", '<div class="supervisor-heading"><h2 id="resolutionHeading">Resolution Details</h2></div><section class="card resolution-detail" aria-labelledby="resolutionHeading">' +
         selected.history.filter(h => h.status === "Resolved").map(h => `<p class="muted">Resolved on ${esc(date(h.at))}<br>Resolved by ${esc(h.name)}</p><p class="resolution-comments"><strong>Supervisor comments:</strong><br>${esc(h.note || "")}</p>`).join("") + '</section>');
@@ -1727,11 +1720,6 @@ document.addEventListener("submit", async (e) => {
       page = "home";
       render();
       await sync();
-    } else if (f.classList.contains("problemClassify")) {
-      await api(`/api/incidents/${f.dataset.id}/classification`, {category:b.category,priority:b.priority || null});
-      await refresh();
-      render();
-      toast("Problem classification saved.");
     } else if (f.classList.contains("problemResolve")) {
       await api(`/api/incidents/${f.dataset.id}/resolve`, {note:b.note || "",category:b.category,priority:b.priority || null});
       selectedProblemId = null;

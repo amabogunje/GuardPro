@@ -1424,17 +1424,6 @@ post("/api/incidents/:id/resolve", async (req, res) => {
   });
   res.json({ok:true});
 });
-post('/api/incidents/:id/classification',async(req,res)=>{
-  if(!['owner','supervisor'].includes(req.user.role)) fail('Supervisor or owner only',403);
-  await transaction(async()=>{
-    const incident=await mediaIncident(req.user,req.params.id);
-    if(incident.status==='Resolved') fail('Resolved problems cannot be reclassified here.',409);
-    let classification;try {classification=classificationInput(req.body);}catch(error){fail(error.message);}
-    await run('INSERT INTO incident_classifications VALUES(?,?,?,?,?,?) ON CONFLICT(incident_id) DO UPDATE SET category=excluded.category,priority=excluded.priority,actor=excluded.actor,classified_at=excluded.classified_at',incident.id,incident.site_id,classification.category,classification.priority,req.user.id,now());
-    await audit(req.user,'problem classified',{incident_id:incident.id,...classification});
-  });
-  res.json({ok:true});
-});
 post("/api/shifts/:id/close-exception", async (req, res) => {
   if (!['owner','supervisor'].includes(req.user.role)) fail("Supervisor or owner only", 403);
   const shift = await one("SELECT * FROM shifts WHERE id=?", req.params.id);

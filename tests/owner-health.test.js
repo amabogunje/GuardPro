@@ -49,14 +49,14 @@ test('classification requires category and conditional security priority',()=>{
  assert.deepEqual(classificationInput({category:'maintenance'}),{category:'maintenance',priority:null});
  assert.deepEqual(classificationInput({category:'security',priority:'P1'}),{category:'security',priority:'P1'});
 });
-test('owner dashboard distinguishes urgent P1 issues, live monitoring and three-day patrol completion',()=>{
+test('owner dashboard distinguishes recently reported P1 issues, live monitoring and three-day patrol completion',()=>{
  const currentPlan={...plan,guard_ids:'["g1"]'};
  const start=event('live-start','start','2026-09-06T05:00:00Z','g1',{checkpoint_ids:['gate']});
  const patrol=event('live-patrol','patrol_start','2026-09-06T08:00:00Z','g1',{shift_id:'live-start',scheduled_for:'2026-09-06T08:00:00.000Z',round_id:'live-round'});
  const scan=event('live-scan','scan','2026-09-06T08:01:00Z','g1',{shift_id:'live-start',round_id:'live-round',checkpoint_id:'gate'});
- const open={id:'p1',captured_at:'2026-09-06T09:00:00Z',status:'Reported'};
+ const open={id:'p1',captured_at:'2026-09-06T09:00:00Z',status:'Resolved'};
  const h=ownerHealth({site:{id:'oak'},now,plans:[currentPlan],events:[start,patrol,scan],shifts:[{site_id:'oak',user_id:'g1',started_at:start.captured_at,ended_at:null}],incidents:[open],classifications:[{incident_id:'p1',category:'security',priority:'P1'}]});
- assert.deepEqual(h.dashboard.urgent,{openP1:1,tone:'critical'});
+ assert.deepEqual(h.dashboard.urgent,{reportedP1:1,tone:'critical'});
  assert.deepEqual(h.dashboard.monitoring,{active:1,scheduled:true,tone:'good'});
  assert.equal(h.dashboard.patrols.percentage,33);
  assert.equal(h.dashboard.patrols.tone,'attention');
