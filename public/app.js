@@ -356,6 +356,12 @@ async function completeSignIn(credentials, online) {
   if (online) {
     vault.auth = online.proof;
     await refresh();
+    // A fresh owner sign-in begins in the owner workspace. Switching to
+    // supervisor mode remains an explicit choice during the active session.
+    if (user.role === "owner") {
+      vault.ownerSupervisorView = false;
+      await persist();
+    }
   } else {
     if (!vault.state) throw new Error("First sign-in needs connectivity");
     state = vault.state;
