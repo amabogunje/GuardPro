@@ -3012,8 +3012,6 @@ html { scrollbar-gutter: stable; }
 .subscription-limits > span + span { padding-left:16px; border-left:1px solid #e2e8ea; }
 .subscription-limits strong { color:#173957; font-size:22px; line-height:28px; }
 .subscription-limits small { color:#586a72; font-size:12px; line-height:18px; }
-.owner-evidence-links { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
-.owner-evidence-links button { min-height:52px; padding:8px; border:1px solid #c7dce5; border-radius:0; background:#e9f4fb; color:#173957; font-weight:700; font-size:13px; line-height:18px; }
 .owner-evidence { display:grid; gap:0; }
 .owner-evidence h3 { margin:18px 0 4px; font-size:16px; }
 .owner-evidence-row,.owner-source-row { display:grid; gap:3px; padding:12px 0; border-top:1px solid #e2e8ea; }
@@ -3040,6 +3038,14 @@ html { scrollbar-gutter: stable; }
 .owner-mobile #ownerSupervisors { margin-top:16px; }
 .owner-account .greeting-row h1 { overflow-wrap:anywhere; }
 .owner-health .owner-kpi { margin:16px 0 0; border:1px solid #e3e8e9; padding:0; border-radius:0; background:white; }
+.owner-health .owner-kpi-good { border-left:5px solid #087e70; }
+.owner-health .owner-kpi-attention,.owner-health .owner-kpi-unconfirmed { border-left:5px solid #d99008; }
+.owner-health .owner-kpi-critical { border-left:5px solid #ba3838; }
+.owner-health .owner-kpi-neutral { border-left:5px solid #8a9aa3; }
+.owner-health .owner-kpi-good .health-icon { background:#e7f4f2; color:#087e70; }
+.owner-health .owner-kpi-attention .health-icon,.owner-health .owner-kpi-unconfirmed .health-icon { background:#fff3d8; color:#a66500; }
+.owner-health .owner-kpi-critical .health-icon { background:#fde8e7; color:#a62a24; }
+.owner-health .owner-kpi-neutral .health-icon { background:#eef2f3; color:#526b7a; }
 .owner-kpi .health-summary { display:grid; grid-template-columns:56px minmax(0,1fr); gap:8px 12px; padding:16px 12px; }
 .health-icon { width:56px; height:56px; display:grid; place-items:center; border-radius:50%; background:#e7f4f2; color:#087e70; align-self:center; }
 .health-icon svg { width:34px; height:34px; }

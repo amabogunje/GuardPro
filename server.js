@@ -1418,9 +1418,20 @@ post("/api/incidents/:id/resolve", async (req, res) => {
     const changed = await run("UPDATE incidents SET status='Resolved' WHERE id=? AND status<>'Resolved'", incident.id);
     if (!changed) return;
     const note = text(req.body.note, 5000);
-    await run('INSERT INTO incident_classifications VALUES(?,?,?,?,?,?)',incident.id,incident.site_id,classification.category,classification.priority,req.user.id,now());
+    await run('INSERT INTO incident_classifications VALUES(?,?,?,?,?,?) ON CONFLICT(incident_id) DO UPDATE SET category=excluded.category,priority=excluded.priority,actor=excluded.actor,classified_at=excluded.classified_at',incident.id,incident.site_id,classification.category,classification.priority,req.user.id,now());
     await run("INSERT INTO transitions VALUES(?,?,?,?,?,?)", id(), incident.id, req.user.id, now(), "Resolved", note);
     await audit(req.user, "problem resolved", {incident_id:incident.id,note,actor_role:req.user.role,...classification});
+  });
+  res.json({ok:true});
+});
+post('/api/incidents/:id/classification',async(req,res)=>{
+  if(!['owner','supervisor'].includes(req.user.role)) fail('Supervisor or owner only',403);
+  await transaction(async()=>{
+    const incident=await mediaIncident(req.user,req.params.id);
+    if(incident.status==='Resolved') fail('Resolved problems cannot be reclassified here.',409);
+    let classification;try {classification=classificationInput(req.body);}catch(error){fail(error.message);}
+    await run('INSERT INTO incident_classifications VALUES(?,?,?,?,?,?) ON CONFLICT(incident_id) DO UPDATE SET category=excluded.category,priority=excluded.priority,actor=excluded.actor,classified_at=excluded.classified_at',incident.id,incident.site_id,classification.category,classification.priority,req.user.id,now());
+    await audit(req.user,'problem classified',{incident_id:incident.id,...classification});
   });
   res.json({ok:true});
 });
@@ -1458,7 +1469,7 @@ post("/api/incidents/:id/transition", async (req, res) => {
     try {classification=classificationInput(b);}catch(e){fail(e.message);}
   }
   try {
-    if(classification)await run('INSERT INTO incident_classifications VALUES(?,?,?,?,?,?)',i.id,i.site_id,classification.category,classification.priority,req.user.id,now());
+    if(classification)await run('INSERT INTO incident_classifications VALUES(?,?,?,?,?,?) ON CONFLICT(incident_id) DO UPDATE SET category=excluded.category,priority=excluded.priority,actor=excluded.actor,classified_at=excluded.classified_at',i.id,i.site_id,classification.category,classification.priority,req.user.id,now());
     await run(
       "UPDATE incidents SET status=?,responsible=?,next_action=? WHERE id=?",
       b.status,

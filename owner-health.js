@@ -1,4 +1,5 @@
 import {effectivePlans} from './public/shift-plans.js';
+import {overviewShifts} from './public/supervisor-status.js';
 const DAY=86400000;
 export function classificationInput(body) {
   const category=body.category,priority=body.priority||null;
@@ -7,7 +8,7 @@ export function classificationInput(body) {
   if(category!=='security'&&priority)throw Error('Priority applies only to security problems.');
   return {category,priority};
 }
-export function ownerHealth({site,plans=[],events=[],incidents=[],classifications=[],users=[],now=Date.now()}) {
+export function ownerHealth({site,plans=[],events=[],incidents=[],classifications=[],users=[],shifts=[],now=Date.now()}) {
   const today=new Date(now+3600000).toISOString().slice(0,10);
   // Include activity already due today so the owner can see the same current
   // shift progress as the supervisor. Future shift starts and patrol slots are
@@ -74,5 +75,18 @@ export function ownerHealth({site,plans=[],events=[],incidents=[],classification
   const classified=reports.map(i=>({id:i.id,report:i.report,at:i.captured_at,...classifications.find(c=>c.incident_id===i.id)}));
   const security=classified.filter(c=>c.category==='security').length,p1=classified.filter(c=>c.category==='security'&&c.priority==='P1').length;
   const unclassified=classified.filter(c=>!c.category).length,total=reports.length;
-  return {from:new Date(start+3600000).toISOString().slice(0,10),to:new Date(end-1+3600000).toISOString().slice(0,10),unknownDays,anyShifts,lateGraceMinutes:5,guard:guardMetric,patrol:patrolMetric,risk:{total,security,p1,unclassified,securityPct:total?Math.round(security*100/total):null,p1Pct:total?Math.round(p1*100/total):null,label:!total?'No reports':p1?'Elevated':security?'Security reported':unclassified?'Awaiting classification':'No classified security reports',outstanding:incidents.filter(i=>i.status!=='Resolved').length,rows:classified}};
+  const currentWindows=overviewShifts({site,plans,now}).filter(window=>window.current);
+  const activeGuards=new Set(shifts.filter(shift=>shift.site_id===site.id&&!shift.ended_at&&Date.parse(shift.started_at)<=now).map(shift=>shift.user_id));
+  const openP1=incidents.filter(incident=>incident.status!=='Resolved').filter(incident=>{
+    const classification=classifications.find(entry=>entry.incident_id===incident.id);
+    return classification?.category==='security'&&classification.priority==='P1';
+  }).length;
+  const recentPatrols=patrol.filter(row=>Date.parse(row.expectedAt)>=dayStart-2*DAY&&Date.parse(row.expectedAt)<end);
+  const recentCompleted=recentPatrols.filter(row=>row.completion===true).length;
+  const recentUnknown=recentPatrols.filter(row=>row.completion===null).length;
+  const recentExpected=recentPatrols.length;
+  const recentPercentage=recentExpected?Math.round(100*recentCompleted/recentExpected):null;
+  const patrolTone=recentPercentage===null?'neutral':recentUnknown?'unconfirmed':recentPercentage>=80?'good':recentPercentage>=30?'attention':'critical';
+  const dashboard={urgent:{openP1,tone:openP1?'critical':'good'},monitoring:{active:activeGuards.size,scheduled:currentWindows.length>0,tone:activeGuards.size?'good':currentWindows.length?'critical':'neutral'},patrols:{expected:recentExpected,completed:recentCompleted,unknown:recentUnknown,percentage:recentPercentage,tone:patrolTone,days:3}};
+  return {from:new Date(start+3600000).toISOString().slice(0,10),to:new Date(end-1+3600000).toISOString().slice(0,10),unknownDays,anyShifts,lateGraceMinutes:5,guard:guardMetric,patrol:patrolMetric,risk:{total,security,p1,unclassified,securityPct:total?Math.round(security*100/total):null,p1Pct:total?Math.round(p1*100/total):null,label:!total?'No reports':p1?'Elevated':security?'Security reported':unclassified?'Awaiting classification':'No classified security reports',outstanding:incidents.filter(i=>i.status!=='Resolved').length,rows:classified},dashboard};
 }

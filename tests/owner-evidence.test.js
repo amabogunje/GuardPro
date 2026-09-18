@@ -35,6 +35,15 @@ test('owner evidence is owner-only, tenant scoped and retains private media auth
   await req('/api/media/'+mediaId+'/link',other,null,403);
 });
 
+test('supervisor triage makes an unresolved P1 security problem visible to its owner only',async()=>{
+  await req('/api/incidents/'+incidentId+'/classification',guard,{category:'security',priority:'P1'},403);
+  await req('/api/incidents/'+incidentId+'/classification',supervisor,{category:'security',priority:'P1'});
+  const overview=await req('/api/owner-overview/oak',owner);
+  assert.equal(overview.health.dashboard.urgent.openP1,1);
+  assert.equal(overview.health.dashboard.urgent.tone,'critical');
+  await req('/api/owner-overview/other',owner,null,403);
+});
+
 test('owner activity labels the current seven-day period and patrol starts as partial evidence',async()=>{
   const activity=await req('/api/owner-evidence/oak?kind=activity',owner);
   assert.match(activity.period.label,/last seven days/);
