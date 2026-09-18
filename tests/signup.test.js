@@ -189,6 +189,61 @@ test("owner password-reset confirmation changes the password and invalidates the
   assert.equal(oldLogin.status, 401);
   const newLogin = await fetch(base + "/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: ownerEmail, password: nextPassword }) });
   assert.equal(newLogin.status, 200);
+  const newSession = await newLogin.json();
+  assert.notEqual(newSession.vaultAccount, ownerEmail);
+  const recovery = await fetch(base + "/api/owner-vault-recovery", {
+    method: "POST",
+    headers: {
+      cookie: newLogin.headers.get("set-cookie").split(";")[0],
+      "X-Session-Proof": newSession.proof,
+      "Content-Type": "application/json",
+    },
+    body: "{}",
+  });
+  assert.equal(recovery.status, 200);
+  assert.notEqual((await recovery.json()).vaultAccount, newSession.vaultAccount);
+});
+
+test("an owner with a legacy old-password vault signs in after reset without clearing device data", async () => {
+  const suffix = randomUUID();
+  const ownerEmail = `owner-legacy-${suffix}@pilot.invalid`;
+  const oldPassword = "Legacy-owner-password-2026!";
+  const newPassword = "Replacement-owner-password-2026!";
+  const created = await signup(payload("legacy-" + suffix, { email: ownerEmail, password: oldPassword }));
+  assert.equal(created.response.status, 200);
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  try {
+    await page.goto(base + "/icon.svg");
+    await page.evaluate(async ({ email, password, vaultAccount }) => {
+      const deviceVault = await import("/vault.js");
+      await deviceVault.unlock(email, password, vaultAccount);
+      await deviceVault.save({ state: { user: { role: "owner" } }, queue: [], draft: null });
+    }, { email: ownerEmail, password: oldPassword, vaultAccount: created.body.vaultAccount });
+    const token = "legacy-reset-" + randomUUID();
+    const { DatabaseSync } = await import("node:sqlite");
+    const db = new DatabaseSync(path.join(data, "guard.db"));
+    db.prepare("INSERT INTO password_reset_tokens VALUES(?,?,?,?,?,?)").run(
+      randomUUID(), created.body.id, createHash("sha256").update(token).digest("hex"),
+      new Date(Date.now() + 60_000).toISOString(), null, new Date().toISOString(),
+    );
+    db.close();
+    const confirmation = await fetch(base + "/api/owner-password-reset/confirm", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, password: newPassword }),
+    });
+    assert.equal(confirmation.status, 200);
+    const legacy = new DatabaseSync(path.join(data, "guard.db"));
+    legacy.prepare("UPDATE user_contacts SET vault_key=? WHERE user_id=?").run(ownerEmail, created.body.id);
+    legacy.close();
+    await page.goto(base + "/app");
+    await page.locator("#email").fill(ownerEmail);
+    await page.locator("#password").fill(newPassword);
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await page.getByRole("button", { name: "Sign out", exact: true }).waitFor();
+    await page.getByText("Signed in. Saved work from your old password remains protected on this device.", { exact: true }).waitFor();
+  } finally {
+    await context.close();
+  }
 });
 
 test("sign-in recovery keeps guard and supervisor help owner-assisted", async () => {

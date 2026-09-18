@@ -276,6 +276,17 @@ post("/api/signup", async (req, res) => {
   res.json({ ...(await issueSession(res, { id: ownerId, name: ownerName, role: "owner", email })), customerId, siteId });
 });
 const resetTokenHash = (token) => createHash("sha256").update(token).digest("hex");
+async function rotateOwnerVault(userId) {
+  const vaultKey = `owner:${userId}:${id()}`;
+  await run(
+    "INSERT INTO user_contacts VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET vault_key=excluded.vault_key",
+    userId,
+    null,
+    vaultKey,
+    0,
+  );
+  return vaultKey;
+}
 async function sendOwnerPasswordReset(email, token) {
   const resetUrl = new URL("/app", passwordResetBaseUrl);
   resetUrl.searchParams.set("reset", token);
@@ -336,6 +347,7 @@ post("/api/owner-password-reset/confirm", async (req, res) => {
   if (!entry || owner?.role !== "owner") fail("This password reset link is invalid or has expired.", 400);
   const completedAt = now();
   await run("UPDATE users SET password=? WHERE id=?", hash(password), owner.id);
+  await rotateOwnerVault(owner.id);
   await run("UPDATE password_reset_tokens SET used_at=? WHERE id=?", completedAt, entry.id);
   await run("DELETE FROM sessions WHERE user_id=?", owner.id);
   await run("INSERT INTO audit VALUES(?,?,?,?,?)", id(), owner.id, completedAt, "owner.password_reset_completed", JSON.stringify({}));
@@ -400,6 +412,12 @@ app.get('/api/owner-overview/:site', async (req,res) => {
   ]);
   const input={site,users,supervisors,plans,shifts,events:events.map(e=>({...e,payload:JSON.parse(e.payload)})),incidents,checkpoints,locations,reviews,resolutions};
   res.json({...ownerOverview({...input,ownerSupervision:Boolean(ownerSupervision)}),subscription:{tier:subscription.tier,propertyLimit:1,userLimit:5},health:ownerHealth({...input,classifications:await scoped('incident_classifications')})});
+});
+post("/api/owner-vault-recovery", async (req, res) => {
+  if (req.user.role !== "owner") fail("Owner only", 403);
+  const vaultAccount = await rotateOwnerVault(req.user.id);
+  await audit(req.user, "owner.vault_recovery", {});
+  res.json({ vaultAccount });
 });
 app.get('/api/owner-supervision/:site',async(req,res)=>{
   if(req.user.role!=='owner') fail('Owner only',403);

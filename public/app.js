@@ -341,7 +341,16 @@ async function beginSignup() {
 }
 
 async function completeSignIn(credentials, online) {
-  vault = await unlock(credentials.email, credentials.password, online?.vaultAccount);
+  let recoveredOwnerVault = false;
+  try {
+    vault = await unlock(credentials.email, credentials.password, online?.vaultAccount);
+  } catch (error) {
+    if (!online || online.role !== "owner") throw error;
+    vault.auth = online.proof;
+    const recovery = await api("/api/owner-vault-recovery", {});
+    vault = await unlock(credentials.email, credentials.password, recovery.vaultAccount);
+    recoveredOwnerVault = true;
+  }
   roundId = vault.roundId || null;
   slot = vault.slot || null;
   if (online) {
@@ -361,6 +370,8 @@ async function completeSignIn(credentials, online) {
   }
   page = "home";
   render();
+  if (recoveredOwnerVault)
+    toast("Signed in. Saved work from your old password remains protected on this device.");
   navigator.storage?.persist?.();
   if (user.role === "guard" && siteId) {
     const signedUser = user.id,
