@@ -492,9 +492,10 @@ function render() {
     root.querySelector(".supervisor-mobile > .supervisor-heading")?.remove();
   }
   if(user.role==='owner'&&ownerSupervisionEnabled()) {
-    const mode=document.createElement('div');mode.className='owner-mode';
-    mode.innerHTML=`<span>${ownerSupervisorView()?'Supervisor view':'Owner view'}</span><button type="button" class="owner-mode-switch" data-action="ownerMode">${ownerSupervisorView()?'Return to owner view':'Act as supervisor'}</button>`;
-    root.querySelector('.duty-identity')?.after(mode);
+    const mode=document.createElement('button');mode.type='button';mode.className='owner-mode-switch topbar-owner-switch';mode.dataset.action='ownerMode';
+    mode.textContent=ownerSupervisorView()?'Return to owner view':'Act as supervisor';
+    const logout=root.querySelector('.topbar [data-action="logout"]');
+    if(logout?.parentElement)logout.parentElement.insertBefore(mode,logout);
     root.querySelector('main')?.classList.add('owner-account');
     const identity=root.querySelector('.duty-identity > .eyebrow');
     if(identity) {
@@ -1953,6 +1954,11 @@ document.addEventListener("click", async (e) => {
       return;
     }
     if(a==='ownerMode'){await setOwnerMode(!ownerSupervisorView());return;}
+    if(a==='ownerSupervisorSetup'){
+      if(!ownerSupervisionEnabled())throw new Error('Choose supervision before opening supervisor settings.');
+      vault.ownerSupervisorView=true;page='setup';selectedProblemId=null;selectedLocationShift=null;
+      selectSettings(b.dataset.settingsTab);await persist();render();return;
+    }
     if (a === "activityPeriod") {
       activityPeriod = ["daily","monthly","custom"].includes(b.dataset.value) ? b.dataset.value : "daily";
       render(); return;

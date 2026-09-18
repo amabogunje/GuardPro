@@ -1,6 +1,7 @@
 import { healthCards } from './owner-health-view.js';
 import { propertyEditor } from './property-location.js';
 import { teamSettings } from './team.js';
+import { nextSupervisorSetupTask } from './supervisor-setup.js';
 
 export function ownerPage(root,{page,site,user,state,api,esc,icon,brand,siteSelect,done,navigate,selectedProblemId}) {
   const titles={home:`Hello, ${user.name}.`,property:'Property',supervisors:'Supervisors',subscription:'Subscription',ownerActivity:'Activity evidence',ownerProblems:selectedProblemId?'Problem details':'Reported problems'};
@@ -15,9 +16,12 @@ export function ownerPage(root,{page,site,user,state,api,esc,icon,brand,siteSele
     api('/api/owner-overview/'+encodeURIComponent(site.id)).then(d=>{
       if(!overview.isConnected)return;
       const setupStep=!d.setup.propertyConfigured?{page:'property',title:'Confirm property location',text:'Set the address and map position.',action:'Set location'}:!d.setup.supervisorConfigured?{page:'supervisors',title:'Choose supervision',text:'Add a supervisor or supervise it yourself.',action:'Choose supervision'}:null;
+      const ownerSupervises=Boolean(state.ownerSupervision?.some(entry=>entry.site_id===site.id));
+      const supervisorTask=ownerSupervises?nextSupervisorSetupTask({windows:(state.shiftPlans||[]).filter(plan=>plan.site_id===site.id),users:state.users||[],checkpoints:(state.checkpoints||[]).filter(checkpoint=>checkpoint.site_id===site.id)}):null;
       const freshness=d.freshness.status==='recent'?'Recent records received':'Current activity unconfirmed; new records may be pending';
       const hasCurrentActivity=Boolean(d.health.guard.expected||d.health.patrol.expected||d.health.risk.total||d.problems.open||d.location.pendingRecords||d.freshness.lastRecordReceived);
       if(setupStep){overview.innerHTML=`<section class="card owner-setup"><p class="eyebrow">Setup</p><h2>${setupStep.title}</h2><p>${setupStep.text}</p><button class="primary" data-page="${setupStep.page}">${setupStep.action}</button></section>`;return;}
+      if(supervisorTask){overview.innerHTML=`<section class="card owner-setup owner-supervisor-task"><p class="eyebrow">Supervisor task</p><h2>${supervisorTask.title}</h2><p>${supervisorTask.text}</p><button class="primary" data-action="ownerSupervisorSetup" data-settings-tab="${supervisorTask.tab}">${supervisorTask.action}</button></section>`;return;}
       overview.innerHTML=`${healthCards(d.health,{esc,icon})}${hasCurrentActivity?`<section class="card owner-current"><h2>Current records</h2><p>${esc(freshness)}</p><p class="muted">${d.problems.open} unresolved reported problem${d.problems.open===1?'':'s'} · ${d.location.pendingRecords} location record${d.location.pendingRecords===1?'':'s'} awaiting review</p><p class="last-record-received">Last record received: ${esc(stamp(d.freshness.lastRecordReceived))}</p></section><nav class="owner-evidence-links" aria-label="Owner evidence"><button data-page="ownerActivity">Activity evidence</button><button data-page="ownerProblems">Reported problems</button></nav>`:''}`;
     }).catch(error=>{if(overview.isConnected)overview.innerHTML=`<section class="card"><h2>Overview unavailable</h2><p>${esc(error.message)}</p><p>Current activity cannot be confirmed. Reconnect and refresh to try again.</p></section>`;});
   } else if(page==='ownerActivity') {

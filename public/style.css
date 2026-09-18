@@ -2959,6 +2959,7 @@ html { scrollbar-gutter: stable; }
 }
 .owner-mode { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; margin:0 0 16px; padding:0; border-bottom:1px solid #dce3e5; color:#53656b; font-size:13px; }
 .owner-mode .owner-mode-switch { background:transparent; border:0; border-radius:0; min-height:44px; padding:6px 0 6px 8px; color:var(--primary,#006b59); font-size:13px; box-shadow:none; }
+.topbar .topbar-owner-switch { margin-left:auto; min-height:44px; padding:6px 8px; border:0; border-radius:0; background:transparent; color:var(--primary,#006b59); font-size:13px; font-weight:700; box-shadow:none; }
 .owner-mobile #ownerContent { display:grid; gap:16px; }
 .owner-mobile #ownerOverview { display:grid; gap:16px; }
 .owner-mobile .card { margin:0; padding:18px 16px; border-radius:0; }
