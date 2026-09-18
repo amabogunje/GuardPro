@@ -8,7 +8,11 @@ export function classificationInput(body) {
   return {category,priority};
 }
 export function ownerHealth({site,plans=[],events=[],incidents=[],classifications=[],users=[],now=Date.now()}) {
-  const today=new Date(now+3600000).toISOString().slice(0,10),end=Date.parse(today+'T00:00:00+01:00'),start=end-7*DAY;
+  const today=new Date(now+3600000).toISOString().slice(0,10);
+  // Include activity already due today so the owner can see the same current
+  // shift progress as the supervisor. Future shift starts and patrol slots are
+  // outside the window, so they never become premature exceptions.
+  const dayStart=Date.parse(today+'T00:00:00+01:00'),end=now,start=dayStart-6*DAY;
   const inRange=t=>Date.parse(t)>=start&&Date.parse(t)<end;
   const starts=events.filter(e=>e.kind==='start').map(e=>({...e,payload:typeof e.payload==='string'?JSON.parse(e.payload):e.payload}));
   const patrolStarts=events.filter(e=>e.kind==='patrol_start').map(e=>({...e,payload:typeof e.payload==='string'?JSON.parse(e.payload):e.payload}));
@@ -23,13 +27,11 @@ export function ownerHealth({site,plans=[],events=[],incidents=[],classification
       for(const p of effectivePlans(plans,expectedAt+1).filter(p=>p.start_time===time)) {
         known=true;
         let finish=Date.parse(date+'T'+p.end_time+':00+01:00');if(finish<=expectedAt)finish+=DAY;
-        // Include completed shifts only; do not call an ongoing shift missed.
-        if(finish>end)continue;
         const label=p.name||`${p.start_time}–${p.end_time}`;
         const candidates=starts.filter(e=>(Date.parse(e.captured_at)>=expectedAt-15*60000||Date.parse(e.payload.scheduled_end_at)===finish)&&Date.parse(e.captured_at)<finish&&(!p.template_id||!e.payload.shift_template_id||e.payload.shift_template_id===p.template_id));
         const match=candidates.filter(e=>!used.has(e.id)&&(p.any_guard||e.user_id===p.guard_id)).sort((a,b)=>a.captured_at.localeCompare(b.captured_at))[0];
         if(match)used.add(match.id);
-        if(expectedAt>=start) {
+        if(expectedAt>=start&&expectedAt<end) {
           if(p.any_guard)anyShifts++;
           else if(p.guard_id)guard.push({label,window:`${p.start_time}–${p.end_time}`,guard:names.get(p.guard_id)||'Guard',expectedAt:new Date(expectedAt).toISOString(),actualAt:match?.captured_at||null,eventId:match?.id||null,status:!match?'missed':Date.parse(match.captured_at)>expectedAt+5*60000?'late':'onTime'});
         }

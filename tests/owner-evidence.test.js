@@ -35,10 +35,10 @@ test('owner evidence is owner-only, tenant scoped and retains private media auth
   await req('/api/media/'+mediaId+'/link',other,null,403);
 });
 
-test('owner activity labels the completed historical period and patrol starts as partial evidence',async()=>{
+test('owner activity labels the current seven-day period and patrol starts as partial evidence',async()=>{
   const activity=await req('/api/owner-evidence/oak?kind=activity',owner);
-  assert.match(activity.period.label,/seven completed calendar days/);
-  assert.equal(activity.period.to<new Date(Date.now()+3600000).toISOString().slice(0,10),true);
+  assert.match(activity.period.label,/last seven days/);
+  assert.equal(activity.period.to,new Date(Date.now()+3600000).toISOString().slice(0,10));
   assert.ok(Array.isArray(activity.metrics.patrol.rows));
   const historic=ownerHealth({now:Date.parse('2026-09-09T12:00:00Z'),site:{id:'s'},plans:[],events:[],incidents:[{id:'i',captured_at:'2026-09-04T12:00:00Z',status:'Resolved'}],classifications:[],users:[]});
   assert.equal(historic.risk.label,'Awaiting classification');
@@ -53,7 +53,7 @@ test('patrol health weights completed checkpoints above start timing',()=>{
   const patrol={id:'patrol',kind:'patrol_start',user_id:'g',captured_at:'2026-09-08T09:07:00.000Z',payload:{shift_id:'shift',round_id:'round',scheduled_for:scheduled}};
   const scans=['a','b'].map(checkpoint_id=>({id:checkpoint_id,kind:'scan',user_id:'g',captured_at:'2026-09-08T09:08:00.000Z',payload:{shift_id:'shift',round_id:'round',checkpoint_id}}));
   const complete=ownerHealth({...base,events:[start,patrol,...scans]}).patrol;
-  assert.deepEqual([complete.expected,complete.completed,complete.incomplete,complete.late,complete.score],[1,1,0,1,70]);
+  assert.deepEqual([complete.expected,complete.completed,complete.incomplete,complete.late,complete.score],[2,1,1,1,35]);
   const incomplete=ownerHealth({...base,events:[start,{...patrol,captured_at:'2026-09-08T09:00:00.000Z'}]}).patrol;
-  assert.deepEqual([incomplete.completed,incomplete.incomplete,incomplete.late,incomplete.score],[0,1,0,30]);
+  assert.deepEqual([incomplete.completed,incomplete.incomplete,incomplete.late,incomplete.score],[0,2,0,15]);
 });
