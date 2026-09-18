@@ -59,6 +59,12 @@ export function overviewShifts({ site, plans = [], day, now = Date.now() }) {
     })
     .sort((a, b) => a.start - b.start);
 }
+
+export function emptyGuardsMessage(window) {
+  return window?.anyGuard
+    ? "Any guard can check in for this shift."
+    : "No guards assigned to this shift.";
+}
 export function supervisorStatus({
   site,
   plans = [],
@@ -154,7 +160,7 @@ export function supervisorStatus({
         ? "roster unavailable"
         : overdueOpen.length
           ? `${overdueOpen.length} earlier shift${overdueOpen.length === 1 ? "" : "s"} still open`
-          : "checked",
+          : "checked in",
       tone: (attendanceDue && checked.size < expected.size) || overdueOpen.length ? "attention" : "good",
     },
     {

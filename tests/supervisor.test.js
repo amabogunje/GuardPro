@@ -503,6 +503,12 @@ test("supervisor setup guidance presents one next configuration step in operatio
   assert.equal(nextSupervisorSetupTask({ windows: [{ key: "day" }], users: [{ role: "guard" }], checkpoints: [{ id: "gate" }] }), null);
 });
 
+test("empty guard list distinguishes an open Any-guard shift from no assigned guards", async () => {
+  const { emptyGuardsMessage } = await import("../public/supervisor-status.js");
+  assert.equal(emptyGuardsMessage({ anyGuard: true }), "Any guard can check in for this shift.");
+  assert.equal(emptyGuardsMessage({ anyGuard: false }), "No guards assigned to this shift.");
+});
+
 test("attendance is tied to the selected occurrence and retains valid overnight coverage", async () => {
   const { supervisorStatus, overviewDetails } =
     await import("../public/supervisor-status.js");
