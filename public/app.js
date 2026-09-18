@@ -1007,8 +1007,11 @@ function renderDashboard() {
       checkpoints: cps(),
     });
     if (setupTask) {
-      t.querySelector(".stats").innerHTML = `<section class="card stat supervisor-setup-status"><div class="kpi-label">${icon(setupTask.icon)}<span>${setupTask.title}</span></div><p>${setupTask.text}</p><button type="button" data-page="setup" data-settings-tab="${setupTask.tab}">${setupTask.action}</button></section>`;
-      t.querySelector(":scope > .grid").innerHTML = `<section class="card attention-card"><div class="attention-section"><div class="attention-heading"><h2>Needs your attention</h2></div><div class="attention-list"><p class="empty">Complete the setup steps above to begin tracking this property.</p></div></div></section><section class="card guards-this-shift"><h2>Guards this shift</h2><p class="empty">Guard activity will appear after setup is complete.</p></section>`;
+      t.innerHTML = `<section class="card stat supervisor-setup-status"><div class="kpi-label">${icon(setupTask.icon)}<span>${setupTask.title}</span></div><p>${setupTask.text}</p><button type="button" data-page="setup" data-settings-tab="${setupTask.tab}">${setupTask.action}</button></section>`;
+      root.querySelector(".supervisor-actions")?.remove();
+      root.querySelector(".supervisor-heading")?.remove();
+      root.querySelector(".supervisor-filters")?.remove();
+      root.querySelector(".supervisor-mobile > .notice")?.remove();
     } else {
     const selected =
       windows.find((w) => w.key === selectedOverviewShift) ||

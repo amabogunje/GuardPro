@@ -1,4 +1,6 @@
 export function healthCards(h,{esc,icon}) {
+  const hasMeasuredActivity=Boolean(h.guard.expected||h.patrol.expected||h.risk.total);
+  if(!hasMeasuredActivity)return `<section class="card owner-empty-activity"><span class="owner-empty-activity-icon">${icon('summaries')}</span><span><h2>Activity will appear here</h2><p>It will be ready after guard work begins.</p></span></section>`;
   const pct=(v,total)=>total?100*v/total:0;
   const bar=segments=>`<div class="health-bar" aria-hidden="true">${segments.map(([width,color])=>`<span style="width:${width}%;background:${color}"></span>`).join('')}</div>`;
   const card=(key,title,glyph,description)=>{
