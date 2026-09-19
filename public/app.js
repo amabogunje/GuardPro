@@ -11,7 +11,10 @@ async function setOwnerMode(supervisor) {
   resetSettings();await persist();render();
 }
 function renderOwnerPage() {
-  ownerPage(root,{page,site:site(),user,state,api,esc,icon,brand,siteSelect,selectedProblemId:ownerEvidenceProblemId,done:async()=>{await refresh();render();toast('Saved.');},supervise:()=>setOwnerMode(true)});
+  ownerPage(root,{page,site:site(),user,state,api,esc,icon,brand,siteSelect,selectSite:nextSiteId=>{
+    if(!state.sites.some(entry=>entry.id===nextSiteId))return;
+    selectedChat=null;siteId=nextSiteId;roundId=null;render();
+  },selectedProblemId:ownerEvidenceProblemId,done:async()=>{await refresh();render();toast('Saved.');},supervise:()=>setOwnerMode(true)});
 }
 import { locationGroups, gpsReview } from './gps-review.js';
 import { propertyEditor } from './property-location.js';
@@ -498,7 +501,7 @@ function render() {
     root.querySelector(".greeting-row h1").textContent = titles[page] || "Your team";
     root.querySelector(".supervisor-mobile > .supervisor-heading")?.remove();
   }
-  if(user.role==='owner'&&ownerSupervisionEnabled()) {
+  if(user.role==='owner'&&ownerSupervisionEnabled()&&!root.querySelector('.owner-overflow-menu')) {
     const mode=document.createElement('button');mode.type='button';mode.className='owner-mode-switch topbar-owner-switch';mode.dataset.action='ownerMode';
     mode.textContent=ownerSupervisorView()?'Return to owner view':'Act as supervisor';
     const logout=root.querySelector('.topbar [data-action="logout"]');

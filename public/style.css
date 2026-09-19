@@ -2991,6 +2991,57 @@ html { scrollbar-gutter: stable; }
 .owner-mobile .owner-property-hero-copy p { margin:0; color:#d9f5ef; font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
 .owner-mobile .owner-property-hero-copy h2 { margin:0; color:#fff; font-size:27px; line-height:1.2; }
 .owner-mobile .owner-property-hero-copy span { color:#fff; font-size:14px; line-height:1.35; }
+.owner-mobile .owner-property-rail-section { display:grid; gap:6px; margin:0; }
+.owner-mobile .owner-property-rail-section .eyebrow { margin:0; }
+.owner-mobile .owner-property-rail { display:flex; gap:10px; overflow-x:auto; overscroll-behavior-x:contain; scroll-snap-type:x mandatory; scrollbar-width:none; margin:0 -16px; padding:0 16px 2px; -webkit-overflow-scrolling:touch; }
+.owner-mobile .owner-property-rail::-webkit-scrollbar { display:none; }
+.owner-mobile .owner-property-rail-card { position:relative; flex:0 0 calc(100% - 34px); min-height:208px; overflow:hidden; scroll-snap-align:center; border:1px solid #cbd8df; border-radius:0; background:#143957; color:#fff; padding:0; text-align:left; box-shadow:none; }
+.owner-mobile .owner-property-rail-card.selected { border:3px solid #087e70; }
+.owner-mobile .owner-property-rail-card img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.owner-mobile .owner-property-rail-card::after { content:''; position:absolute; inset:0; background:linear-gradient(0deg,rgba(10,38,59,.94),rgba(10,38,59,.1) 88%); }
+.owner-mobile .owner-property-rail-copy { position:absolute; z-index:1; right:12px; bottom:10px; left:12px; display:grid; gap:2px; min-width:0; }
+.owner-mobile .owner-property-rail-copy small { color:#d9f5ef; font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+.owner-mobile .owner-property-rail-copy strong { color:#fff; font-size:18px; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.owner-mobile .owner-property-rail-copy span { color:#fff; font-size:12px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.owner-mobile .owner-property-rail-hint { margin:0; color:#586a72; font-size:12px; line-height:18px; }
+.owner-mobile .owner-overflow-menu { position:relative; margin-left:auto; }
+.owner-mobile .owner-overflow-menu summary { display:grid; place-items:center; box-sizing:border-box; width:44px; height:44px; min-height:44px; padding:0; list-style:none; color:#006b59; cursor:pointer; }
+.owner-mobile .owner-overflow-menu summary::-webkit-details-marker { display:none; }
+.owner-mobile .owner-overflow-menu summary span { font-size:29px; line-height:1; transform:translateY(-2px); }
+.owner-mobile .owner-overflow-actions { position:absolute; z-index:20; top:48px; right:0; display:grid; min-width:176px; padding:4px 0; background:#fff; border:1px solid #d6e0e3; box-shadow:0 5px 16px rgba(23,57,87,.18); }
+.owner-mobile .owner-overflow-actions button { min-height:44px; padding:10px 14px; border:0; border-radius:0; background:transparent; color:#173957; text-align:left; box-shadow:none; font-size:14px; font-weight:600; }
+.owner-mobile .owner-overflow-actions button:hover { background:#edf3f5; }
+.owner-mobile.owner-home { padding:0 16px 32px; }
+.owner-mobile.owner-home > .topbar { height:64px; min-height:64px; padding:10px 0; }
+.owner-mobile.owner-home > #ownerContent { gap:10px; }
+.owner-mobile.owner-home #ownerOverview { gap:10px; }
+.owner-mobile.owner-home .owner-actions button { min-height:72px; padding:8px 3px; gap:5px; }
+.owner-mobile.owner-home-hero > .topbar { position:absolute; z-index:5; top:0; right:0; left:0; padding:10px 16px; background:linear-gradient(180deg,rgba(10,38,59,.72),rgba(10,38,59,0)); }
+.owner-mobile.owner-home-hero > .topbar .brand strong,
+.owner-mobile.owner-home-hero > .topbar .owner-overflow-menu summary { color:#fff; }
+.owner-mobile.owner-home-hero .owner-property-hero { min-height:236px; margin:0 -16px; }
+.owner-mobile.owner-home-hero .owner-property-hero-copy { right:16px; bottom:14px; left:16px; }
+.owner-mobile.owner-home-hero .owner-property-hero-copy h2 { font-size:25px; }
+.owner-mobile.owner-home-hero > .owner-property-rail-section { margin:0 -16px; }
+.owner-mobile.owner-home-hero > .owner-property-rail-section > .eyebrow,
+.owner-mobile.owner-home-hero > .owner-property-rail-section > .owner-property-rail-hint { display:none; }
+.owner-mobile.owner-home-hero > .owner-property-rail-section .owner-property-rail { margin:0; padding:0; }
+.owner-mobile.owner-home-hero > .owner-property-rail-section .owner-property-rail-card { min-height:236px; }
+.owner-mobile.owner-home .owner-health { padding:12px; }
+.owner-mobile.owner-home .owner-health > .eyebrow { margin:0 0 2px; }
+.owner-mobile.owner-home .owner-health > h2 { margin:0 0 8px; font-size:19px; line-height:25px; }
+.owner-mobile.owner-home .owner-health .owner-kpi { margin:8px 0 0; }
+.owner-mobile.owner-home .owner-kpi .health-summary { grid-template-columns:44px minmax(0,1fr); gap:5px 10px; padding:10px; }
+.owner-mobile.owner-home .health-icon { width:44px; height:44px; }
+.owner-mobile.owner-home .health-icon svg { width:27px; height:27px; }
+.owner-mobile.owner-home .health-main { gap:2px; }
+.owner-mobile.owner-home .health-heading > strong { font-size:14px; line-height:18px; }
+.owner-mobile.owner-home .health-info-trigger { width:20px; height:20px; min-height:20px; }
+.owner-mobile.owner-home .health-info-trigger .md-icon { width:18px; height:18px; }
+.owner-mobile.owner-home .health-value { font-size:29px; line-height:1.08; }
+.owner-mobile.owner-home .health-value.risk-value { font-size:22px; }
+.owner-mobile.owner-home .health-value.health-empty { font-size:18px; }
+.owner-mobile.owner-home .health-main > small { font-size:11px; line-height:15px; }
 .owner-link-row { display:flex; align-items:center; justify-content:space-between; width:100%; gap:12px; padding:12px 0; min-height:56px; border:0; border-top:1px solid #e2e8ea; background:transparent; border-radius:0; box-shadow:none; text-align:left; color:var(--text,#162d3d); }
 .owner-link-row > span:first-child { min-width:0; display:grid; gap:3px; }
 .owner-link-row strong { font-size:14px; line-height:20px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

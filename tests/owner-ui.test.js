@@ -2,6 +2,7 @@ import {test,before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import path from 'node:path';
+import {DatabaseSync} from 'node:sqlite';
 import {chromium} from '@playwright/test';
 
 const base='http://127.0.0.1:3114';
@@ -45,15 +46,25 @@ test('owner KPIs are display-only and supervisor mode persists without changing 
  try {
   await p.locator('.owner-kpi').first().waitFor();assert.equal(await p.locator('.owner-kpi').count(),3);assert.equal(await p.locator('.owner-kpi .health-info-trigger').count(),3);assert.equal(await p.locator('.owner-current').count(),0);await p.getByText('Major security issues',{exact:true}).waitFor();await p.getByText('Monitoring now',{exact:true}).waitFor();await p.getByText('Patrols completed',{exact:true}).waitFor();assert.equal(await p.locator('.owner-evidence-links').count(),0);const beforeHeight=await p.locator('.owner-health').evaluate(element=>element.getBoundingClientRect().height);await p.locator('.health-info-trigger').first().click();await p.locator('.health-info-popover').waitFor();assert.equal(await p.locator('.owner-health').evaluate(element=>element.getBoundingClientRect().height),beforeHeight);await p.keyboard.press('Escape');assert.equal(await p.locator('.health-info-popover').count(),0);
   await geometry(p);await p.screenshot({path:path.join(data,'owner-home-desktop.png'),fullPage:true});
-  await p.getByRole('button',{name:'Supervisors',exact:true}).click();await p.getByRole('button',{name:'I supervise this property',exact:true}).click();await p.getByRole('button',{name:'Act as supervisor',exact:true}).waitFor();assert.equal(await p.getByRole('button',{name:'Open supervisor view',exact:true}).count(),0);await p.getByRole('button',{name:'Act as supervisor',exact:true}).click();await p.getByRole('button',{name:'Settings',exact:true}).waitFor();const stateResponse=p.waitForResponse(r=>r.url().endsWith('/api/state')&&r.status()===200);await p.reload();await p.getByRole('button',{name:'Return to owner view',exact:true}).waitFor();await p.getByRole('button',{name:'Settings',exact:true}).waitFor();
+  await p.getByRole('button',{name:'Supervisors',exact:true}).click();await p.getByRole('button',{name:'I supervise this property',exact:true}).click();await p.locator('.owner-overflow-menu summary').click();await p.getByRole('button',{name:'Act as supervisor',exact:true}).waitFor();assert.equal(await p.getByRole('button',{name:'Open supervisor view',exact:true}).count(),0);await p.getByRole('button',{name:'Act as supervisor',exact:true}).click();await p.getByRole('button',{name:'Settings',exact:true}).waitFor();const stateResponse=p.waitForResponse(r=>r.url().endsWith('/api/state')&&r.status()===200);await p.reload();await p.getByRole('button',{name:'Return to owner view',exact:true}).waitFor();await p.getByRole('button',{name:'Settings',exact:true}).waitFor();
   const state=await (await stateResponse).json();assert.equal(state.user.role,'owner');
   await p.getByRole('button',{name:'Problems',exact:true}).click();await p.locator('[data-action="viewProblem"]').first().click();await p.locator('.problemResolve').waitFor();await geometry(p);
-  await p.getByRole('button',{name:'Return to owner view',exact:true}).click();await p.locator('.owner-health').waitFor();await p.reload();await p.locator('.owner-health').waitFor();await p.getByRole('button',{name:'Property',exact:true}).waitFor();await p.getByRole('button',{name:'Sign out',exact:true}).click();await p.locator('#email').fill('owner@demo.isdl');await p.locator('#password').fill('Pilot-only-2026!');await p.getByRole('button',{name:'Sign in',exact:true}).click();await p.locator('.owner-health').waitFor();await p.getByRole('button',{name:'Act as supervisor',exact:true}).waitFor();assert.equal(await p.getByRole('button',{name:'Settings',exact:true}).count(),0);assert.deepEqual(errors,[]);
+  await p.getByRole('button',{name:'Return to owner view',exact:true}).click();await p.locator('.owner-health').waitFor();await p.reload();await p.locator('.owner-health').waitFor();await p.getByRole('button',{name:'Property',exact:true}).waitFor();await p.locator('.owner-overflow-menu summary').click();await p.getByRole('button',{name:'Sign out',exact:true}).click();await p.locator('#email').fill('owner@demo.isdl');await p.locator('#password').fill('Pilot-only-2026!');await p.getByRole('button',{name:'Sign in',exact:true}).click();await p.locator('.owner-health').waitFor();await p.locator('.owner-overflow-menu summary').click();await p.getByRole('button',{name:'Act as supervisor',exact:true}).waitFor();assert.equal(await p.getByRole('button',{name:'Settings',exact:true}).count(),0);assert.deepEqual(errors,[]);
  } finally {await context.close();}
 });
 test('owner dashboard stays compact on mobile without operational evidence links', {concurrency:false}, async()=>{
  const {context,p}=await signedIn(390),errors=[];p.on('pageerror',e=>errors.push(e.message));
  try {
   await p.locator('.owner-health').waitFor();assert.equal(await p.getByRole('button',{name:'Activity evidence',exact:true}).count(),0);assert.equal(await p.getByRole('button',{name:'Reported problems',exact:true}).count(),0);await geometry(p);assert.deepEqual(errors,[]);
+ } finally {await context.close();}
+});
+test('owner can swipe through and select multiple property dashboards', {concurrency:false}, async()=>{
+ const database=new DatabaseSync(path.join(data,'guard.db'));
+ database.prepare("UPDATE customer_subscriptions SET tier='internal' WHERE customer_id=(SELECT customer_id FROM sites WHERE id='oak')").run();database.close();
+ const {context,p}=await signedIn(390),errors=[];p.on('pageerror',e=>errors.push(e.message));
+ try {
+  await p.getByRole('button',{name:'Property',exact:true}).click();await p.getByRole('button',{name:'+ Add another property',exact:true}).click();
+  const form=p.locator('.property-editor form');await form.locator('[name="name"]').fill('Market Square');await form.locator('[name="property_type"]').selectOption('multi_use_property');await form.locator('[name="address"]').fill('2 Market Road, Ikeja, Lagos');await form.locator('[name="latitude"]').fill('6.61');await form.locator('[name="longitude"]').fill('3.36');await form.locator('[name=longitude]').blur();await form.getByText(/Marker: 6.61, 3.36/).waitFor();await form.locator('[name="confirmed"]').check();await form.getByRole('button',{name:'Create property',exact:true}).click();
+  await p.locator('#ownerPropertyRail').waitFor();const cards=p.locator('.owner-property-rail-card');assert.equal(await cards.count(),2);assert.equal(await p.locator('#ownerPropertyRail').evaluate(rail=>rail.scrollWidth>rail.clientWidth),true);await cards.nth(1).click();await cards.nth(1).evaluate(card=>card.getAttribute('aria-pressed')).then(value=>assert.equal(value,'true'));await p.getByText('Market Square',{exact:true}).first().waitFor();await geometry(p);assert.deepEqual(errors,[]);
  } finally {await context.close();}
 });

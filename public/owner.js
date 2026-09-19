@@ -29,10 +29,30 @@ function openHealthInfo(trigger) {
 document.addEventListener('pointerdown',event=>{if(healthInfoPopover&&!healthInfoPopover.contains(event.target)&&event.target!==healthInfoTrigger)closeHealthInfo();});
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&healthInfoPopover){const trigger=healthInfoTrigger;closeHealthInfo();trigger?.focus();}});
 
-export function ownerPage(root,{page,site,user,state,api,esc,icon,brand,siteSelect,done,navigate,selectedProblemId}) {
+function ownerPropertyRail({sites,propertyLocations,selectedSiteId,esc}) {
+  if(sites.length<2)return '';
+  const locationFor=siteId=>[...(propertyLocations||[])].filter(location=>location.site_id===siteId).sort((a,b)=>b.created_at.localeCompare(a.created_at))[0];
+  return `<section class="owner-property-rail-section" aria-label="Your properties"><p class="eyebrow">Your properties</p><div class="owner-property-rail" id="ownerPropertyRail" tabindex="0">${sites.map(entry=>{
+    const location=locationFor(entry.id),type=propertyType(location?.property_type),selected=entry.id===selectedSiteId;
+    return `<button type="button" class="owner-property-rail-card${selected?' selected':''}" data-owner-site="${esc(entry.id)}" aria-pressed="${selected}"><img src="${type.image}" alt="${esc(type.label)}"><span class="owner-property-rail-copy"><small>${esc(type.label)}</small><strong>${esc(entry.name)}</strong><span>${location?.address?esc(location.address):'Location setup pending'}</span></span></button>`;
+  }).join('')}</div><p class="owner-property-rail-hint">Swipe to view another property. Tap one to open it.</p></section>`;
+}
+
+export function ownerPage(root,{page,site,user,state,api,esc,icon,brand,siteSelect,selectSite,done,navigate,selectedProblemId}) {
   closeHealthInfo();
   const titles={home:`Hello, ${user.name}.`,property:'Property',supervisors:'Supervisors',subscription:'Subscription',ownerActivity:'Activity evidence',ownerProblems:selectedProblemId?'Problem details':'Reported problems'};
-  root.innerHTML=`<main class="guard supervisor-mobile owner-mobile"><header class="topbar">${brand()}<button data-action="logout">Sign out</button></header><div class="duty-identity">${site?`<p class="eyebrow">${esc(site.name)}</p>`:''}<div class="greeting-row"><h1>${esc(titles[page]||'Your property')}</h1>${page!=='home'?'<button class="back" data-page="home">Home</button>':''}</div></div>${state.sites.length>1?siteSelect():''}<div id="ownerContent"></div></main>`;
+  const propertyRail=page==='home'?ownerPropertyRail({sites:state.sites,propertyLocations:state.propertyLocations,selectedSiteId:site?.id,esc}):'';
+  const hasPropertyHero=page==='home'&&Boolean([...(state.propertyLocations||[])].find(location=>location.site_id===site?.id));
+  const canSupervise=Boolean(state.ownerSupervision?.some(entry=>entry.site_id===site?.id));
+  const menu=`<details class="owner-overflow-menu"><summary aria-label="Open account menu"><span aria-hidden="true">⋮</span></summary><div class="owner-overflow-actions">${canSupervise?'<button type="button" data-md="true" data-action="ownerMode">Act as supervisor</button>':''}<button type="button" data-md="true" data-action="logout">Sign out</button></div></details>`;
+  root.innerHTML=`<main class="guard supervisor-mobile owner-mobile${page==='home'?' owner-home':''}${hasPropertyHero?' owner-home-hero':''}"><header class="topbar">${brand()}${menu}</header>${page==='home'?'':`<div class="duty-identity">${site?`<p class="eyebrow">${esc(site.name)}</p>`:''}<div class="greeting-row"><h1>${esc(titles[page]||'Your property')}</h1><button class="back" data-page="home">Home</button></div></div>`}${propertyRail}${state.sites.length>1&&page!=='home'?siteSelect():''}<div id="ownerContent"></div></main>`;
+  root.querySelectorAll('[data-owner-site]').forEach(button=>button.addEventListener('click',()=>{
+    if(button.dataset.ownerSite!==site?.id)selectSite?.(button.dataset.ownerSite);
+  }));
+  const overflowMenu=root.querySelector('.owner-overflow-menu');
+  overflowMenu?.querySelector('summary')?.addEventListener('click',event=>{
+    event.preventDefault();overflowMenu.open=!overflowMenu.open;
+  });
   const host=root.querySelector('#ownerContent');
   const action=(id,glyph,label)=>`<button type="button" data-page="${id}" data-md="true"><span class="action-icon">${icon(glyph)}</span><span class="button-label">${label}</span></button>`;
   const stamp=at=>at?new Date(at).toLocaleString('en-GB',{timeZone:'Africa/Lagos',dateStyle:'medium',timeStyle:'short'}):'No records yet';
@@ -44,7 +64,7 @@ export function ownerPage(root,{page,site,user,state,api,esc,icon,brand,siteSele
     api('/api/owner-overview/'+encodeURIComponent(site.id)).then(d=>{
       if(!overview.isConnected)return;
       const property=d.property&&propertyType(d.property.propertyType);
-      const hero=property?`<section class="owner-property-hero" aria-label="${esc(site.name)}"><img src="${property.image}" alt="${esc(property.label)}"><div class="owner-property-hero-copy"><p>${esc(property.label)}</p><h2>${esc(site.name)}</h2><span>${esc(d.property.address)}</span></div></section>`:'';
+      const hero=property&&state.sites.length<2?`<section class="owner-property-hero" aria-label="${esc(site.name)}"><img src="${property.image}" alt="${esc(property.label)}"><div class="owner-property-hero-copy"><p>${esc(property.label)}</p><h2>${esc(site.name)}</h2><span>${esc(d.property.address)}</span></div></section>`:'';
       const setupStep=!d.setup.propertyConfigured?{page:'property',title:'Confirm property location',text:'Set the address and map position.',action:'Set location'}:!d.setup.supervisorConfigured?{page:'supervisors',title:'Choose supervision',text:'Add a supervisor or supervise it yourself.',action:'Choose supervision'}:null;
       const ownerSupervises=Boolean(state.ownerSupervision?.some(entry=>entry.site_id===site.id));
       const supervisorTask=ownerSupervises?nextSupervisorSetupTask({windows:(state.shiftPlans||[]).filter(plan=>plan.site_id===site.id),users:state.users||[],checkpoints:(state.checkpoints||[]).filter(checkpoint=>checkpoint.site_id===site.id)}):null;
