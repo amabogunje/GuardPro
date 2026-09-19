@@ -1,5 +1,5 @@
 import { phoneNumber } from './login-id.js';
-export function teamSettings(host,{site,users,reusableUsers=[],api,esc,icon,done,roleOnly=null,allowReuse=false}) {
+export function teamSettings(host,{site,users,reusableUsers=[],api,esc,icon,done,roleOnly=null,allowReuse=false,startAdd=false}) {
   const members=users.filter(u=>u.role!=='owner'&&(!roleOnly||u.role===roleOnly));
   const reusable=reusableUsers.filter(u=>!roleOnly||u.role===roleOnly);
   let query='',page=0;
@@ -76,5 +76,5 @@ export function teamSettings(host,{site,users,reusableUsers=[],api,esc,icon,done
     };
     form.elements.name.focus();
   }
-  list();
+  if(startAdd) edit(null); else list();
 }

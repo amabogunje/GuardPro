@@ -51,7 +51,7 @@ function confirmPropertyRemoval({site,api,done,esc}) {
     catch(error){dialog.querySelector('[role="status"]').textContent=error.message;event.currentTarget.disabled=false;}
   };
 }
-export function ownerPage(root,{page,site,user,state,api,esc,icon,brand,siteSelect,selectSite,done,archived,navigate,selectedProblemId}) {
+export function ownerPage(root,{page,site,user,state,api,esc,icon,brand,siteSelect,selectSite,done,archived,firstPropertyCreated,supervisionComplete,navigate,selectedProblemId}) {
   closeHealthInfo();
   const titles={home:`Hello, ${user.name}.`,property:'Property',supervisors:'User',subscription:'Subscription',ownerActivity:'Activity evidence',ownerProblems:selectedProblemId?'Problem details':'Reported problems'};
   const ownerWidePage=['property','supervisors','subscription'].includes(page);
@@ -59,7 +59,7 @@ export function ownerPage(root,{page,site,user,state,api,esc,icon,brand,siteSele
   const hasPropertyHero=page==='home'&&Boolean([...(state.propertyLocations||[])].find(location=>location.site_id===site?.id));
   const canSupervise=Boolean(state.ownerSupervision?.some(entry=>entry.site_id===site?.id));
   const menu=`<details class="owner-overflow-menu"><summary aria-label="Open account menu">${icon('menu')}</summary><div class="owner-overflow-actions">${canSupervise?'<button type="button" data-md="true" data-action="ownerMode">Act as supervisor</button>':''}<button type="button" data-md="true" data-action="logout">Sign out</button></div></details>`;
-  root.innerHTML=`<main class="guard supervisor-mobile owner-mobile${page==='home'?' owner-home':''}${hasPropertyHero?' owner-home-hero':''}"><header class="topbar">${brand()}${menu}</header>${page==='home'?'':`<div class="duty-identity">${!ownerWidePage&&site?`<p class="eyebrow">${esc(site.name)}</p>`:''}<div class="greeting-row"><h1>${esc(titles[page]||'Your property')}</h1><button class="back" data-page="home">Home</button></div></div>`}${propertyRail}${state.sites.length>1&&page!=='home'?siteSelect():''}<div id="ownerContent"></div></main>`;
+  root.innerHTML=`<main class="guard supervisor-mobile owner-mobile${page==='home'?' owner-home':''}${hasPropertyHero?' owner-home-hero':''}${page==='home'&&!site?' owner-onboarding':''}"><header class="topbar">${brand()}${menu}</header>${page==='home'?'':`<div class="duty-identity">${!ownerWidePage&&site?`<p class="eyebrow">${esc(site.name)}</p>`:''}<div class="greeting-row"><h1>${esc(titles[page]||'Your property')}</h1><button class="back" data-page="home">Home</button></div></div>`}${propertyRail}${state.sites.length>1&&page!=='home'?siteSelect():''}<div id="ownerContent"></div></main>`;
   root.querySelectorAll('[data-owner-site]').forEach(button=>button.addEventListener('click',()=>{
     if(button.dataset.ownerSite!==site?.id)selectSite?.(button.dataset.ownerSite);
   }));
@@ -74,7 +74,7 @@ export function ownerPage(root,{page,site,user,state,api,esc,icon,brand,siteSele
     const ownerActions=`<nav class="actions supervisor-actions settings-tabs owner-actions" aria-label="Owner actions">${action('property','location','Manage<br>Property')}${action('supervisors','person','Add<br>User')}${action('subscription','payment','View<br>Subscription')}</nav>`;
     host.innerHTML=`<div id="ownerOverview" aria-live="polite"><p role="status">Loading your property overview…</p></div>`;
     const overview=host.querySelector('#ownerOverview');
-    if(!site){overview.innerHTML=ownerActions+'<section class="card owner-first-property"><span class="owner-empty-activity-icon">'+icon('location')+'</span><div><h2>Add your first property</h2><p>Start with its address and map position.</p><button class="primary" data-page="property">Add property</button></div></section>';return;}
+    if(!site){overview.innerHTML=`<section class="owner-onboarding-splash" aria-label="Set up Guard Patrol"><img src="/property-heroes/owner-onboarding-splash.png" alt=""><div class="owner-onboarding-shade"></div><div class="owner-onboarding-copy"><p class="eyebrow">Welcome to Guard Patrol</p><h1>Set up your first property</h1><p>Start with its address and map position.</p><button class="primary" data-page="property">Add your first property</button></div></section>`;return;}
     api('/api/owner-overview/'+encodeURIComponent(site.id)).then(d=>{
       if(!overview.isConnected)return;
       const property=d.property&&propertyType(d.property.propertyType);
@@ -100,7 +100,7 @@ api('/api/owner-evidence/'+encodeURIComponent(site.id)+'?kind=activity').then(d=
     const reference=[...(state.propertyLocations||[])].filter(p=>p.site_id===site?.id).sort((a,b)=>b.created_at.localeCompare(a.created_at))[0];
     host.innerHTML=`${site?`<section class="card"><h2>${esc(site.name)}</h2><p>${reference?esc(reference.address):'Add the full address and confirm the map position.'}</p>${reference?`<p class="muted">Allowed area: ${reference.radius_m} metres from the confirmed position.</p>`:''}<button id="ownerEditProperty" class="${reference?'':'primary'}">${reference?'Edit property location':'Set property location'}</button><button id="ownerRemoveProperty" class="owner-remove-property">Remove property</button></section>`:''}<div id="ownerPropertyEditor"></div>${site?'<button id="ownerAddProperty" class="owner-text-action">+ Add another property</button>':''}`;
     const editor=host.querySelector('#ownerPropertyEditor');
-    const open=create=>{propertyEditor(editor,{site:site||{},state,api,esc,done,create});editor.querySelector('textarea')?.focus();};
+    const open=create=>{propertyEditor(editor,{site:site||{},state,api,esc,done:create?(firstPropertyCreated||done):done,create});editor.querySelector('textarea')?.focus();};
     host.querySelector('#ownerEditProperty')?.addEventListener('click',()=>open(false));
     host.querySelector('#ownerAddProperty')?.addEventListener('click',()=>open(true));
     host.querySelector('#ownerRemoveProperty')?.addEventListener('click',()=>confirmPropertyRemoval({site,api,done:archived||done,esc}));
@@ -109,7 +109,21 @@ api('/api/owner-evidence/'+encodeURIComponent(site.id)+'?kind=activity').then(d=
     host.innerHTML='<div id="ownerSupervision"><p role="status">Loading supervision settings…</p></div><div id="settings-panel" class="owner-staff"><p role="status">Loading users…</p></div>';
     const supervision=host.querySelector('#ownerSupervision'),panel=host.querySelector('#settings-panel');
     if(!site){supervision.innerHTML='<section class="card"><p>Add a property before choosing supervision.</p></section>';panel.innerHTML='';return;}
-    Promise.all([api('/api/owner-supervision/'+encodeURIComponent(site.id)),api('/api/settings/'+encodeURIComponent(site.id))]).then(([choice,d])=>{if(!host.isConnected)return;supervision.innerHTML=`<section class="card owner-self"><p class="eyebrow">Your role</p><h2>${choice.enabled?'You supervise this property':'Supervise this property'}</h2><p>${choice.enabled?'Use Act as supervisor at the top of the page when you need to manage shifts, users or reported problems.':'Choose this if you personally supervise guards. You can still add named users.'}</p><button id="ownerSupervisionToggle" class="primary">${choice.enabled?'Stop supervising':'I supervise this property'}</button></section>`;supervision.querySelector('#ownerSupervisionToggle').onclick=async()=>{await api('/api/owner-supervision/'+encodeURIComponent(site.id),{enabled:!choice.enabled});await done();};teamSettings(panel,{site,users:d.users,reusableUsers:d.reusableUsers,api,esc,icon,done});}).catch(e=>{if(host.isConnected){supervision.innerHTML=`<section class="card"><p>${esc(e.message)}</p></section>`;panel.innerHTML='';}});
+    Promise.all([api('/api/owner-supervision/'+encodeURIComponent(site.id)),api('/api/settings/'+encodeURIComponent(site.id))]).then(([choice,d])=>{if(!host.isConnected)return;
+      const noSupervisor=!choice.enabled&&!d.users.some(member=>member.role==='supervisor');
+      const complete=supervisionComplete||done;
+      const renderAssignSupervisor=()=>{supervision.innerHTML='';teamSettings(panel,{site,users:d.users,reusableUsers:d.reusableUsers,api,esc,icon,done:complete,roleOnly:'supervisor',startAdd:true});};
+      if(noSupervisor){
+        supervision.innerHTML=`<section class="card owner-supervision-choice"><p class="eyebrow">Next step</p><h2>Choose a supervisor</h2><p>Choose who will set up shifts, checkpoints and guards for this property.</p><button id="ownerSupervisionToggle" class="primary">I’ll supervise this property</button><button id="ownerAssignSupervisor" class="secondary">Assign a supervisor</button></section>`;
+        panel.innerHTML='';
+        supervision.querySelector('#ownerSupervisionToggle').onclick=async()=>{await api('/api/owner-supervision/'+encodeURIComponent(site.id),{enabled:true});await complete();};
+        supervision.querySelector('#ownerAssignSupervisor').onclick=renderAssignSupervisor;
+        return;
+      }
+      supervision.innerHTML=`<section class="card owner-self"><p class="eyebrow">Your role</p><h2>${choice.enabled?'You supervise this property':'Supervise this property'}</h2><p>${choice.enabled?'Use Act as supervisor at the top of the page when you need to manage shifts, users or reported problems.':'Choose this if you personally supervise guards. You can still add named users.'}</p><button id="ownerSupervisionToggle" class="primary">${choice.enabled?'Stop supervising':'I supervise this property'}</button></section>`;
+      supervision.querySelector('#ownerSupervisionToggle').onclick=async()=>{await api('/api/owner-supervision/'+encodeURIComponent(site.id),{enabled:!choice.enabled});await done();};
+      teamSettings(panel,{site,users:d.users,reusableUsers:d.reusableUsers,api,esc,icon,done});
+    }).catch(e=>{if(host.isConnected){supervision.innerHTML=`<section class="card"><p>${esc(e.message)}</p></section>`;panel.innerHTML='';}});
   } else if(page==='subscription') {
     host.innerHTML=`<section class="card owner-subscription"><small class="subscription-status">Active</small><div class="subscription-hero"><span class="subscription-icon">${icon('payment')}</span><div class="subscription-copy"><p class="eyebrow">Current plan</p><h2>Free pilot</h2></div></div><div class="subscription-limits"><span><strong>1</strong><small>Property</small></span><span><strong>Up to 5</strong><small>Users</small></span></div></section>`;
   }
