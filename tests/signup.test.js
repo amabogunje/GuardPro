@@ -83,7 +83,7 @@ after(async () => {
 test("self-service signup creates an isolated owner, customer and first property", async () => {
   const suffix = randomUUID();
   const first = await signup(payload("first-" + suffix));
-  const second = await signup(payload("second-" + suffix, { property_type: "small_business" }));
+  const second = await signup(payload("second-" + suffix, { property_type: "primary_school" }));
   assert.equal(first.response.status, 200, JSON.stringify(first.body));
   assert.equal(second.response.status, 200, JSON.stringify(second.body));
   assert.equal(first.body.role, "owner");
@@ -97,7 +97,7 @@ test("self-service signup creates an isolated owner, customer and first property
   assert.deepEqual(secondState.sites.map((site) => site.id), [second.body.siteId]);
   assert.equal(firstState.propertyLocations.at(-1).address, "1 Self Service Close, Ikeja, Lagos, Nigeria");
   assert.equal(firstState.propertyLocations.at(-1).property_type, "single_family_home");
-  assert.equal(secondState.propertyLocations.at(-1).property_type, "small_business");
+  assert.equal(secondState.propertyLocations.at(-1).property_type, "primary_school");
   const firstSettings = await fetch(base + `/api/settings/${first.body.siteId}`, {
     headers: {
       cookie: first.response.headers.get("set-cookie").split(";")[0],
