@@ -57,7 +57,7 @@ export function ownerPage(root,{page,site,user,state,api,esc,icon,brand,siteSele
   const action=(id,glyph,label)=>`<button type="button" data-page="${id}" data-md="true"><span class="action-icon">${icon(glyph)}</span><span class="button-label">${label}</span></button>`;
   const stamp=at=>at?new Date(at).toLocaleString('en-GB',{timeZone:'Africa/Lagos',dateStyle:'medium',timeStyle:'short'}):'No records yet';
   if(page==='home') {
-    const ownerActions=`<nav class="actions supervisor-actions settings-tabs owner-actions" aria-label="Owner actions">${action('property','location','Property')}${action('supervisors','person','Supervisors')}${action('subscription','payment','Subscription')}</nav>`;
+    const ownerActions=`<nav class="actions supervisor-actions settings-tabs owner-actions" aria-label="Owner actions">${action('property','location','Manage<br>Property')}${action('supervisors','person','Add<br>Supervisors')}${action('subscription','payment','View<br>Subscription')}</nav>`;
     host.innerHTML=`<div id="ownerOverview" aria-live="polite"><p role="status">Loading your property overview…</p></div>`;
     const overview=host.querySelector('#ownerOverview');
     if(!site){overview.innerHTML=ownerActions+'<section class="card owner-first-property"><span class="owner-empty-activity-icon">'+icon('location')+'</span><div><h2>Add your first property</h2><p>Start with its address and map position.</p><button class="primary" data-page="property">Add property</button></div></section>';return;}

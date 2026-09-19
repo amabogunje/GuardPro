@@ -3015,7 +3015,8 @@ html { scrollbar-gutter: stable; }
 .owner-mobile.owner-home > .topbar { height:64px; min-height:64px; padding:10px 0; }
 .owner-mobile.owner-home > #ownerContent { gap:10px; }
 .owner-mobile.owner-home #ownerOverview { gap:10px; }
-.owner-mobile.owner-home .owner-actions button { grid-template-rows:34px 18px; min-height:76px; padding:8px 3px; gap:5px; }
+.owner-mobile.owner-home .owner-actions button { grid-template-rows:34px 36px; min-height:94px; padding:8px 3px; gap:5px; }
+.owner-mobile.owner-home .owner-actions .button-label { line-height:18px; }
 .owner-mobile.owner-home-hero > .topbar { position:absolute; z-index:5; top:0; right:0; left:0; padding:10px 16px; background:linear-gradient(180deg,rgba(10,38,59,.72),rgba(10,38,59,0)); }
 .owner-mobile.owner-home-hero > .topbar .brand strong,
 .owner-mobile.owner-home-hero > .topbar .owner-overflow-menu summary { color:#fff; }
