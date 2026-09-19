@@ -90,8 +90,8 @@ api('/api/owner-evidence/'+encodeURIComponent(site.id)+'?kind=activity').then(d=
     host.querySelector('#ownerAddProperty')?.addEventListener('click',()=>open(true));
     if(!site)open(true);
   } else if(page==='supervisors') {
-    host.innerHTML='<div id="ownerSupervision"><p role="status">Loading supervision settings…</p></div><div id="ownerStaff"><p role="status">Loading staff…</p></div>';
-    const supervision=host.querySelector('#ownerSupervision'),panel=host.querySelector('#ownerStaff');
+    host.innerHTML='<div id="ownerSupervision"><p role="status">Loading supervision settings…</p></div><div id="settings-panel" class="owner-staff"><p role="status">Loading staff…</p></div>';
+    const supervision=host.querySelector('#ownerSupervision'),panel=host.querySelector('#settings-panel');
     if(!site){supervision.innerHTML='<section class="card"><p>Add a property before choosing supervision.</p></section>';panel.innerHTML='';return;}
     Promise.all([api('/api/owner-supervision/'+encodeURIComponent(site.id)),api('/api/settings/'+encodeURIComponent(site.id))]).then(([choice,d])=>{if(!host.isConnected)return;supervision.innerHTML=`<section class="card owner-self"><p class="eyebrow">Your role</p><h2>${choice.enabled?'You supervise this property':'Supervise this property'}</h2><p>${choice.enabled?'Use Act as supervisor at the top of the page when you need to manage shifts, users or reported problems.':'Choose this if you personally supervise guards. You can still add named staff.'}</p><button id="ownerSupervisionToggle" class="primary">${choice.enabled?'Stop supervising':'I supervise this property'}</button></section>`;supervision.querySelector('#ownerSupervisionToggle').onclick=async()=>{await api('/api/owner-supervision/'+encodeURIComponent(site.id),{enabled:!choice.enabled});await done();};teamSettings(panel,{site,users:d.users,reusableUsers:d.reusableUsers,api,esc,icon,done});}).catch(e=>{if(host.isConnected){supervision.innerHTML=`<section class="card"><p>${esc(e.message)}</p></section>`;panel.innerHTML='';}});
   } else if(page==='subscription') {
