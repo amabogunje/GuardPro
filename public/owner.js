@@ -40,11 +40,12 @@ function ownerPropertyRail({sites,propertyLocations,selectedSiteId,esc}) {
 export function ownerPage(root,{page,site,user,state,api,esc,icon,brand,siteSelect,selectSite,done,navigate,selectedProblemId}) {
   closeHealthInfo();
   const titles={home:`Hello, ${user.name}.`,property:'Property',supervisors:'User',subscription:'Subscription',ownerActivity:'Activity evidence',ownerProblems:selectedProblemId?'Problem details':'Reported problems'};
+  const ownerWidePage=['property','supervisors','subscription'].includes(page);
   const propertyRail=page==='home'?ownerPropertyRail({sites:state.sites,propertyLocations:state.propertyLocations,selectedSiteId:site?.id,esc}):'';
   const hasPropertyHero=page==='home'&&Boolean([...(state.propertyLocations||[])].find(location=>location.site_id===site?.id));
   const canSupervise=Boolean(state.ownerSupervision?.some(entry=>entry.site_id===site?.id));
   const menu=`<details class="owner-overflow-menu"><summary aria-label="Open account menu">${icon('menu')}</summary><div class="owner-overflow-actions">${canSupervise?'<button type="button" data-md="true" data-action="ownerMode">Act as supervisor</button>':''}<button type="button" data-md="true" data-action="logout">Sign out</button></div></details>`;
-  root.innerHTML=`<main class="guard supervisor-mobile owner-mobile${page==='home'?' owner-home':''}${hasPropertyHero?' owner-home-hero':''}"><header class="topbar">${brand()}${menu}</header>${page==='home'?'':`<div class="duty-identity">${site?`<p class="eyebrow">${esc(site.name)}</p>`:''}<div class="greeting-row"><h1>${esc(titles[page]||'Your property')}</h1><button class="back" data-page="home">Home</button></div></div>`}${propertyRail}${state.sites.length>1&&page!=='home'?siteSelect():''}<div id="ownerContent"></div></main>`;
+  root.innerHTML=`<main class="guard supervisor-mobile owner-mobile${page==='home'?' owner-home':''}${hasPropertyHero?' owner-home-hero':''}"><header class="topbar">${brand()}${menu}</header>${page==='home'?'':`<div class="duty-identity">${!ownerWidePage&&site?`<p class="eyebrow">${esc(site.name)}</p>`:''}<div class="greeting-row"><h1>${esc(titles[page]||'Your property')}</h1><button class="back" data-page="home">Home</button></div></div>`}${propertyRail}${state.sites.length>1&&page!=='home'?siteSelect():''}<div id="ownerContent"></div></main>`;
   root.querySelectorAll('[data-owner-site]').forEach(button=>button.addEventListener('click',()=>{
     if(button.dataset.ownerSite!==site?.id)selectSite?.(button.dataset.ownerSite);
   }));
