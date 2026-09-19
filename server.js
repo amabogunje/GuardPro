@@ -16,6 +16,7 @@ import {
   all,
   one,
   run,
+  exec,
   transaction,
   postgres,
   schema,
@@ -140,6 +141,22 @@ app.get("/api/health", async (_req, res, next) => {
       `Guard Patrol configured database schema: ${schema}; target: ${databaseTargetFingerprint}`,
     );
     res.json({ status: "ok" });
+  } catch (error) {
+    next(error);
+  }
+});
+app.post("/api/internal/repair-property-location", async (req, res, next) => {
+  try {
+    const token = process.env.PROPERTY_LOCATION_REPAIR_TOKEN;
+    const supplied = req.get("x-property-location-repair-token");
+    if (!token || !supplied || token.length !== supplied.length || !timingSafeEqual(Buffer.from(token), Buffer.from(supplied)))
+      fail("Not found", 404);
+    await transaction(async () => {
+      await exec("ALTER TABLE property_locations DROP CONSTRAINT IF EXISTS property_locations_actor_fkey");
+      await exec("ALTER TABLE property_locations ADD CONSTRAINT property_locations_actor_fkey FOREIGN KEY (actor) REFERENCES users(id)");
+    });
+    console.error(`Guard Patrol property location constraint repaired schema=${schema} target=${databaseTargetFingerprint}`);
+    res.json({ ok: true });
   } catch (error) {
     next(error);
   }
