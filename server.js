@@ -12,7 +12,6 @@ import { transcribeAndDraft, draftSummary } from "./ai.js";
 import express from "express";
 import multer from "multer";
 import QRCode from "qrcode";
-import pg from "pg";
 import {
   all,
   one,
@@ -140,45 +139,6 @@ app.get("/api/health", async (_req, res, next) => {
     res.json({ status: "ok" });
   } catch (error) {
     next(error);
-  }
-});
-app.post("/api/internal/repair-property-location", async (req, res, next) => {
-  const token = process.env.PROPERTY_LOCATION_REPAIR_TOKEN;
-  const supplied = req.get("x-property-location-repair-token");
-  if (!token || !supplied || token.length !== supplied.length || !timingSafeEqual(Buffer.from(token), Buffer.from(supplied)))
-    return res.status(404).json({ error: "Not found" });
-  const ownerUrl = process.env.NEON_MIGRATION_DATABASE_URL;
-  if (!ownerUrl) return res.status(503).json({ error: "Migration connection unavailable" });
-  const endpoint = (url) => new URL(url).hostname.replace(/-pooler(?=\.)/, "");
-  const runtimeEndpoint = endpoint(process.env.DATABASE_URL);
-  const ownerEndpoint = endpoint(ownerUrl);
-  if (runtimeEndpoint !== ownerEndpoint) {
-    console.error(`Guard Patrol property repair endpoint mismatch runtime=${createHash("sha256").update(runtimeEndpoint).digest("hex").slice(0, 12)} owner=${createHash("sha256").update(ownerEndpoint).digest("hex").slice(0, 12)}`);
-    return res.status(409).json({ error: "Migration connection does not match Production" });
-  }
-  const client = new pg.Client({
-    connectionString: ownerUrl.replace(/sslmode=require/g, "sslmode=verify-full"),
-  });
-  const qualified = `"${schema}"`;
-  try {
-    await client.connect();
-    await client.query("BEGIN");
-    await client.query(`ALTER TABLE ${qualified}.property_locations DROP CONSTRAINT IF EXISTS property_locations_actor_fkey`);
-    await client.query(`ALTER TABLE ${qualified}.property_locations ADD CONSTRAINT property_locations_actor_fkey FOREIGN KEY (actor) REFERENCES ${qualified}.users(id)`);
-    const constraint = await client.query(
-      "SELECT pg_get_constraintdef(k.oid) AS definition FROM pg_constraint k JOIN pg_class t ON t.oid=k.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace WHERE n.nspname=$1 AND t.relname='property_locations' AND k.conname='property_locations_actor_fkey'",
-      [schema],
-    );
-    if (constraint.rowCount !== 1 || !constraint.rows[0].definition.includes(`REFERENCES ${schema}.users(id)`))
-      throw new Error("Property-location actor constraint validation failed");
-    await client.query("COMMIT");
-    console.error(`Guard Patrol property location constraint repaired schema=${schema} target=${databaseTargetFingerprint}`);
-    res.json({ ok: true });
-  } catch (error) {
-    try { await client.query("ROLLBACK"); } catch {}
-    next(error);
-  } finally {
-    await client.end().catch(() => {});
   }
 });
 // This reveals only public onboarding information. The support route comes
