@@ -30,6 +30,10 @@ test('old offline captures received now remain unconfirmed; Any does not invent 
  const result=ownerOverview({now,site:{id:'s',schedule:''},users:[],supervisors:[],plans:[],shifts:[],events:[{id:'e',site_id:'s',kind:'note',payload:{},captured_at:'2026-09-05T12:00:00Z',received_at:new Date(now).toISOString()}],incidents:[],checkpoints:[],locations:[],reviews:[],resolutions:[]});
  assert.equal(result.freshness.status,'unconfirmed');assert.equal(result.freshness.lastRecordReceived,new Date(now).toISOString());assert.equal(result.attentionRequired,true);
 });
+test('owner overview returns the configured property type and address for the fixed dashboard image',()=>{
+ const result=ownerOverview({now:Date.parse('2026-09-06T12:00:00Z'),site:{id:'s',name:'Market Square',schedule:''},users:[],supervisors:[],plans:[],shifts:[],events:[],incidents:[],checkpoints:[],locations:[{site_id:'s',address:'1 Market Road, Ikeja, Lagos',property_type:'multi_use_property',created_at:'2026-09-06T10:00:00Z'}],reviews:[],resolutions:[]});
+ assert.deepEqual(result.property,{address:'1 Market Road, Ikeja, Lagos',propertyType:'multi_use_property'});
+});
 test('Any roster records attendance without claiming a required headcount; named roster flags missing guard',()=>{
  const input={now:Date.parse('2026-09-06T12:00:00Z'),site:{id:'s',schedule:''},users:[{id:'g1',role:'guard'},{id:'g2',role:'guard'}],supervisors:[],plans:[{site_id:'s',template_id:'t',created_at:'2026-09-01T00:00:00Z',start_time:'00:00',end_time:'00:00',guard_ids:'["*"]',schedule:''}],shifts:[{id:'shift',site_id:'s',user_id:'g1',started_at:'2026-09-06T10:00:00Z',ended_at:null}],events:[],incidents:[],checkpoints:[],locations:[],reviews:[],resolutions:[]};
  assert.deepEqual([ownerOverview(input).coverage.active,ownerOverview(input).coverage.expected],[1,null]);

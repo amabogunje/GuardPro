@@ -1,5 +1,6 @@
 import { healthCards } from './owner-health-view.js';
 import { propertyEditor } from './property-location.js';
+import { propertyType } from './property-types.js';
 import { teamSettings } from './team.js';
 import { nextSupervisorSetupTask } from './supervisor-setup.js';
 
@@ -36,17 +37,20 @@ export function ownerPage(root,{page,site,user,state,api,esc,icon,brand,siteSele
   const action=(id,glyph,label)=>`<button type="button" data-page="${id}" data-md="true"><span class="action-icon">${icon(glyph)}</span><span class="button-label">${label}</span></button>`;
   const stamp=at=>at?new Date(at).toLocaleString('en-GB',{timeZone:'Africa/Lagos',dateStyle:'medium',timeStyle:'short'}):'No records yet';
   if(page==='home') {
-    host.innerHTML=`<nav class="actions supervisor-actions settings-tabs owner-actions" aria-label="Owner actions">${action('property','location','Property')}${action('supervisors','person','Supervisors')}${action('subscription','payment','Subscription')}</nav><div id="ownerOverview" aria-live="polite"><p role="status">Loading your property overview…</p></div>`;
+    const ownerActions=`<nav class="actions supervisor-actions settings-tabs owner-actions" aria-label="Owner actions">${action('property','location','Property')}${action('supervisors','person','Supervisors')}${action('subscription','payment','Subscription')}</nav>`;
+    host.innerHTML=`<div id="ownerOverview" aria-live="polite"><p role="status">Loading your property overview…</p></div>`;
     const overview=host.querySelector('#ownerOverview');
-    if(!site){overview.innerHTML='<section class="card owner-first-property"><span class="owner-empty-activity-icon">'+icon('location')+'</span><div><h2>Add your first property</h2><p>Start with its address and map position.</p><button class="primary" data-page="property">Add property</button></div></section>';return;}
+    if(!site){overview.innerHTML=ownerActions+'<section class="card owner-first-property"><span class="owner-empty-activity-icon">'+icon('location')+'</span><div><h2>Add your first property</h2><p>Start with its address and map position.</p><button class="primary" data-page="property">Add property</button></div></section>';return;}
     api('/api/owner-overview/'+encodeURIComponent(site.id)).then(d=>{
       if(!overview.isConnected)return;
+      const property=d.property&&propertyType(d.property.propertyType);
+      const hero=property?`<section class="owner-property-hero" aria-label="${esc(site.name)}"><img src="${property.image}" alt="${esc(property.label)}"><div class="owner-property-hero-copy"><p>${esc(property.label)}</p><h2>${esc(site.name)}</h2><span>${esc(d.property.address)}</span></div></section>`:'';
       const setupStep=!d.setup.propertyConfigured?{page:'property',title:'Confirm property location',text:'Set the address and map position.',action:'Set location'}:!d.setup.supervisorConfigured?{page:'supervisors',title:'Choose supervision',text:'Add a supervisor or supervise it yourself.',action:'Choose supervision'}:null;
       const ownerSupervises=Boolean(state.ownerSupervision?.some(entry=>entry.site_id===site.id));
       const supervisorTask=ownerSupervises?nextSupervisorSetupTask({windows:(state.shiftPlans||[]).filter(plan=>plan.site_id===site.id),users:state.users||[],checkpoints:(state.checkpoints||[]).filter(checkpoint=>checkpoint.site_id===site.id)}):null;
-      if(setupStep){overview.innerHTML=`<section class="card owner-setup"><p class="eyebrow">Setup</p><h2>${setupStep.title}</h2><p>${setupStep.text}</p><button class="primary" data-page="${setupStep.page}">${setupStep.action}</button></section>`;return;}
-      if(supervisorTask){overview.innerHTML=`<section class="card owner-setup owner-supervisor-task"><p class="eyebrow">Supervisor task</p><h2>${supervisorTask.title}</h2><p>${supervisorTask.text}</p><button class="primary" data-action="ownerSupervisorSetup" data-settings-tab="${supervisorTask.tab}">${supervisorTask.action}</button></section>`;return;}
-      overview.innerHTML=`${healthCards(d.health,{esc,icon})}<p class="last-record-received owner-dashboard-receipt">Last record received: ${esc(stamp(d.freshness.lastRecordReceived))}</p>`;
+      if(setupStep){overview.innerHTML=`${hero}${ownerActions}<section class="card owner-setup"><p class="eyebrow">Setup</p><h2>${setupStep.title}</h2><p>${setupStep.text}</p><button class="primary" data-page="${setupStep.page}">${setupStep.action}</button></section>`;return;}
+      if(supervisorTask){overview.innerHTML=`${hero}${ownerActions}<section class="card owner-setup owner-supervisor-task"><p class="eyebrow">Supervisor task</p><h2>${supervisorTask.title}</h2><p>${supervisorTask.text}</p><button class="primary" data-action="ownerSupervisorSetup" data-settings-tab="${supervisorTask.tab}">${supervisorTask.action}</button></section>`;return;}
+      overview.innerHTML=`${hero}${ownerActions}${healthCards(d.health,{esc,icon})}<p class="last-record-received owner-dashboard-receipt">Last record received: ${esc(stamp(d.freshness.lastRecordReceived))}</p>`;
       overview.querySelectorAll('.health-info-trigger').forEach(trigger=>trigger.addEventListener('click',()=>openHealthInfo(trigger)));
     }).catch(error=>{if(overview.isConnected)overview.innerHTML=`<section class="card"><h2>Overview unavailable</h2><p>${esc(error.message)}</p><p>Current activity cannot be confirmed. Reconnect and refresh to try again.</p></section>`;});
   } else if(page==='ownerActivity') {

@@ -263,7 +263,7 @@ post("/api/signup", async (req, res) => {
   await run("INSERT INTO sites(id,customer_id,name) VALUES(?,?,?)", siteId, customerId, propertyName);
   await run("INSERT INTO assignments VALUES(?,?)", ownerId, siteId);
   await run("INSERT INTO site_locations VALUES(?,?,?,?)", siteId, property.latitude, property.longitude, property.radius_m);
-  await run("INSERT INTO property_locations VALUES(?,?,?,?,?,?,?,?)", id(), siteId, property.address, property.latitude, property.longitude, property.radius_m, ownerId, createdAt);
+  await run("INSERT INTO property_locations VALUES(?,?,?,?,?,?,?,?,?)", id(), siteId, property.address, property.latitude, property.longitude, property.radius_m, property.property_type, ownerId, createdAt);
   await run(
     "INSERT INTO customer_notice_acceptances VALUES(?,?,?,?,?,?)",
     id(), customerId, ownerId, customerNoticeVersion, createdAt, pilotSupportContact,
@@ -1641,7 +1641,7 @@ post("/api/site-location", async (req, res) => {
     longitude,
     radius,
   );
-  await run('INSERT INTO property_locations VALUES(?,?,?,?,?,?,?,?)',id(),site_id,property.address,latitude,longitude,radius,req.user.id,now());
+  await run('INSERT INTO property_locations VALUES(?,?,?,?,?,?,?,?,?)',id(),site_id,property.address,latitude,longitude,radius,property.property_type,req.user.id,now());
   await audit(req.user, "site location updated", {
     address:property.address,
     site_id,
@@ -1757,7 +1757,7 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
     );
     await run("INSERT INTO assignments VALUES(?,?)", req.user.id, sid);
     await run('INSERT INTO site_locations VALUES(?,?,?,?)',sid,property.latitude,property.longitude,property.radius_m);
-    await run('INSERT INTO property_locations VALUES(?,?,?,?,?,?,?,?)',id(),sid,property.address,property.latitude,property.longitude,property.radius_m,req.user.id,now());
+    await run('INSERT INTO property_locations VALUES(?,?,?,?,?,?,?,?,?)',id(),sid,property.address,property.latitude,property.longitude,property.radius_m,property.property_type,req.user.id,now());
   } else {
     await requireSite(req.user, s);
     if (b.kind === "shift_plan") {

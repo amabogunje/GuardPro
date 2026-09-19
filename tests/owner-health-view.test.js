@@ -16,7 +16,7 @@ test('owner dashboard gives three direct, display-only monitoring answers',()=>{
   assert.equal((html.match(/class="health-info-trigger"/g)||[]).length,3);
   assert.equal((html.match(/data-icon="help"/g)||[]).length,3);
   assert.match(html,/Major security issues/);
-  assert.match(html,/No P1 issues reported/);
+  assert.match(html,/No issues reported/);
   assert.match(html,/Monitoring now/);
   assert.match(html,/No shift scheduled/);
   assert.match(html,/Patrols completed/);

@@ -28,6 +28,7 @@ export function ownerOverview({site,users,supervisors,plans,shifts,events,incide
   const recentResolved=resolutions.filter(r=>r.status==='Resolved').sort((a,b)=>b.at.localeCompare(a.at)).slice(0,3).map(r=>({id:r.incident_id,report:incidents.find(i=>i.id===r.incident_id)?.report||'',resolvedAt:r.at,resolvedBy:r.actor_name,comment:r.note}));
   return {
     site:{id:site.id,name:site.name},day,
+    property:property?{address:property.address,propertyType:property.property_type||'single_family_home'}:null,
     setup:{propertyConfigured:!!property,address:property?.address||'',supervisorConfigured:!!supervisors.length||ownerSupervision},
     ownerSupervision,
     supervisors,

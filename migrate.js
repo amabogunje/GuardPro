@@ -46,7 +46,14 @@ BEGIN
   END IF;
 END
 $$;
-`);
+      `);
+    }
+    const propertyTypeMigration=fs.readFileSync("migrations/022.sql", "utf8");
+    if(postgres) await exec(propertyTypeMigration);
+    else try {
+      await exec(propertyTypeMigration.replace(' IF NOT EXISTS',''));
+    } catch (error) {
+      if (!/duplicate column|already exists/i.test(String(error.message))) throw error;
     }
     if (!postgres || process.env.SEED_DEMO === "true") await seedDemo();
   });
