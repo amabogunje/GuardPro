@@ -40,6 +40,10 @@ const customerNoticeVersion = "2026-09-17";
 const pilotSupportContact = String(process.env.PILOT_SUPPORT_CONTACT || "")
   .trim()
   .slice(0, 160);
+const databaseTargetFingerprint = createHash("sha256")
+  .update(process.env.DATABASE_URL || "sqlite")
+  .digest("hex")
+  .slice(0, 12);
 const resendEmailDomain = String(process.env.RESEND_EMAIL_DOMAIN || "").trim().replace(/^@/, "").slice(0, 253);
 const passwordResetFrom = String(process.env.RESEND_FROM || (resendEmailDomain ? `Guard Patrol <no-reply@${resendEmailDomain}>` : ""))
   .trim()
@@ -132,7 +136,9 @@ app.use((req, res, next) => {
 app.get("/api/health", async (_req, res, next) => {
   try {
     await one("SELECT 1 AS ready");
-    console.error(`Guard Patrol configured database schema: ${schema}`);
+    console.error(
+      `Guard Patrol configured database schema: ${schema}; target: ${databaseTargetFingerprint}`,
+    );
     res.json({ status: "ok" });
   } catch (error) {
     next(error);
