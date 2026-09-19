@@ -18,6 +18,7 @@ import {
   run,
   transaction,
   postgres,
+  schema,
   consumeRate,
 } from "./database.js";
 import { saveMedia, serveMedia, maxUploadBytes } from "./storage.js";
@@ -131,6 +132,7 @@ app.use((req, res, next) => {
 app.get("/api/health", async (_req, res, next) => {
   try {
     await one("SELECT 1 AS ready");
+    console.info("Guard Patrol health check", { schema });
     res.json({ status: "ok" });
   } catch (error) {
     next(error);
@@ -1957,7 +1959,13 @@ app.get(["/app", "/app/"], (_req, res) =>
 );
 app.use(express.static("public", { etag: true }));
 app.use((err, req, res, next) => {
-  console.error(err.message);
+  console.error("Guard Patrol request failed", {
+    route: req.originalUrl,
+    schema,
+    code: err.code,
+    constraint: err.constraint,
+    message: err.message,
+  });
   res.status(err.status || (err.code === "LIMIT_FILE_SIZE" ? 413 : 400)).json({
     error: err.status
       ? err.message
