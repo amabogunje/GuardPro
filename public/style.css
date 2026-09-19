@@ -3046,7 +3046,8 @@ html { scrollbar-gutter: stable; }
 .owner-mobile.owner-home .owner-actions button:nth-child(1) .action-icon { color:#087e70; background:linear-gradient(145deg,#fff,#d8f2ed); border-color:#b9ded7; }
 .owner-mobile.owner-home .owner-actions button:nth-child(2) .action-icon { color:#385a91; background:linear-gradient(145deg,#fff,#dce8fa); border-color:#c5d5ed; }
 .owner-mobile.owner-home .owner-actions button:nth-child(3) .action-icon { color:#865b12; background:linear-gradient(145deg,#fff,#f8e8c7); border-color:#ead5a6; }
-.owner-mobile.owner-onboarding { width:100%; max-width:none; min-height:100dvh; padding:0; background:#0e2b3c; }
+html:has(.owner-mobile.owner-onboarding) { scrollbar-gutter:auto; }
+.owner-mobile.owner-onboarding { width:100%; max-width:600px; min-height:100dvh; margin:0 auto; padding:0; background:#0e2b3c; }
 .owner-mobile.owner-onboarding > .topbar { position:absolute; z-index:5; top:0; right:0; left:0; width:min(calc(100% - 32px),568px); height:64px; min-height:64px; margin:0 auto; padding:10px 0; background:linear-gradient(180deg,rgba(8,28,42,.72),rgba(8,28,42,0)); }
 .owner-mobile.owner-onboarding > .topbar .brand strong,
 .owner-mobile.owner-onboarding > .topbar .owner-overflow-menu summary { color:#fff; }
