@@ -56,6 +56,7 @@ $$;
       if (!/duplicate column|already exists/i.test(String(error.message))) throw error;
     }
     await exec(fs.readFileSync("migrations/023.sql", "utf8"));
+    if (postgres) await exec(fs.readFileSync("migrations/024.sql", "utf8"));
     if (postgres) await exec(`
 DO $$
 BEGIN
