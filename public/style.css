@@ -3097,7 +3097,7 @@ html { scrollbar-gutter: stable; }
 .owner-subscription dt { font-size:12px; color:#586a72; margin-bottom:4px; }
 .owner-subscription dd { margin:0; font-size:14px; }
 .owner-mobile #ownerPropertyEditor:empty { display:none; }
-.owner-mobile #ownerSupervisors { margin-top:16px; }
+.owner-mobile #ownerStaff { margin-top:16px; }
 .owner-account .greeting-row h1 { overflow-wrap:anywhere; }
 .owner-health .owner-kpi { margin:16px 0 0; border:1px solid #e3e8e9; padding:0; border-radius:0; background:white; }
 .owner-health .owner-kpi-good { border-left:5px solid #087e70; }
