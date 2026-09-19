@@ -22,5 +22,6 @@ test('owner dashboard gives three direct, display-only monitoring answers',()=>{
   assert.match(html,/Patrols completed/);
   assert.match(html,/No patrols due/);
   assert.doesNotMatch(html,/class="health-description"/);
+  assert.doesNotMatch(html,/Your property|At a glance/);
   assert.doesNotMatch(html,/Report risk signal|Guard coverage health|Patrol coverage health/);
 });

@@ -30,6 +30,7 @@ const paths = {
   info: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-11v6m0-10h.01",
   help: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20ZM9.5 9a2.5 2.5 0 1 1 4.3 1.75c-.78.77-1.8 1.25-1.8 2.75m0 3.5h.01",
   shield: "m12 2 8 3v6c0 5-4 8-8 11-4-3-8-6-8-11V5l8-3Zm-4 9 3 3 5-6",
+  menu: "M4 7h16M4 12h16M4 17h16",
 };
 export const icon = (name) =>
   `<svg class="md-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.check}"/></svg>`;

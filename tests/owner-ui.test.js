@@ -55,7 +55,7 @@ test('owner KPIs are display-only and supervisor mode persists without changing 
 test('owner dashboard stays compact on mobile without operational evidence links', {concurrency:false}, async()=>{
  const {context,p}=await signedIn(390),errors=[];p.on('pageerror',e=>errors.push(e.message));
  try {
-  await p.locator('.owner-health').waitFor();assert.equal(await p.getByRole('button',{name:'Activity evidence',exact:true}).count(),0);assert.equal(await p.getByRole('button',{name:'Reported problems',exact:true}).count(),0);await geometry(p);assert.deepEqual(errors,[]);
+  await p.locator('.owner-health').waitFor();assert.equal(await p.locator('.owner-overflow-menu summary .md-icon').count(),1);assert.equal(await p.locator('.owner-actions .action-icon').count(),3);assert.equal(await p.getByText('Your property',{exact:true}).count(),0);assert.equal(await p.getByText('At a glance',{exact:true}).count(),0);await p.locator('.owner-overflow-menu summary').click();await p.getByRole('button',{name:'Sign out',exact:true}).waitFor();assert.equal(await p.getByRole('button',{name:'Activity evidence',exact:true}).count(),0);assert.equal(await p.getByRole('button',{name:'Reported problems',exact:true}).count(),0);await geometry(p);assert.deepEqual(errors,[]);
  } finally {await context.close();}
 });
 test('owner can swipe through and select multiple property dashboards', {concurrency:false}, async()=>{

@@ -476,11 +476,7 @@ test("voice recording, permission fallbacks, owner mobile and supervisor adminis
     await p.locator("#email").fill("owner@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in" }).click();
-    await p
-      .getByRole("heading", {
-        name: "At a glance",
-      })
-      .waitFor();
+    await p.locator(".owner-health").waitFor();
     assert.equal(
       await p.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -492,6 +488,7 @@ test("voice recording, permission fallbacks, owner mobile and supervisor adminis
       fullPage: true,
     });
     await p.locator("#ownerOverview").waitFor();
+    await p.locator(".owner-overflow-menu summary").click();
     await p.getByRole("button", { name: "Sign out", exact: true }).click();
     await p.locator("#email").fill("supervisor@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
@@ -2405,6 +2402,7 @@ test("refresh restores each role, offline drafts, and explicit sign-out still lo
       await p.locator("#email").fill(role + "@demo.isdl");
       await p.locator("#password").fill("Pilot-only-2026!");
       await p.getByRole("button", { name: "Sign in", exact: true }).click();
+      if (role === "owner") await p.locator(".owner-overflow-menu summary").click();
       await p.getByRole("button", { name: "Sign out", exact: true }).waitFor();
       if (role === "bala") {
         await p
@@ -2425,6 +2423,7 @@ test("refresh restores each role, offline drafts, and explicit sign-out still lo
         await p.locator("img.photo").waitFor();
       }
       await p.reload();
+      if (role === "owner") await p.locator(".owner-overflow-menu summary").click();
       await p.getByRole("button", { name: "Sign out", exact: true }).waitFor();
       assert.equal(await p.locator("#login").count(), 0);
       assert.equal(
@@ -2450,6 +2449,7 @@ test("refresh restores each role, offline drafts, and explicit sign-out still lo
         );
         assert.equal(await p.locator("img.photo").count(), 1);
       }
+      if (role === "owner") await p.locator(".owner-overflow-menu summary").click();
       await p.getByRole("button", { name: "Sign out", exact: true }).click();
       await p.getByRole("heading", { name: "Welcome back" }).waitFor();
       assert.equal(

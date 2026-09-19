@@ -3007,7 +3007,7 @@ html { scrollbar-gutter: stable; }
 .owner-mobile .owner-overflow-menu { position:relative; margin-left:auto; }
 .owner-mobile .owner-overflow-menu summary { display:grid; place-items:center; box-sizing:border-box; width:44px; height:44px; min-height:44px; padding:0; list-style:none; color:#006b59; cursor:pointer; }
 .owner-mobile .owner-overflow-menu summary::-webkit-details-marker { display:none; }
-.owner-mobile .owner-overflow-menu summary span { font-size:29px; line-height:1; transform:translateY(-2px); }
+.owner-mobile .owner-overflow-menu summary .md-icon { width:30px; height:30px; stroke-width:2.4; }
 .owner-mobile .owner-overflow-actions { position:absolute; z-index:20; top:48px; right:0; display:grid; min-width:176px; padding:4px 0; background:#fff; border:1px solid #d6e0e3; box-shadow:0 5px 16px rgba(23,57,87,.18); }
 .owner-mobile .owner-overflow-actions button { min-height:44px; padding:10px 14px; border:0; border-radius:0; background:transparent; color:#173957; text-align:left; box-shadow:none; font-size:14px; font-weight:600; }
 .owner-mobile .owner-overflow-actions button:hover { background:#edf3f5; }
@@ -3015,7 +3015,7 @@ html { scrollbar-gutter: stable; }
 .owner-mobile.owner-home > .topbar { height:64px; min-height:64px; padding:10px 0; }
 .owner-mobile.owner-home > #ownerContent { gap:10px; }
 .owner-mobile.owner-home #ownerOverview { gap:10px; }
-.owner-mobile.owner-home .owner-actions button { min-height:72px; padding:8px 3px; gap:5px; }
+.owner-mobile.owner-home .owner-actions button { grid-template-rows:34px 18px; min-height:76px; padding:8px 3px; gap:5px; }
 .owner-mobile.owner-home-hero > .topbar { position:absolute; z-index:5; top:0; right:0; left:0; padding:10px 16px; background:linear-gradient(180deg,rgba(10,38,59,.72),rgba(10,38,59,0)); }
 .owner-mobile.owner-home-hero > .topbar .brand strong,
 .owner-mobile.owner-home-hero > .topbar .owner-overflow-menu summary { color:#fff; }
@@ -3027,10 +3027,8 @@ html { scrollbar-gutter: stable; }
 .owner-mobile.owner-home-hero > .owner-property-rail-section > .owner-property-rail-hint { display:none; }
 .owner-mobile.owner-home-hero > .owner-property-rail-section .owner-property-rail { margin:0; padding:0; }
 .owner-mobile.owner-home-hero > .owner-property-rail-section .owner-property-rail-card { min-height:236px; }
-.owner-mobile.owner-home .owner-health { padding:12px; }
-.owner-mobile.owner-home .owner-health > .eyebrow { margin:0 0 2px; }
-.owner-mobile.owner-home .owner-health > h2 { margin:0 0 8px; font-size:19px; line-height:25px; }
-.owner-mobile.owner-home .owner-health .owner-kpi { margin:8px 0 0; }
+.owner-mobile.owner-home .owner-health { display:grid; gap:8px; padding:0; }
+.owner-mobile.owner-home .owner-health .owner-kpi { margin:0; }
 .owner-mobile.owner-home .owner-kpi .health-summary { grid-template-columns:44px minmax(0,1fr); gap:5px 10px; padding:10px; }
 .owner-mobile.owner-home .health-icon { width:44px; height:44px; }
 .owner-mobile.owner-home .health-icon svg { width:27px; height:27px; }
@@ -3042,6 +3040,11 @@ html { scrollbar-gutter: stable; }
 .owner-mobile.owner-home .health-value.risk-value { font-size:22px; }
 .owner-mobile.owner-home .health-value.health-empty { font-size:18px; }
 .owner-mobile.owner-home .health-main > small { font-size:11px; line-height:15px; }
+.owner-mobile.owner-home .owner-actions .action-icon { display:grid; place-items:center; width:34px; height:34px; border:1px solid rgba(29,67,105,.18); border-radius:50%; background:linear-gradient(145deg,#fff,#d7e7f6); color:#1d4369; box-shadow:0 2px 5px rgba(29,67,105,.16); }
+.owner-mobile.owner-home .owner-actions .action-icon svg { width:21px; height:21px; stroke-width:2.1; }
+.owner-mobile.owner-home .owner-actions button:nth-child(1) .action-icon { color:#087e70; background:linear-gradient(145deg,#fff,#d8f2ed); border-color:#b9ded7; }
+.owner-mobile.owner-home .owner-actions button:nth-child(2) .action-icon { color:#385a91; background:linear-gradient(145deg,#fff,#dce8fa); border-color:#c5d5ed; }
+.owner-mobile.owner-home .owner-actions button:nth-child(3) .action-icon { color:#865b12; background:linear-gradient(145deg,#fff,#f8e8c7); border-color:#ead5a6; }
 .owner-link-row { display:flex; align-items:center; justify-content:space-between; width:100%; gap:12px; padding:12px 0; min-height:56px; border:0; border-top:1px solid #e2e8ea; background:transparent; border-radius:0; box-shadow:none; text-align:left; color:var(--text,#162d3d); }
 .owner-link-row > span:first-child { min-width:0; display:grid; gap:3px; }
 .owner-link-row strong { font-size:14px; line-height:20px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
