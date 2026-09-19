@@ -55,6 +55,16 @@ $$;
     } catch (error) {
       if (!/duplicate column|already exists/i.test(String(error.message))) throw error;
     }
+    await exec(fs.readFileSync("migrations/023.sql", "utf8"));
+    if (postgres) await exec(`
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'guardpro_app') THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON archived_sites TO guardpro_app;
+  END IF;
+END
+$$;
+`);
     if (!postgres || process.env.SEED_DEMO === "true") await seedDemo();
   });
 }

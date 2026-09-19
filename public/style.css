@@ -3098,6 +3098,8 @@ html { scrollbar-gutter: stable; }
 .owner-subscription dt { font-size:12px; color:#586a72; margin-bottom:4px; }
 .owner-subscription dd { margin:0; font-size:14px; }
 .owner-mobile #ownerPropertyEditor:empty { display:none; }
+.owner-remove-property { display:block; width:100%; min-height:44px; margin-top:12px; padding:10px 0; border:0; border-top:1px solid #e2e8ea; background:transparent; color:#8e342d; font-weight:700; }
+.property-remove-dialog p { margin:0 0 24px; color:#526b80; line-height:1.5; }
 .owner-mobile #settings-panel.owner-staff { margin-top:16px; }
 .owner-account .greeting-row h1 { overflow-wrap:anywhere; }
 .owner-health .owner-kpi { margin:16px 0 0; border:1px solid #e3e8e9; padding:0; border-radius:0; background:white; }

@@ -161,7 +161,7 @@ const fail = (m, status = 400) => {
 const requireSite = async (u, s) => {
   if (
     !(await one(
-      "SELECT 1 FROM assignments WHERE user_id=? AND site_id=?",
+      "SELECT 1 FROM assignments a JOIN sites s ON s.id=a.site_id LEFT JOIN archived_sites archived ON archived.site_id=s.id WHERE a.user_id=? AND a.site_id=? AND archived.site_id IS NULL",
       u.id,
       s,
     ))
@@ -176,7 +176,7 @@ const freeTier = async (siteId) => {
 };
 const enforceFreePropertyLimit = async (customerId) => {
   const subscription=await subscriptionForCustomer(customerId);
-  if(subscription.tier==='free' && (await one('SELECT count(*) n FROM sites WHERE customer_id=?',customerId)).n>=1) fail('Free subscription includes one property',403);
+  if(subscription.tier==='free' && (await one('SELECT count(*) n FROM sites s LEFT JOIN archived_sites archived ON archived.site_id=s.id WHERE s.customer_id=? AND archived.site_id IS NULL',customerId)).n>=1) fail('Free subscription includes one property',403);
 };
 const enforceFreeUserLimit = async (siteId) => {
   const {subscription}=await freeTier(siteId);
@@ -413,6 +413,17 @@ app.get('/api/owner-overview/:site', async (req,res) => {
   const input={site,users,supervisors,plans,shifts,events:events.map(e=>({...e,payload:JSON.parse(e.payload)})),incidents,checkpoints,locations,reviews,resolutions};
   res.json({...ownerOverview({...input,ownerSupervision:Boolean(ownerSupervision)}),subscription:{tier:subscription.tier,propertyLimit:1,userLimit:5},health:ownerHealth({...input,classifications:await scoped('incident_classifications')})});
 });
+post('/api/owner-properties/:site/archive',async(req,res)=>{
+  if(req.user.role!=='owner') fail('Owner only',403);
+  await requireSite(req.user,req.params.site);
+  const site=await one('SELECT id,customer_id,name FROM sites WHERE id=?',req.params.site);
+  if(await one('SELECT id FROM shifts WHERE site_id=? AND ended_at IS NULL',site.id)) fail('End active shifts before removing this property',409);
+  await run('INSERT INTO archived_sites(site_id,owner_id,customer_id,archived_at) VALUES(?,?,?,?)',site.id,req.user.id,site.customer_id,now());
+  await run('DELETE FROM owner_supervision WHERE site_id=?',site.id);
+  await run('DELETE FROM assignments WHERE site_id=?',site.id);
+  await audit(req.user,'property.archived',{site:site.id,name:site.name,customer_id:site.customer_id});
+  res.json({ok:true});
+});
 post("/api/owner-vault-recovery", async (req, res) => {
   if (req.user.role !== "owner") fail("Owner only", 403);
   const vaultAccount = await rotateOwnerVault(req.user.id);
@@ -498,7 +509,7 @@ app.get("/api/state", async (req, res) => {
     ownerSupervision,
   ] = await Promise.all([
     all(
-      "SELECT s.* FROM sites s JOIN assignments a ON a.site_id=s.id WHERE a.user_id=?",
+      "SELECT s.* FROM sites s JOIN assignments a ON a.site_id=s.id LEFT JOIN archived_sites archived ON archived.site_id=s.id WHERE a.user_id=? AND archived.site_id IS NULL",
       u.id,
     ),
     Promise.all([
@@ -1742,11 +1753,12 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
     fail("Only guards and supervisors can be managed here", 403);
   if (b.kind === "additional_site") {
     const property=propertyInput(b);
-    let customer = await one(
-      "SELECT customer_id FROM sites WHERE id=?",
-      b.site_id,
-    );
-    await requireSite(req.user, b.site_id);
+    let customer;
+    if(b.site_id) {
+      await requireSite(req.user, b.site_id);
+      customer=await one("SELECT customer_id FROM sites WHERE id=?",b.site_id);
+    } else customer=await one('SELECT customer_id FROM archived_sites WHERE owner_id=? ORDER BY archived_at DESC LIMIT 1',req.user.id);
+    if(!customer) fail('No previous property record is available for this owner',403);
     await enforceFreePropertyLimit(customer.customer_id);
     let sid = id();
     await run(

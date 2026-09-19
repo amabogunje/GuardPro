@@ -37,7 +37,21 @@ function ownerPropertyRail({sites,propertyLocations,selectedSiteId,esc}) {
     return `<button type="button" class="owner-property-rail-card${selected?' selected':''}" data-owner-site="${esc(entry.id)}" aria-pressed="${selected}"><img src="${type.image}" alt="${esc(type.label)}"><span class="owner-property-rail-copy"><small>${esc(type.label)}</small><strong>${esc(entry.name)}</strong><span>${location?.address?esc(location.address):'Location setup pending'}</span></span></button>`;
   }).join('')}</div><p class="owner-property-rail-hint">Swipe to view another property. Tap one to open it.</p></section>`;
 }
-export function ownerPage(root,{page,site,user,state,api,esc,icon,brand,siteSelect,selectSite,done,navigate,selectedProblemId}) {
+function confirmPropertyRemoval({site,api,done,esc}) {
+  const dialog=document.createElement('dialog');
+  dialog.className='confirmation-dialog property-remove-dialog';
+  dialog.setAttribute('aria-labelledby','removePropertyTitle');
+  dialog.innerHTML=`<h2 id="removePropertyTitle">Remove ${esc(site.name)}?</h2><p>This stops Guard Patrol activity at this property. Past records stay retained, but guards and supervisors will no longer have access to it.</p><div class="confirmation-actions"><button type="button" data-action="cancel">Cancel</button><button type="button" data-action="remove" class="end-confirm">Remove property</button></div><p role="status"></p>`;
+  document.body.append(dialog);dialog.showModal();
+  dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+  dialog.querySelector('[data-action="cancel"]').onclick=()=>dialog.close();
+  dialog.querySelector('[data-action="remove"]').onclick=async event=>{
+    event.currentTarget.disabled=true;
+    try {await api('/api/owner-properties/'+encodeURIComponent(site.id)+'/archive',{});dialog.close();await done();}
+    catch(error){dialog.querySelector('[role="status"]').textContent=error.message;event.currentTarget.disabled=false;}
+  };
+}
+export function ownerPage(root,{page,site,user,state,api,esc,icon,brand,siteSelect,selectSite,done,archived,navigate,selectedProblemId}) {
   closeHealthInfo();
   const titles={home:`Hello, ${user.name}.`,property:'Property',supervisors:'User',subscription:'Subscription',ownerActivity:'Activity evidence',ownerProblems:selectedProblemId?'Problem details':'Reported problems'};
   const ownerWidePage=['property','supervisors','subscription'].includes(page);
@@ -84,11 +98,12 @@ api('/api/owner-evidence/'+encodeURIComponent(site.id)+'?kind=activity').then(d=
     api('/api/owner-evidence/'+encodeURIComponent(site.id)+'?kind=problems&id='+encodeURIComponent(selectedProblemId)).then(d=>{if(!host.isConnected)return;const p=d.problem,classification=p.classification?`${p.classification.category}${p.classification.priority?' · '+p.classification.priority:''}`:'Not classified';host.innerHTML=`<section class="card owner-problem-detail"><button class="back" data-page="ownerProblems">Reported problems</button><p class="eyebrow">Problem details</p><p class="muted">Received ${esc(stamp(p.receivedAt))}<br>Reported by ${esc(p.reportedBy)}</p><p class="owner-problem-copy">${esc(p.report||'Voice report — listen to the recording.')}</p><p><strong>Status:</strong> ${esc(p.status)}<br><strong>Classification:</strong> ${esc(classification)}</p>${p.media.length?`<div class="owner-media">${p.media.map(m=>`<button data-action="media" data-id="${esc(m.id)}" data-mime="${esc(m.mime)}">${m.mime.startsWith('audio/')?'Play recording':'View photo'}</button>`).join('')}</div>`:'<p class="muted">No supporting media attached.</p>'}${p.resolution?`<section class="owner-resolution"><h2>Resolution details</h2><p>Resolved ${esc(stamp(p.resolution.at))} by ${esc(p.resolution.actor_name)}</p>${p.resolution.note?`<p>${esc(p.resolution.note)}</p>`:''}</section>`:''}<p class="muted">This is read-only evidence. Switch to supervisor view only if you need to manage the problem.</p></section>`;}).catch(e=>{if(host.isConnected)host.innerHTML=`<section class="card"><h2>Problem details unavailable</h2><p>${esc(e.message)}</p></section>`;});
   } else if(page==='property') {
     const reference=[...(state.propertyLocations||[])].filter(p=>p.site_id===site?.id).sort((a,b)=>b.created_at.localeCompare(a.created_at))[0];
-    host.innerHTML=`${site?`<section class="card"><h2>${esc(site.name)}</h2><p>${reference?esc(reference.address):'Add the full address and confirm the map position.'}</p>${reference?`<p class="muted">Allowed area: ${reference.radius_m} metres from the confirmed position.</p>`:''}<button id="ownerEditProperty" class="${reference?'':'primary'}">${reference?'Edit property location':'Set property location'}</button></section>`:''}<div id="ownerPropertyEditor"></div>${site?'<button id="ownerAddProperty" class="owner-text-action">+ Add another property</button>':''}`;
+    host.innerHTML=`${site?`<section class="card"><h2>${esc(site.name)}</h2><p>${reference?esc(reference.address):'Add the full address and confirm the map position.'}</p>${reference?`<p class="muted">Allowed area: ${reference.radius_m} metres from the confirmed position.</p>`:''}<button id="ownerEditProperty" class="${reference?'':'primary'}">${reference?'Edit property location':'Set property location'}</button><button id="ownerRemoveProperty" class="owner-remove-property">Remove property</button></section>`:''}<div id="ownerPropertyEditor"></div>${site?'<button id="ownerAddProperty" class="owner-text-action">+ Add another property</button>':''}`;
     const editor=host.querySelector('#ownerPropertyEditor');
     const open=create=>{propertyEditor(editor,{site:site||{},state,api,esc,done,create});editor.querySelector('textarea')?.focus();};
     host.querySelector('#ownerEditProperty')?.addEventListener('click',()=>open(false));
     host.querySelector('#ownerAddProperty')?.addEventListener('click',()=>open(true));
+    host.querySelector('#ownerRemoveProperty')?.addEventListener('click',()=>confirmPropertyRemoval({site,api,done:archived||done,esc}));
     if(!site)open(true);
   } else if(page==='supervisors') {
     host.innerHTML='<div id="ownerSupervision"><p role="status">Loading supervision settings…</p></div><div id="settings-panel" class="owner-staff"><p role="status">Loading users…</p></div>';

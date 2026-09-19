@@ -14,7 +14,7 @@ function renderOwnerPage() {
   ownerPage(root,{page,site:site(),user,state,api,esc,icon,brand,siteSelect,selectSite:nextSiteId=>{
     if(!state.sites.some(entry=>entry.id===nextSiteId))return;
     selectedChat=null;siteId=nextSiteId;roundId=null;render();
-  },selectedProblemId:ownerEvidenceProblemId,done:async()=>{await refresh();render();toast('Saved.');},supervise:()=>setOwnerMode(true)});
+  },selectedProblemId:ownerEvidenceProblemId,done:async()=>{await refresh();render();toast('Saved.');},archived:async()=>{siteId=null;page='home';await refresh();render();toast('Property removed. Add a property when you are ready.');},supervise:()=>setOwnerMode(true)});
 }
 import { locationGroups, gpsReview } from './gps-review.js';
 import { propertyEditor } from './property-location.js';
