@@ -132,7 +132,7 @@ app.use((req, res, next) => {
 app.get("/api/health", async (_req, res, next) => {
   try {
     await one("SELECT 1 AS ready");
-    console.info("Guard Patrol health check", { schema });
+    console.error(`Guard Patrol configured database schema: ${schema}`);
     res.json({ status: "ok" });
   } catch (error) {
     next(error);
