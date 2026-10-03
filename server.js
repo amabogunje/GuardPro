@@ -9,7 +9,7 @@ import { settingsRoutes } from "./settings.js";
 import { phoneNumber, loginId } from "./public/login-id.js";
 import { assessLocation, propertyInput } from './location-checks.js';
 import { propertyLocationInsertSql } from "./property-location-write.js";
-import { addressQuery, geocodeAddress } from './geocoding.js';
+
 import { transcribeAndDraft, draftSummary } from "./ai.js";
 import express from "express";
 import multer from "multer";
@@ -210,18 +210,7 @@ async function rate(key, duration, maximum) {
   limit.set(key, entry);
   return entry.n <= maximum;
 }
-async function addressLookup(req,res,next) {
-  try {
-    if(req.user ? req.user.role!=='owner' : !pilotSupportContact) fail('Address search is unavailable here',403);
-    const address=addressQuery(req.body?.address);
-    if(!process.env.GEOAPIFY_API_KEY?.trim()) fail('Address search is not available yet. Use your current position or enter coordinates.',503);
-    const identity=req.user?'user:'+req.user.id:'ip:'+req.ip;
-    if(!(await rate('geocode:'+identity,600000,20))) fail('Too many address searches. Please wait ten minutes and try again.',429);
-    if(!(await rate('geocode:daily',86400000,1000))) fail('Address search has reached its daily limit. Use your current position or try tomorrow.',429);
-    // Do not use post(): provider I/O must not hold the database write lock.
-    res.json({results:await geocodeAddress(address)});
-  }catch(error){next(error);}
-}
+function addressLookup(req,res) { res.status(410).json({error:'Address search has been retired. Use my position while at the property.'}); }
 app.post('/api/public/geocode',addressLookup);
 async function issueSession(res, u) {
   const token = randomBytes(32).toString("hex");

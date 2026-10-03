@@ -1,24 +1,25 @@
-import {addressLookup,positionPreview} from './address-lookup.js';
+import {positionPreview} from './position-preview.js';
 import {defaultPropertyType,propertyType,propertyTypes} from './property-types.js';
 
 export function propertyEditor(host,{site,state,api,esc,done,create=false}) {
   const reference=create?null:[...(state.propertyLocations||[])].filter(p=>p.site_id===site.id).sort((a,b)=>b.created_at.localeCompare(a.created_at))[0];
   const selectedType=propertyType(reference?.property_type||defaultPropertyType).id;
-  host.innerHTML=`<section class="card property-editor"><h2>${create?'Add property':'Property address & location'}</h2><form>${create?'<label>Property name<input name="name" required maxlength="120"></label>':''}<label>Property type<select name="property_type" required>${propertyTypes.map(type=>`<option value="${type.id}"${type.id===selectedType?' selected':''}>${type.label}</option>`).join('')}</select></label><small>Choose the fixed dashboard image that best represents this property.</small><label>Full address<textarea name="address" required minlength="8" maxlength="500">${esc(reference?.address||'')}</textarea></label><div class="settings-time-row"><label>Latitude<input name="latitude" type="number" required step="any" min="-90" max="90" value="${reference?.latitude??''}"></label><label>Longitude<input name="longitude" type="number" required step="any" min="-180" max="180" value="${reference?.longitude??''}"></label></div><button type="button" id="property-here">Use my position</button><small>Use this only when you are at the property.</small><label>Allowed radius (metres)<input name="radius_m" type="number" required min="20" max="5000" value="${reference?.radius_m??100}"></label><div id="property-map"></div><label class="property-confirm"><input name="confirmed" type="checkbox" required value="true">I confirm the address, map position and allowed area.</label><button class="primary">${create?'Create property':'Save property location'}</button><p role="status"></p></form></section>`;
+  host.innerHTML=`<section class="card property-editor"><h2>${create?'Add property':'Property address & location'}</h2><form>${create?'<label>Property name<input name="name" required maxlength="120"></label>':''}<label>Property type<select name="property_type" required>${propertyTypes.map(type=>`<option value="${type.id}"${type.id===selectedType?' selected':''}>${type.label}</option>`).join('')}</select></label><small>Choose the fixed dashboard image that best represents this property.</small><label>Full address<textarea name="address" required minlength="8" maxlength="500">${esc(reference?.address||'')}</textarea></label><small>The address describes the property; it does not set its map position.</small><div class="settings-time-row"><label>Latitude<input name="latitude" type="number" required step="any" min="-90" max="90" value="${reference?.latitude??''}"></label><label>Longitude<input name="longitude" type="number" required step="any" min="-180" max="180" value="${reference?.longitude??''}"></label></div><button type="button" id="property-here">Use my position</button><small>Use this only when you are at the property.</small><label>Allowed radius (metres)<input name="radius_m" type="number" required min="20" max="5000" value="${reference?.radius_m??100}"></label><div id="property-map"></div><label class="property-confirm"><input name="confirmed" type="checkbox" required value="true">I confirm the address, map position and allowed area.</label><button class="primary">${create?'Create property':'Save property location'}</button><p role="status"></p></form></section>`;
   const form=host.querySelector('form'),map=host.querySelector('#property-map'),status=form.querySelector('[role="status"]');
   const update=()=>{
     form.elements.confirmed.checked=false;
     positionPreview(map,form);
   };
   for(const name of ['address','latitude','longitude','radius_m'])form.elements[name].addEventListener('change',update);
-  const lookup=addressLookup(form,{api,changed:update});
+  let locationVersion=0;
+  for(const name of ['latitude','longitude'])form.elements[name].addEventListener('input',()=>{locationVersion++;update();});
   const locate=host.querySelector('#property-here');
   const locationStatus=document.createElement('p');
   locationStatus.setAttribute('role','status');
   locate.after(locationStatus);
   locate.onclick=async()=>{
-    const locationVersion=lookup.invalidate();
-    if(!navigator.geolocation){locationStatus.textContent='Location is unavailable in this browser. Find your address or enter coordinates.';return;}
+    const requestVersion=++locationVersion;
+    if(!navigator.geolocation){locationStatus.textContent='Location is unavailable in this browser. Enable device location and try again.';return;}
     locate.disabled=true;locate.textContent='Finding your position…';
     locationStatus.textContent='Waiting for your device’s location. Allow location access if asked.';
     const position=high=>new Promise((resolve,reject)=>{
@@ -32,13 +33,13 @@ export function propertyEditor(host,{site,state,api,esc,done,create=false}) {
         locationStatus.textContent='Precise location unavailable. Trying your device’s approximate position…';
         p=await position(false);
       }
-      if(!lookup.current(locationVersion)||!form.isConnected)return;
+      if(requestVersion!==locationVersion||!form.isConnected)return;
       form.elements.latitude.value=p.coords.latitude;
       form.elements.longitude.value=p.coords.longitude;
       update();
       locationStatus.textContent=`Coordinates updated (accuracy approximately ${Math.round(p.coords.accuracy)} metres). Check the map and enter the full street address above; your device does not supply a street address.`;
     }catch(error){
-      locationStatus.textContent=error.code===1?'Location access was denied. Enable location access in your browser and device settings, then try again, or find your address.':error.code===3?'Your device did not return a location in time. Try again in Chrome or Edge, or find your address.':'Your device could not determine its location, even with permission. Try Chrome or Edge with device location enabled, or find your address.';
+      locationStatus.textContent=error.code===1?'Location access was denied. Enable location access in your browser and device settings, then try again.':error.code===3?'Your device did not return a location in time. Try again in Chrome or Edge.':'Your device could not determine its location, even with permission. Try Chrome or Edge with device location enabled.';
     }finally{locate.disabled=false;locate.textContent='Use my position';}
   };
   form.onsubmit=async e=>{

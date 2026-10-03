@@ -6,6 +6,8 @@ It is an operating procedure, not a statement of legal compliance or a promise o
 
 ## Address lookup activation — R-039
 
+**Retired by product-owner decision on 3 October 2026.** Address is descriptive; use device position at the property. Do not activate the historical provider workflow below. Movable pin remains deferred.
+
 The application uses Geoapify forward geocoding for **Find address** in signup and property setup. Device GPS remains independent of this service. As of 2026-10-03, the supplied key is configured in ignored local `.env.local` and a live public Lagos landmark lookup passed. Hosted activation and actual home-address coverage checks are outstanding.
 
 1. Create a free account/project at [Geoapify MyProjects](https://myprojects.geoapify.com/). Do not purchase a plan automatically. Its [published pricing](https://www.geoapify.com/pricing/) permits commercial free-plan use within quota with attribution; verify current terms/quota when activating.
