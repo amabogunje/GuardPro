@@ -1,0 +1,14 @@
+✔ retired search endpoints reject requests even with a provider key configured (516.544ms)
+✔ signup stores a descriptive address independently from GPS position (2166.1798ms)
+✔ GPS classification preserves accuracy uncertainty (1351.8123ms)
+✔ owner-only address setup and durable capture-time assessments (97.8039ms)
+✔ supervisor reviews grouped GPS flags without changing problems (5711.6563ms)
+✔ owner property form saves an address and confirmed map position (4893.2925ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15903.2618

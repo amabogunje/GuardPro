@@ -56,7 +56,7 @@ test('supervisor reviews grouped GPS flags without changing problems',async()=>{
 test('owner property form saves an address and confirmed map position',async()=>{
  const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
  try {const p=await browser.newPage();await p.route('https://www.openstreetmap.org/**',route=>route.fulfill({contentType:'text/html',body:'Map test fixture'}));
- await p.goto(base+'/app');await p.locator('#email').fill('owner@demo.isdl');await p.locator('#password').fill('Pilot-only-2026!');await p.getByRole('button',{name:'Sign in',exact:true}).click();await p.getByRole('button',{name:'Manage Property',exact:true}).click();await p.getByRole('button',{name:'Edit property location',exact:true}).click();
+ await p.route('https://tile.openstreetmap.org/**',route=>route.abort());await p.goto(base+'/app');await p.locator('#email').fill('owner@demo.isdl');await p.locator('#password').fill('Pilot-only-2026!');await p.getByRole('button',{name:'Sign in',exact:true}).click();await p.getByRole('button',{name:'Manage Property',exact:true}).click();await p.getByRole('button',{name:'Edit property location',exact:true}).click();
  const form=p.locator('.property-editor form').first();
  assert.equal(await form.getByRole('button',{name:'Find address',exact:true}).count(),0);
  await p.evaluate(()=>{navigator.geolocation.getCurrentPosition=(success)=>setTimeout(()=>success({coords:{latitude:6.62,longitude:3.36,accuracy:20}}),100);});
@@ -72,8 +72,19 @@ test('owner property form saves an address and confirmed map position',async()=>
  await form.getByRole('button',{name:'Use my position',exact:true}).click();
  await form.getByText(/accuracy approximately 200 metres/).waitFor();
  assert.equal(await form.locator('[name="latitude"]').inputValue(),'6.63');
- await form.locator('[name="address"]').fill('3 Owner Test Close, Fictional Estate, Lagos');assert.equal(await form.locator('[name="longitude"]').inputValue(),'3.37');await form.locator('[name="confirmed"]').check();await form.getByRole('button',{name:'Save property location'}).click();
+ await form.locator('[name="address"]').fill('3 Owner Test Close, Fictional Estate, Lagos');assert.equal(await form.locator('[name="longitude"]').inputValue(),'3.37');await form.locator('[name="confirmed"]').check();
+ await p.evaluate(()=>{navigator.geolocation.getCurrentPosition=success=>{window.finishGPS=()=>success({coords:{latitude:7,longitude:4,accuracy:20}});};});
+ await form.getByRole('button',{name:'Use my position',exact:true}).click();
+ await form.locator('.property-map-canvas').scrollIntoViewIfNeeded();
+ const canvas=await form.locator('.property-map-canvas').boundingBox();
+ await p.mouse.click(canvas.x+canvas.width*0.7,canvas.y+canvas.height*0.6);
+ assert.equal(await form.locator('[name="confirmed"]').isChecked(),false);
+ const finalLat=Number(await form.locator('[name="latitude"]').inputValue()),finalLon=Number(await form.locator('[name="longitude"]').inputValue());
+ assert.notEqual(finalLon,3.37);
+ await p.evaluate(()=>window.finishGPS());await form.getByRole('button',{name:'Use my position',exact:true}).waitFor();assert.equal(Number(await form.locator('[name="latitude"]').inputValue()),finalLat);
+ await p.screenshot({path:path.join(data,'interactive-pin.png'),fullPage:true});
+ await form.locator('[name="confirmed"]').check();await form.getByRole('button',{name:'Save property location'}).click();
  await p.getByText('3 Owner Test Close, Fictional Estate, Lagos',{exact:true}).waitFor();
- assert.equal((await req('/api/state',owner)).propertyLocations.at(-1).address,'3 Owner Test Close, Fictional Estate, Lagos');
+ const saved=(await req('/api/state',owner)).propertyLocations.at(-1);assert.equal(saved.address,'3 Owner Test Close, Fictional Estate, Lagos');assert.equal(saved.latitude,finalLat);assert.equal(saved.longitude,finalLon);
  } finally {await browser.close();}
 });

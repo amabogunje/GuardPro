@@ -4,7 +4,7 @@ This release is for the product owner's friends-and-family beta. Sign up normall
 
 ## First session
 
-1. The owner creates an account and confirms the property address and map position. Enter the address as descriptive information. Use **Use my position** while at the property; confirm the actual map position before saving. Address search is retired; a movable pin is deferred. Use **Other** when none of the named property types fits.
+1. The owner creates an account and confirms the property address and map position. Enter the address as descriptive information. Use **Use my position** while at the property; confirm the actual map position before saving. Drag the pin or tap the map to refine the position, then confirm and save. You can also pan/zoom and choose Place pin at map centre. Address search is retired. Use **Other** when none of the named property types fits.
 2. Choose a supervisor or supervise the property yourself. Set up shifts and checkpoints, then add named guard accounts.
 3. Each guard/supervisor chooses a private password at first sign-in and after a manager reset. Owners can reset their team; supervisors can reset their local guards. Password actions are audited. Owner self-recovery uses email.
 4. On each actual phone, test sign-in, permissions, a shift, a patrol, a typed/photo/voice report and sign-out. The supervisor confirms the evidence arrived. Use clearly labelled test reports for this exercise.

@@ -21,6 +21,7 @@ test('signup stores a descriptive address independently from GPS position',async
   try {
     const page=await browser.newPage({viewport:{width:390,height:844}});
     const errors=[];page.on('pageerror',error=>errors.push(error.message));
+    await page.route('https://tile.openstreetmap.org/**',route=>route.abort());
     await page.route('https://www.openstreetmap.org/**',route=>route.fulfill({contentType:'text/html',body:'Map preview fixture'}));
     await page.goto(base+'/app?signup=1');
     await page.locator('[name="first_name"]').fill('Address');await page.locator('[name="last_name"]').fill('Owner');
@@ -36,13 +37,19 @@ test('signup stores a descriptive address independently from GPS position',async
     assert.deepEqual(errors,[]);
 
     assert.equal(await page.locator('#signupLatitude').inputValue(),'6.601');assert.equal(await page.locator('#signupLongitude').inputValue(),'3.351');
-    assert.match(await page.locator('#signup-map iframe').getAttribute('src'),/marker=6.601,3.351/);
+    await page.locator('#signup-map .leaflet-marker-icon').waitFor();
+    await page.locator('[name="confirmed"]').check();
+    const pin=await page.locator('#signup-map .leaflet-marker-icon').boundingBox();
+    await page.mouse.move(pin.x+18,pin.y+20);await page.mouse.down();await page.mouse.move(pin.x+65,pin.y+45,{steps:8});await page.mouse.up();
+    assert.equal(await page.locator('[name="confirmed"]').isChecked(),false);
+    const finalLat=Number(await page.locator('#signupLatitude').inputValue()),finalLon=Number(await page.locator('#signupLongitude').inputValue());
+    assert.notEqual(finalLon,3.351);
     await page.locator('[name="confirmed"]').check();
     const submitted=page.waitForResponse(response=>response.url().endsWith('/api/signup'));
     await page.getByRole('button',{name:'Create account',exact:true}).click();
     const response=await submitted;assert.equal(response.status(),200);
     const auth=await response.json();
     const state=await page.evaluate(async auth=>fetch('/api/state',{headers:{'X-Session-Proof':auth.proof}}).then(r=>r.json()),auth);
-    assert.equal(state.propertyLocations.at(-1).address,'Different written address, Lagos, Nigeria');assert.equal(state.propertyLocations.at(-1).latitude,6.601);assert.equal(state.propertyLocations.at(-1).longitude,3.351);
+    assert.equal(state.propertyLocations.at(-1).address,'Different written address, Lagos, Nigeria');assert.equal(state.propertyLocations.at(-1).latitude,finalLat);assert.equal(state.propertyLocations.at(-1).longitude,finalLon);
   }finally{await browser.close();}
 });

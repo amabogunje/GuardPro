@@ -17,6 +17,7 @@ export function propertyEditor(host,{site,state,api,esc,done,create=false}) {
   const locationStatus=document.createElement('p');
   locationStatus.setAttribute('role','status');
   locate.after(locationStatus);
+  for(const name of ['latitude','longitude'])form.elements[name].addEventListener('input',()=>{locationStatus.textContent='Position adjusted. Check the pin and confirm before saving.';});
   locate.onclick=async()=>{
     const requestVersion=++locationVersion;
     if(!navigator.geolocation){locationStatus.textContent='Location is unavailable in this browser. Enable device location and try again.';return;}

@@ -1,0 +1,27 @@
+(node:49212) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ owner mobile setup, supervisor creation and honest subscription screen (7680.8357ms)
+✔ owner KPIs are display-only and supervisor mode persists without changing identity (7336.4081ms)
+✔ owner dashboard stays compact on mobile without operational evidence links (2331.0026ms)
+✖ owner can swipe through and select multiple property dashboards (32988.6507ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 3
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 53261.4793
+
+✖ failing tests:
+
+test at tests\owner-ui.test.js:59:1
+✖ owner can swipe through and select multiple property dashboards (32988.6507ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for locator('.property-editor form').getByText(/Marker: 6.61, 3.36/) to be visible[22m
+
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:65:458) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for locator('.property-editor form').getByText(/Marker: 6.61, 3.36/) to be visible" ]
+  }

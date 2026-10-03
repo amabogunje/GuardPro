@@ -1,0 +1,67 @@
+✔ GPS classification preserves accuracy uncertainty (1140.988ms)
+✔ owner-only address setup and durable capture-time assessments (113.4355ms)
+✔ supervisor reviews grouped GPS flags without changing problems (5316.7861ms)
+✔ owner property form saves an address and confirmed map position (5575.7191ms)
+(node:18040) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✖ owner mobile setup, supervisor creation and honest subscription screen (34686.0542ms)
+✖ owner KPIs are display-only and supervisor mode persists without changing identity (704.8025ms)
+✖ owner dashboard stays compact on mobile without operational evidence links (595.5948ms)
+✖ owner can swipe through and select multiple property dashboards (639.441ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 4
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 51754.7755
+
+✖ failing tests:
+
+test at tests\owner-ui.test.js:28:1
+✖ owner mobile setup, supervisor creation and honest subscription screen (34686.0542ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for getByText('10 Fictional Pilot Close, Ikeja, Lagos', { exact: true }) to be visible[22m
+
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:35:158) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for getByText('10 Fictional Pilot Close, Ikeja, Lagos', { exact: true }) to be visible" ]
+  }
+
+test at tests\owner-ui.test.js:42:1
+✖ owner KPIs are display-only and supervisor mode persists without changing identity (704.8025ms)
+  page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3114/app
+  Call log:
+  [2m  - navigating to "http://127.0.0.1:3114/app", waiting until "load"[22m
+
+      at signedIn (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:21:10)
+      at async TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:43:20) {
+    name: 'Error',
+    log: [ '  - navigating to "http://127.0.0.1:3114/app", waiting until "load"' ]
+  }
+
+test at tests\owner-ui.test.js:53:1
+✖ owner dashboard stays compact on mobile without operational evidence links (595.5948ms)
+  page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3114/app
+  Call log:
+  [2m  - navigating to "http://127.0.0.1:3114/app", waiting until "load"[22m
+
+      at signedIn (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:21:10)
+      at async TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:54:20) {
+    name: 'Error',
+    log: [ '  - navigating to "http://127.0.0.1:3114/app", waiting until "load"' ]
+  }
+
+test at tests\owner-ui.test.js:59:1
+✖ owner can swipe through and select multiple property dashboards (639.441ms)
+  page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3114/app
+  Call log:
+  [2m  - navigating to "http://127.0.0.1:3114/app", waiting until "load"[22m
+
+      at signedIn (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:21:10)
+      at async TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:62:20) {
+    name: 'Error',
+    log: [ '  - navigating to "http://127.0.0.1:3114/app", waiting until "load"' ]
+  }

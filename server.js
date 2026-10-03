@@ -120,7 +120,7 @@ app.use((req, res, next) => {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
     "Content-Security-Policy":
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; frame-src 'self' https://www.openstreetmap.org; object-src 'none'; frame-ancestors 'none'",
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; media-src 'self' blob:; connect-src 'self'; frame-src 'self' https://www.openstreetmap.org; object-src 'none'; frame-ancestors 'none'",
   });
   if (req.path.startsWith("/api") || req.path.startsWith("/media"))
     res.set("Cache-Control", "no-store");

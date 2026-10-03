@@ -1,0 +1,31 @@
+✔ GPS classification preserves accuracy uncertainty (1399.5725ms)
+✔ owner-only address setup and durable capture-time assessments (89.5362ms)
+✔ supervisor reviews grouped GPS flags without changing problems (5616.8893ms)
+✖ owner property form saves an address and confirmed map position (4716.0511ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 3
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12750.7583
+
+✖ failing tests:
+
+test at tests\gps.test.js:56:1
+✖ owner property form saves an address and confirmed map position (4716.0511ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  true !== false
+
+      at TestContext.<anonymous> (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/tests/gps.test.js:80:9)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

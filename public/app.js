@@ -314,7 +314,7 @@ function login() {
   const propertyForm=root.querySelector('#signupProperty');
   if(propertyForm) {
     const update=()=>{positionPreview(root.querySelector('#signup-map'),propertyForm);captureSignupDraft(propertyForm);};
-    for(const name of ['address','latitude','longitude'])propertyForm.elements[name].addEventListener('input',()=>{if(name!=='address')signupLocationVersion++;propertyForm.elements.confirmed.checked=false;update();});
+    for(const name of ['address','latitude','longitude'])propertyForm.elements[name].addEventListener('input',()=>{if(name!=='address'){signupLocationVersion++;root.querySelector('#signupLocationStatus').textContent='Position adjusted. Check the pin and confirm before saving.';}propertyForm.elements.confirmed.checked=false;update();});
     propertyForm.elements.radius_m.addEventListener('input',()=>{propertyForm.elements.confirmed.checked=false;update();});
     update();
   }
