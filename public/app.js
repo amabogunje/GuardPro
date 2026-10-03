@@ -1,5 +1,9 @@
 let overviewDate = null;
 import { ownerPage } from './owner.js';
+import { passwordChangeScreen } from './password-change.js';
+import { propertyTypes } from './property-types.js';
+import { addressLookup, positionPreview } from './address-lookup.js';
+let signupAddressLookup;
 const ownerSupervisionEnabled = () => user?.role === 'owner' && Boolean(state?.ownerSupervision?.some(entry=>entry.site_id===siteId));
 const ownerSupervisorView = () => ownerSupervisionEnabled() && Boolean(vault?.ownerSupervisorView);
 const supervisorView = () => user?.role === 'supervisor' || ownerSupervisorView();
@@ -14,7 +18,7 @@ function renderOwnerPage() {
   ownerPage(root,{page,site:site(),user,state,api,esc,icon,brand,siteSelect,selectSite:nextSiteId=>{
     if(!state.sites.some(entry=>entry.id===nextSiteId))return;
     selectedChat=null;siteId=nextSiteId;roundId=null;render();
-  },selectedProblemId:ownerEvidenceProblemId,done:async()=>{await refresh();render();toast('Saved.');},firstPropertyCreated:async()=>{await refresh();page='supervisors';render();toast('Property added. Choose a supervisor.');},supervisionComplete:async()=>{await refresh();page='home';render();toast('Supervisor chosen.');},archived:async()=>{siteId=null;page='home';await refresh();render();toast('Property removed. Add a property when you are ready.');},supervise:()=>setOwnerMode(true)});
+  },selectedProblemId:ownerEvidenceProblemId,done:async()=>{await refresh();render();toast('Saved.');},firstPropertyCreated:async result=>{await refresh();if(state.sites.some(entry=>entry.id===result?.siteId))siteId=result.siteId;page='supervisors';render();toast('Property added. Choose a supervisor.');},supervisionComplete:async()=>{await refresh();page='home';render();toast('Supervisor chosen.');},archived:async()=>{siteId=null;page='home';await refresh();render();toast('Property removed. Add a property when you are ready.');},supervise:()=>setOwnerMode(true)});
 }
 import { locationGroups, gpsReview } from './gps-review.js';
 import { propertyEditor } from './property-location.js';
@@ -303,16 +307,24 @@ function login() {
   const signup = signupStep === 1
     ? `<div class="card signup-card"><span class="eyebrow">Set up Guard Patrol</span><p class="signup-step">Step 1 of 2</p><h1>Create your account</h1><p class="muted">Create the owner account for your property. You can add a supervisor after setup.</p><form id="signupAccount"><label class="label" for="signupFirstName">First name</label><input id="signupFirstName" name="first_name" autocomplete="given-name" maxlength="60" required value="${esc(signupDraft.first_name || "")}"><label class="label" for="signupLastName">Last name</label><input id="signupLastName" name="last_name" autocomplete="family-name" maxlength="60" required value="${esc(signupDraft.last_name || "")}"><label class="label" for="signupEmail">Email address</label><input id="signupEmail" name="email" type="email" autocomplete="email" required value="${esc(signupDraft.email || "")}"><p class="field-help">Owner accounts use an email address to sign in. Guards and supervisors may use email or a WhatsApp number.</p><label class="label" for="signupPassword">Password</label><input id="signupPassword" name="password" type="password" autocomplete="new-password" minlength="12" required><p class="field-help">Use at least 12 characters.</p><label class="label" for="signupPasswordConfirm">Confirm password</label><input id="signupPasswordConfirm" name="password_confirm" type="password" autocomplete="new-password" minlength="12" required><input type="hidden" name="notice_version" value="${esc(signupDraft.notice_version || customerNoticeVersion)}"><p class="field-help">Read the <a href="/customer-notice.html" target="_blank" rel="noopener">customer notice</a> before continuing.</p><label class="signup-confirm"><input type="checkbox" name="notice_accepted" required ${signupDraft.notice_accepted ? "checked" : ""}><span>I have read and accept the customer notice.</span></label><button class="primary wide">Continue</button><button type="button" class="text-action wide" data-action="cancelSignup">Back to sign in</button></form></div>`
     : signupStep === 2
-      ? `<div class="card signup-card"><span class="eyebrow">Set up Guard Patrol</span><p class="signup-step">Step 2 of 2</p><h1>Add your first property</h1><p class="muted">This is where your guards will check in and record patrols.</p><form id="signupProperty"><label class="label" for="signupPropertyName">Property name</label><input id="signupPropertyName" name="property_name" maxlength="120" required value="${esc(signupDraft.property_name || "")}" placeholder="For example, Oak House"><label class="label" for="signupPropertyType">Property type</label><select id="signupPropertyType" name="property_type" required><option value="single_family_home"${(signupDraft.property_type||'single_family_home')==='single_family_home'?' selected':''}>Single-family home</option><option value="multi_use_property"${signupDraft.property_type==='multi_use_property'?' selected':''}>Multi-use property</option><option value="small_business"${signupDraft.property_type==='small_business'?' selected':''}>Small business</option></select><label class="label" for="signupAddress">Full property address</label><textarea id="signupAddress" name="address" maxlength="500" required placeholder="Street, area, city and state">${esc(signupDraft.address || "")}</textarea><div class="location-row"><label class="label" for="signupLatitude">Latitude<input id="signupLatitude" name="latitude" type="number" step="any" required value="${esc(signupDraft.latitude || "")}"></label><label class="label" for="signupLongitude">Longitude<input id="signupLongitude" name="longitude" type="number" step="any" required value="${esc(signupDraft.longitude || "")}"></label></div><button type="button" class="location-action wide" data-action="signupLocation">Use my current position</button><p id="signupLocationStatus" class="field-help">Use this while you are at the property, or enter its coordinates manually.</p><label class="label" for="signupRadius">Allowed check-in area (metres)</label><input id="signupRadius" name="radius_m" type="number" min="20" max="5000" required value="${esc(signupDraft.radius_m || "100")}"><label class="signup-confirm"><input type="checkbox" name="confirmed" required ${signupDraft.confirmed ? "checked" : ""}><span>I confirm this is the correct property location.</span></label><p class="field-help">Location is collected only when guards check in or scan checkpoints on duty. Guard Patrol does not continuously track guards.</p><button class="primary wide">Create account</button><button type="button" class="text-action wide" data-action="signupBack">Back</button></form></div>`
+      ? `<div class="card signup-card"><span class="eyebrow">Set up Guard Patrol</span><p class="signup-step">Step 2 of 2</p><h1>Add your first property</h1><p class="muted">This is where your guards will check in and record patrols.</p><form id="signupProperty"><label class="label" for="signupPropertyName">Property name</label><input id="signupPropertyName" name="property_name" maxlength="120" required value="${esc(signupDraft.property_name || "")}" placeholder="For example, Oak House"><label class="label" for="signupPropertyType">Property type</label><select id="signupPropertyType" name="property_type" required>${propertyTypes.map(type=>`<option value="${type.id}"${(signupDraft.property_type||'single_family_home')===type.id?' selected':''}>${type.label}</option>`).join('')}</select><label class="label" for="signupAddress">Full property address</label><textarea id="signupAddress" name="address" maxlength="500" required placeholder="Street, area, city and state">${esc(signupDraft.address || "")}</textarea><div class="location-row"><label class="label" for="signupLatitude">Latitude<input id="signupLatitude" name="latitude" type="number" step="any" required value="${esc(signupDraft.latitude || "")}"></label><label class="label" for="signupLongitude">Longitude<input id="signupLongitude" name="longitude" type="number" step="any" required value="${esc(signupDraft.longitude || "")}"></label></div><button type="button" class="location-action wide" data-action="signupLocation">Use my current position</button><p id="signupLocationStatus" class="field-help">Use this while you are at the property, or find the address above.</p><label class="label" for="signupRadius">Allowed check-in area (metres)</label><input id="signupRadius" name="radius_m" type="number" min="20" max="5000" required value="${esc(signupDraft.radius_m || "100")}"><div id="signup-map" class="property-map"></div><label class="signup-confirm"><input type="checkbox" name="confirmed" required ${signupDraft.confirmed ? "checked" : ""}><span>I confirm this is the correct property location.</span></label><p class="field-help">Location is collected only when guards check in or scan checkpoints on duty. Guard Patrol does not continuously track guards.</p><button class="primary wide">Create account</button><button type="button" class="text-action wide" data-action="signupBack">Back</button></form></div>`
       : `<div class="card"><span class="eyebrow">Professional guard supervision</span><h1>Welcome back</h1><p class="muted">Sign in to access your security workspace.</p>${signupMessage ? `<p class="notice pending" role="status">${esc(signupMessage)}</p>` : ""}<form id="login"><label class="label" for="email">Email or WhatsApp number</label><input id="email" name="email" type="text" autocomplete="username" required><label class="label" for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required><button class="primary wide">Sign in</button></form><button type="button" class="text-action wide account-recovery-link" data-action="recoverAccount">Need help signing in?</button><div class="signup-entry"><p class="muted">New to Guard Patrol?</p><button class="wide" type="button" data-action="startSignup">Create an account</button></div></div>`;
   root.innerHTML = `<main class="login">${brand()}${signup}<footer>Provided by Integrated Systems and Devices Limited<br>Guard Patrol does not provide emergency response.</footer></main>`;
+  signupAddressLookup=null;
+  const propertyForm=root.querySelector('#signupProperty');
+  if(propertyForm) {
+    const update=()=>{positionPreview(root.querySelector('#signup-map'),propertyForm);captureSignupDraft(propertyForm);};
+    signupAddressLookup=addressLookup(propertyForm,{api,endpoint:'/api/public/geocode',changed:update});
+    propertyForm.elements.radius_m.addEventListener('input',()=>{propertyForm.elements.confirmed.checked=false;update();});
+    update();
+  }
 }
 
 async function showAccountRecovery() {
   root.innerHTML = `<main class="login">${brand()}<div class="card account-recovery"><h1>Help signing in</h1><p role="status">Loading recovery options…</p></div></main>`;
   try {
     const onboarding = await api("/api/public/onboarding");
-    root.querySelector(".account-recovery").innerHTML = `<h1>Help signing in</h1><section><h2>Owner: reset your password</h2>${onboarding.ownerPasswordResetAvailable ? `<p>Enter the email address for your owner account. We will send a link to choose a new password.</p><form id="ownerResetRequest"><label class="label">Owner email address<input name="email" type="email" autocomplete="email" required></label><button class="primary wide">Email me a reset link</button><p class="field-help" role="status"></p></form>` : `<p>Owner email recovery is not available right now. Please try again later.</p>`}</section><section><h2>Guard or supervisor</h2><p>Ask your owner to reset your password or check the email or WhatsApp number saved for your account.</p></section><button type="button" class="text-action wide" data-action="backToSignIn">Back to sign in</button>`;
+    root.querySelector(".account-recovery").innerHTML = `<h1>Help signing in</h1><section><h2>Owner: reset your password</h2>${onboarding.ownerPasswordResetAvailable ? `<p>Enter the email address for your owner account. We will send a link to choose a new password.</p><form id="ownerResetRequest"><label class="label">Owner email address<input name="email" type="email" autocomplete="email" required></label><button class="primary wide">Email me a reset link</button><p class="field-help" role="status"></p></form>` : `<p>Owner email recovery is not available right now. Please try again later.</p>`}</section><section><h2>Guard or supervisor</h2><p>Guards can ask their supervisor or owner for a temporary password. Supervisors should ask their owner. You will choose your own private password when you sign in.</p></section><button type="button" class="text-action wide" data-action="backToSignIn">Back to sign in</button>`;
   } catch {
     root.querySelector(".account-recovery").innerHTML = `<h1>Help signing in</h1><p class="notice pending">Connect to the internet, then try again.</p><button type="button" class="text-action wide" data-action="backToSignIn">Back to sign in</button>`;
   }
@@ -345,14 +357,25 @@ async function beginSignup() {
 }
 
 async function completeSignIn(credentials, online) {
+  if(online?.passwordChangeRequired) {
+    vault.auth=online.proof;
+    passwordChangeScreen(root,{credentials,online,api,brand,complete:completeSignIn,cancel:()=>{vault={state:null,queue:[],draft:null};login();}});
+    return;
+  }
   let recoveredOwnerVault = false;
   try {
     vault = await unlock(credentials.email, credentials.password, online?.vaultAccount);
   } catch (error) {
-    if (!online || online.role !== "owner") throw error;
+    if (!online) throw error;
+    if(online.role!=='owner') {
+      if(!/Cannot unlock saved work/.test(error.message))throw error;
+      vault.auth=online.proof;
+      passwordChangeScreen(root,{credentials,online,api,brand,complete:completeSignIn,replace:false,cancel:()=>{vault={state:null,queue:[],draft:null};login();}});
+      return;
+    }
     vault.auth = online.proof;
     const recovery = await api("/api/owner-vault-recovery", {});
-    vault = await unlock(credentials.email, credentials.password, recovery.vaultAccount);
+    vault = await unlock(credentials.email, credentials.password, recovery.vaultAccount, true);
     recoveredOwnerVault = true;
   }
   roundId = vault.roundId || null;
@@ -1951,6 +1974,7 @@ document.addEventListener("click", async (e) => {
     }
     if (a === "signupLocation") {
       const status = $("#signupLocationStatus");
+      const lookup=signupAddressLookup,locationVersion=lookup?.invalidate();
       if (!navigator.geolocation) throw new Error("Location is unavailable on this browser. Enter the coordinates manually.");
       status.textContent = "Finding your position…";
       const position = await new Promise((resolve, reject) =>
@@ -1960,8 +1984,11 @@ document.addEventListener("click", async (e) => {
           enableHighAccuracy: true,
         }),
       );
+      if(lookup!==signupAddressLookup||!lookup?.current(locationVersion))return;
+      $("#signupProperty").elements.confirmed.checked=false;
       $("#signupLatitude").value = String(position.coords.latitude);
       $("#signupLongitude").value = String(position.coords.longitude);
+      positionPreview($("#signup-map"),$("#signupProperty"));
       captureSignupDraft($("#signupProperty"));
       status.textContent = "Current position added. Confirm the address and location before continuing.";
       return;

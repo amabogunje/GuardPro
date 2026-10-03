@@ -1,0 +1,256 @@
+
+> isdl-guard-patrol@0.2.0 test:release
+> node --test --test-concurrency=1 --test-skip-pattern="shift supervisor messages|voice supervisor messages|two-way shift chat|messaging requires a shift|empty current conversation|newest messages first|recorded shift instructions: owner publishes" tests/*.test.js
+
+✔ Any roster reports a count only; named rosters retain their assigned denominator (25.9725ms)
+✔ activity reports use Nigerian day boundaries and source-matched counts (2.3707ms)
+✔ expectations count due guard shifts and patrol stops; resolved count stays within report cohort (0.6487ms)
+✔ activity reports do not count stale or late starts as attendance for a scheduled occurrence (0.4021ms)
+✔ provider adapter encodes input, validates coordinates and never exposes provider secrets (2035.8456ms)
+✔ lookup API supports signup and owners, denies guards and isolates provider latency (922.4892ms)
+✔ property lookup fills coordinates and preview without navigation and retains GPS and save (5227.0487ms)
+✔ ambiguous results require choice; errors and stale searches cannot overwrite the position (6987.163ms)
+✔ signup uses the same address lookup and persists its selected coordinates (3790.9051ms)
+✔ anonymous geocoding has a per-client limit (71.3458ms)
+✔ GPS classification preserves accuracy uncertainty (1383.9617ms)
+✔ owner-only address setup and durable capture-time assessments (90.1297ms)
+✔ supervisor reviews grouped GPS flags without changing problems (4560.3677ms)
+✔ owner property form saves an address and confirmed map position (5114.1483ms)
+✔ normalizes Nigerian shortcuts and international WhatsApp numbers (3.3577ms)
+✔ a failed upload keeps a retryable reservation and finalizes exactly once (3764.3545ms)
+✔ a delayed media upload does not delay another recorded guard activity (919.5759ms)
+✖ MVP hides messaging for every role and rejects new messages (20044.3282ms)
+✔ owner evidence is owner-only, tenant scoped and retains private media authorization (1606.007ms)
+✔ a supervisor-resolved P1 security problem appears in its owner’s recent history only (36.9653ms)
+✔ owner activity labels the current seven-day period and patrol starts as partial evidence (10.0896ms)
+✔ patrol health weights completed checkpoints above start timing (5.4534ms)
+✖ owner is guided from an empty account through property and supervision setup (34383.916ms)
+✔ owner dashboard gives three direct, display-only monitoring answers (0.69ms)
+✔ seven-day period includes activity already due today but excludes older records (2.5524ms)
+✔ current shift starts and completed patrols appear in owner health (0.5785ms)
+✔ health uses historical expected slots, weighted missed/late and capture time (6.4811ms)
+✔ unconfigured and Any attendance do not become perfect health (0.3254ms)
+✔ risk uses all reports as denominator and keeps unclassified reports explicit (0.1888ms)
+✔ classification requires category and conditional security priority (0.6792ms)
+✔ owner dashboard distinguishes recently reported P1 issues, live monitoring and three-day patrol completion (0.295ms)
+(node:22092) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ owner supervision is a persistent per-property responsibility choice (963.2591ms)
+✔ owner reuses and removes same-customer guards and supervisors without deleting accounts (161.1165ms)
+✔ owner archives a property without deleting its records and can create a new property afterwards (62.0324ms)
+✔ owner overview is assigned-site scoped and excludes secrets (1968.8065ms)
+✔ owner acting as supervisor resolves scoped problems retaining actual identity (49.2551ms)
+✔ old offline captures received now remain unconfirmed; Any does not invent staffing expectations (4.3615ms)
+✔ owner overview returns the configured property type and address for the fixed dashboard image (2.0605ms)
+✔ Any roster records attendance without claiming a required headcount; named roster flags missing guard (2.6912ms)
+(node:34528) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✖ owner mobile setup, supervisor creation and honest subscription screen (33380.9484ms)
+✖ owner KPIs are display-only and supervisor mode persists without changing identity (30362.8937ms)
+✖ owner dashboard stays compact on mobile without operational evidence links (30342.8785ms)
+✖ owner can swipe through and select multiple property dashboards (30340.2395ms)
+(node:44724) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ supervisors manage only local guards; peer, promotion, shared and cross-customer resets are denied (1920.2232ms)
+✔ legacy-account migration flags existing non-owners once and preserves completed passwords (4.5703ms)
+✔ mobile browser completes private password and displays Other property image (9548.1246ms)
+✔ password vault transition copies pending evidence and retains the original encrypted record (5271.7129ms)
+✔ reset screen recovers known-password drafts or explicitly retains inaccessible work (8153.0743ms)
+✔ temporary passwords restrict access, require private replacement, revoke sessions and audit without secrets (1122.538ms)
+(node:64268) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ property types have fixed local dashboard images and default safely for legacy properties (7.2895ms)
+✔ property setup accepts Other and rejects unsupported types (2.3809ms)
+✔ property-location writes remain correct when property type was added after actor (1.7739ms)
+(node:4468) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ assisted provisioning creates two isolated owner/property accounts with audit receipts (3331.3804ms)
+✔ public signup stays unavailable until an ISDL support contact is configured (2019.5833ms)
+✔ settings protect scope and preserve shift versions used by guard starts (1802.3513ms)
+✔ supervisor voice instructions publish privately and guards retain shift audio versions (75.8762ms)
+✔ shift-level voice instructions are saved with the selected shift (60.8406ms)
+✔ only owners edit and deactivate supervisors; supervisor peer changes are denied (444.9451ms)
+✔ settings tabs fit phone and desktop; checkpoint editing and QR labels work (14552.0267ms)
+✔ Any guard is exclusive, property-scoped, and does not invent attendance expectations (283.4754ms)
+✔ phone-only team accounts can sign in; aliases preserve the same encrypted pending work (3572.3938ms)
+(node:53232) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ self-service signup creates an isolated owner, customer and first property (5294.4913ms)
+✔ signup rejects duplicate identities and an unaccepted customer notice (3835.0765ms)
+✔ owner password-reset confirmation changes the password and invalidates the old one (5202.881ms)
+✔ an owner with a legacy old-password vault signs in after reset without clearing device data (8654.1468ms)
+✔ sign-in recovery explains fixed guard and supervisor recovery roles (6167.8178ms)
+✖ mobile signup wizard creates the account and retains a narrow layout (37052.0728ms)
+✔ landing signup entry opens account creation while ordinary entry retains sign-in (5457.4696ms)
+✔ customer account hierarchy restricts creation and assignments (2588.0118ms)
+✔ only owners can share users across properties or change shared accounts (787.1197ms)
+✔ supervisor pages retain a mobile canvas on phone and desktop (10838.3929ms)
+✔ shift overview scopes attendance and patrols without inventing a default shift (22.7817ms)
+✔ supervisor setup guidance presents one next configuration step in operational order (3.6423ms)
+✔ empty guard list distinguishes an open Any-guard shift from no assigned guards (0.4257ms)
+✔ attendance is tied to the selected occurrence and retains valid overnight coverage (1.7439ms)
+✔ historical overview uses prior plans and separates carry-over from later records (1.1176ms)
+✔ problem KPI and list agree for unresolved carry-over and drop resolved reports (0.8318ms)
+✔ supervisor single recipient and five-message inbox pagination and sorting (7216.8617ms)
+✔ reported problems use compact outstanding and previous lists with detail navigation (4749.3999ms)
+✔ supervisor views daily, monthly and custom activity reports and downloads CSV (7643.0903ms)
+✔ optional user photos persist privately and reject invalid uploads (126.6664ms)
+✔ cookie alone cannot unlock API after shared-phone sign-out (1478.2332ms)
+✔ service health endpoint exposes no operational or customer detail (7.7114ms)
+✔ authentication, guard scope, duplicate shift, complete scheduled round and end (123.4189ms)
+✔ approved report, recoverable media, tenant isolation and expiring private links (105.2656ms)
+✔ supervisor state machine, notification receipt and summary approval (99.8635ms)
+✖ Android viewport: offline capture, reload, shared sign-out, interrupted upload and exactly-once retry (37584.9966ms)
+✔ voice recording, permission fallbacks, owner mobile and supervisor administration UI (9070.4706ms)
+✖ Material layouts: every page at compact, medium and expanded widths (38614.8371ms)
+✔ off-duty messaging is disabled; duty actions return after check-in (6649.8038ms)
+✔ shift timing handles Nigerian day and overnight schedules, elapsed time and absent plans (2.0115ms)
+✔ patrol interval windows, overdue time, persisted start and midnight (1.5797ms)
+✔ owner and supervisor can schedule only assigned sites; guard cannot (81.6388ms)
+✖ mobile patrol countdown, five-minute reminder, overdue and offline start survive reload (37777.5126ms)
+✔ sequential patrol enforcement, checkpoint mismatch and GPS review (149.6369ms)
+✔ patrol mobile: selected QR/NFC auto-save, resume, hidden manual exception (13149.2623ms)
+✔ simplified report: camera photo and audio-only submission with aligned Home (17297.8279ms)
+✔ cancel confirmations preserve shift and report; typed-only reports need no photo (6908.1113ms)
+✔ guard history is collapsed, scoped to the shift and read-only, including offline reports (15373.3191ms)
+✖ refresh restores each role, offline drafts, and explicit sign-out still locks saved work (35897.6119ms)
+✔ sign-out invalidates a restored second tab (7679.2938ms)
+✔ concurrent retries create one report and attachment; competing shifts remain unique (360.9775ms)
+ℹ tests 102
+ℹ suites 0
+ℹ pass 91
+ℹ fail 11
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 620230.0675
+
+✖ failing tests:
+
+test at tests\messaging-disabled.test.js:9:1
+✖ MVP hides messaging for every role and rejects new messages (20044.3282ms)
+  page.evaluate: TypeError: Cannot read properties of null (reading 'getBoundingClientRect')
+      at eval (eval at evaluate (:311:30), <anonymous>:6:59)
+      at Array.map (<anonymous>)
+      at eval (eval at evaluate (:311:30), <anonymous>:5:30)
+      at UtilityScript.evaluate (<anonymous>:313:16)
+      at UtilityScript.<anonymous> (<anonymous>:1:44)
+      at positions (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\messaging-disabled.test.js:61:20)
+      at async TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\messaging-disabled.test.js:71:26) {
+    log: []
+  }
+
+test at tests\owner-first-property-onboarding.test.js:18:1
+✖ owner is guided from an empty account through property and supervision setup (34383.916ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for locator('.owner-health') to be visible[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-first-property-onboarding.test.js:26:41) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for locator('.owner-health') to be visible" ]
+  }
+
+test at tests\owner-ui.test.js:29:1
+✖ owner mobile setup, supervisor creation and honest subscription screen (33380.9484ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for locator('.owner-health') to be visible[22m
+  
+      at signedIn (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:21:229)
+      at async TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:30:20) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for locator('.owner-health') to be visible" ]
+  }
+
+test at tests\owner-ui.test.js:43:1
+✖ owner KPIs are display-only and supervisor mode persists without changing identity (30362.8937ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for locator('.owner-health') to be visible[22m
+  
+      at signedIn (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:21:229)
+      at async TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:44:20) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for locator('.owner-health') to be visible" ]
+  }
+
+test at tests\owner-ui.test.js:54:1
+✖ owner dashboard stays compact on mobile without operational evidence links (30342.8785ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for locator('.owner-health') to be visible[22m
+  
+      at signedIn (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:21:229)
+      at async TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:55:20) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for locator('.owner-health') to be visible" ]
+  }
+
+test at tests\owner-ui.test.js:60:1
+✖ owner can swipe through and select multiple property dashboards (30340.2395ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for locator('.owner-health') to be visible[22m
+  
+      at signedIn (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:21:229)
+      at async TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:63:20) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for locator('.owner-health') to be visible" ]
+  }
+
+test at tests\signup.test.js:275:1
+✖ mobile signup wizard creates the account and retains a narrow layout (37052.0728ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for getByRole('heading', { name: 'Choose a supervisor', exact: true }) to be visible[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\signup.test.js:305:83) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for getByRole('heading', { name: 'Choose a supervisor', exact: true }) to be visible" ]
+  }
+
+test at tests\workflows.test.js:289:1
+✖ Android viewport: offline capture, reload, shared sign-out, interrupted upload and exactly-once retry (37584.9966ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for getByRole('heading', { name: 'Hello, Bala.' }) to be visible[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\workflows.test.js:348:60) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for getByRole('heading', { name: 'Hello, Bala.' }) to be visible" ]
+  }
+
+test at tests\workflows.test.js:523:1
+✖ Material layouts: every page at compact, medium and expanded widths (38614.8371ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for locator('[data-md]').first() to be visible[22m
+  [2m    62 × locator resolved to hidden <button type="button" data-md="true" data-action="logout">Sign out</button>[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\workflows.test.js:585:48) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for locator('[data-md]').first() to be visible", '    62 × locator resolved to hidden <button type="button" data-md="true" data-action="logout">Sign out</button>' ]
+  }
+
+test at tests\workflows.test.js:975:1
+✖ mobile patrol countdown, five-minute reminder, overdue and offline start survive reload (37777.5126ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for getByRole('heading', { name: 'Hello, Bala.' }) to be visible[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\workflows.test.js:1033:60) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for getByRole('heading', { name: 'Hello, Bala.' }) to be visible" ]
+  }
+
+test at tests\workflows.test.js:2402:1
+✖ refresh restores each role, offline drafts, and explicit sign-out still locks saved work (35897.6119ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for locator('#report') to be visible[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\workflows.test.js:2461:36) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for locator('#report') to be visible" ]
+  }

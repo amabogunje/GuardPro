@@ -1,0 +1,61 @@
+✖ owner property form saves an address and confirmed map position (37334.4421ms)
+✖ assisted provisioning creates two isolated owner/property accounts with audit receipts (550.8739ms)
+✔ settings tabs fit phone and desktop; checkpoint editing and QR labels work (19275.4403ms)
+(node:57632) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ owner password-reset confirmation changes the password and invalidates the old one (2894.1494ms)
+✖ an owner with a legacy old-password vault signs in after reset without clearing device data (32880.3684ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 2
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 98962.7927
+
+✖ failing tests:
+
+test at tests\gps.test.js:56:1
+✖ owner property form saves an address and confirmed map position (37334.4421ms)
+  locator.click: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for getByRole('button', { name: 'Property', exact: true })[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\data\password-baseline\tests\gps.test.js:59:253) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for getByRole('button', { name: 'Property', exact: true })" ]
+  }
+
+test at tests\provisioning.test.js:128:1
+✖ assisted provisioning creates two isolated owner/property accounts with audit receipts (550.8739ms)
+  Error: file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/data/password-baseline/database.js:103
+    return sqlite.prepare(statement).run(...params).changes;
+                  ^
+  
+  Error: table property_locations has 9 columns but 8 values were supplied
+      at run (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/data/password-baseline/database.js:103:17)
+      at file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/data/password-baseline/scripts/provision-customer.mjs:98:11
+      at async transaction (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/data/password-baseline/database.js:54:19)
+      at async file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/data/password-baseline/scripts/provision-customer.mjs:68:18 {
+    code: 'ERR_SQLITE_ERROR',
+    errcode: 1,
+    errstr: 'SQL logic error'
+  }
+  
+  Node.js v24.14.1
+  
+      at ChildProcess.<anonymous> (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/data/password-baseline/tests/provisioning.test.js:56:31)
+      at ChildProcess.emit (node:events:508:28)
+      at ChildProcess._handle.onexit (node:internal/child_process:294:12)
+
+test at tests\signup.test.js:209:1
+✖ an owner with a legacy old-password vault signs in after reset without clearing device data (32880.3684ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for getByRole('button', { name: 'Sign out', exact: true }) to be visible[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\data\password-baseline\tests\signup.test.js:244:71) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for getByRole('button', { name: 'Sign out', exact: true }) to be visible" ]
+  }

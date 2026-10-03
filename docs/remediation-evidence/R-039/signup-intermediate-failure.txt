@@ -1,0 +1,33 @@
+✖ signup uses the same address lookup and persists its selected coordinates (7990.5268ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9487.1867
+
+✖ failing tests:
+
+test at tests\geocoding.test.js:101:1
+✖ signup uses the same address lookup and persists its selected coordinates (7990.5268ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   "Cannot set properties of null (setting 'textContent')",
+  +   "Cannot set properties of null (setting 'textContent')"
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/tests/geocoding.test.js:114:12)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ "Cannot set properties of null (setting 'textContent')", "Cannot set properties of null (setting 'textContent')" ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

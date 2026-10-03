@@ -23,7 +23,7 @@ export async function seedDemo() {
       ["owner", "Ada Okafor", "owner"],
       ["supervisor", "Ada", "supervisor"],
       ["other", "Other Customer", "owner"],
-    ])
+    ]) {
       await run(
         "INSERT INTO users VALUES(?,?,?,?,?)",
         uid,
@@ -32,6 +32,9 @@ export async function seedDemo() {
         password,
         role,
       );
+      // Fictional demo identities model users who already chose a password.
+      await run('INSERT INTO user_password_state VALUES(?,0)',uid);
+    }
     await run(
       "INSERT INTO customers VALUES(?,?)",
       "oak",

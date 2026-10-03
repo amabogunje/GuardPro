@@ -1,4 +1,4 @@
-import { after, before, test } from "node:test";
+import { afterEach, beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
@@ -8,7 +8,6 @@ import { chromium } from "@playwright/test";
 const base = "http://127.0.0.1:3125";
 const data = path.resolve("data", "signup-test-" + Date.now());
 let server, browser;
-let existingEmail;
 
 const payload = (suffix, overrides = {}) => ({
   owner_name: "Owner " + suffix,
@@ -46,7 +45,9 @@ async function state(response, session) {
   return result.json();
 }
 
-before(async () => {
+// A fresh server per case isolates IP rate-limit budgets without weakening
+// production limits. The database persists for the duplicate-identity check.
+beforeEach(async () => {
   server = spawn(process.execPath, ["server.js"], {
     env: {
       ...process.env,
@@ -75,9 +76,13 @@ before(async () => {
   });
 });
 
-after(async () => {
+afterEach(async () => {
   await browser?.close();
-  server?.kill();
+  if (server && server.exitCode === null) {
+    const exited = new Promise(resolve => server.once('exit', resolve));
+    server.kill();
+    await exited;
+  }
 });
 
 test("self-service signup creates an isolated owner, customer and first property", async () => {
@@ -87,7 +92,6 @@ test("self-service signup creates an isolated owner, customer and first property
   assert.equal(first.response.status, 200, JSON.stringify(first.body));
   assert.equal(second.response.status, 200, JSON.stringify(second.body));
   assert.equal(first.body.role, "owner");
-  existingEmail = `owner-first-${suffix}@pilot.invalid`;
   assert.notEqual(first.body.customerId, second.body.customerId);
   assert.notEqual(first.body.siteId, second.body.siteId);
 
@@ -144,6 +148,9 @@ test("self-service signup creates an isolated owner, customer and first property
 
 test("signup rejects duplicate identities and an unaccepted customer notice", async () => {
   const suffix = randomUUID();
+  const existingEmail = `owner-original-${suffix}@pilot.invalid`;
+  const original = await signup(payload('original-' + suffix, { email: existingEmail }));
+  assert.equal(original.response.status, 200);
   const duplicate = await signup(payload("duplicate-" + suffix, { email: existingEmail }));
   assert.equal(duplicate.response.status, 409);
   assert.match(duplicate.body.error, /already uses this email/i);
@@ -153,6 +160,15 @@ test("signup rejects duplicate identities and an unaccepted customer notice", as
   const staleNotice = await signup(payload("stale-notice-" + suffix, { notice_version: "2026-01-01" }));
   assert.equal(staleNotice.response.status, 400);
   assert.match(staleNotice.body.error, /accept the current customer notice/i);
+});
+
+test('signup enforces its five-attempt per-client limit', async () => {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const result = await signup({});
+    assert.equal(result.response.status, 400);
+  }
+  const result = await signup({});
+  assert.equal(result.response.status, 429);
 });
 
 test("owner password-reset confirmation changes the password and invalidates the old one", async () => {
@@ -241,14 +257,14 @@ test("an owner with a legacy old-password vault signs in after reset without cle
     await page.locator("#email").fill(ownerEmail);
     await page.locator("#password").fill(newPassword);
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await page.getByRole("button", { name: "Sign out", exact: true }).waitFor();
+    await page.getByLabel('Open account menu').waitFor();
     await page.getByText("Signed in. Saved work from your old password remains protected on this device.", { exact: true }).waitFor();
   } finally {
     await context.close();
   }
 });
 
-test("sign-in recovery keeps guard and supervisor help owner-assisted", async () => {
+test("sign-in recovery explains fixed guard and supervisor recovery roles", async () => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   try {
@@ -256,7 +272,7 @@ test("sign-in recovery keeps guard and supervisor help owner-assisted", async ()
     await page.getByRole("button", { name: "Need help signing in?", exact: true }).click();
     await page.getByRole("heading", { name: "Help signing in", exact: true }).waitFor();
     await page.getByRole("button", { name: "Email me a reset link", exact: true }).waitFor();
-    await page.getByText("Ask your owner to reset your password or check the email or WhatsApp number saved for your account.", { exact: true }).waitFor();
+    await page.getByText("Guards can ask their supervisor or owner for a temporary password. Supervisors should ask their owner. You will choose your own private password when you sign in.", { exact: true }).waitFor();
     assert.equal(await page.getByRole("link", { name: "Contact ISDL support", exact: true }).count(), 0);
     await page.getByRole("button", { name: "Back to sign in", exact: true }).click();
     await page.getByRole("button", { name: "Sign in", exact: true }).waitFor();
@@ -296,8 +312,11 @@ test("mobile signup wizard creates the account and retains a narrow layout", asy
     await page.locator("#signupRadius").fill("100");
     await page.locator('input[name="confirmed"]').check();
     await page.getByRole("button", { name: "Create account", exact: true }).click();
-    await page.locator(".owner-health").waitFor();
-    await page.getByRole("heading", { name: "Hello, Wizard Owner.", exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Choose supervision', exact: true }).click();
+    await page.getByRole("heading", { name: "Choose a supervisor", exact: true }).waitFor();
+    // A new property needs supervision before its monitoring dashboard exists.
+    await page.getByRole('button', { name: 'I’ll supervise this property', exact: true }).click();
+    await page.locator('.owner-actions').waitFor();
     const layout = await page.evaluate(() => ({
       main: document.querySelector("main")?.getBoundingClientRect().width,
       overflow: document.documentElement.scrollWidth > innerWidth,
@@ -307,7 +326,7 @@ test("mobile signup wizard creates the account and retains a narrow layout", asy
 
     // A marketing signup link must not displace an existing owner's session.
     await page.goto(base + "/app?signup=1");
-    await page.getByRole("heading", { name: "Hello, Wizard Owner.", exact: true }).waitFor();
+    await page.locator('.owner-actions').waitFor();
     assert.equal(await page.locator("#signupAccount").count(), 0);
   } finally {
     await context.close();
@@ -331,7 +350,8 @@ test("landing signup entry opens account creation while ordinary entry retains s
 
     await page.goto(base);
     await page.getByText("Illustrative image", { exact: false }).waitFor();
-    await page.getByText("Guard Patrol does not provide emergency response.", { exact: true }).waitFor();
+    await page.getByText('Does it provide emergency response?', { exact: true }).click();
+    await page.getByText(/No\. For urgent safety concerns/).waitFor();
 
     await page.goto(base + "/app");
     await page.getByRole("heading", { name: "Welcome back", exact: true }).waitFor();

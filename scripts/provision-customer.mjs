@@ -96,7 +96,7 @@ try {
       property.radius_m,
     );
     await run(
-      "INSERT INTO property_locations VALUES(?,?,?,?,?,?,?,?)",
+      "INSERT INTO property_locations(id,site_id,address,latitude,longitude,radius_m,actor,created_at) VALUES(?,?,?,?,?,?,?,?)",
       locationId,
       siteId,
       property.address,

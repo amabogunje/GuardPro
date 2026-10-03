@@ -42,6 +42,7 @@ test("MVP hides messaging for every role and rejects new messages", async () => 
       await p.locator("#password").fill("Pilot-only-2026!");
       await p.getByRole("button",{name:"Sign in",exact:true}).click();
       await p.locator(".guard").waitFor();
+      if (role === 'owner') await p.locator('.owner-actions').waitFor();
       assert.equal(await p.locator('[data-page="message"],[data-action="openChat"],.message-unread').count(),0);
       if(role==="supervisor") assert.equal(await p.locator(".supervisor-quick-start button").count(),3);
       if(role==="bala") {
@@ -60,7 +61,7 @@ test("MVP hides messaging for every role and rejects new messages", async () => 
           await p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
           return p.evaluate((owner) => {
             const selectors = owner
-              ? [".guard .brand", ".guard .topbar [data-action=logout]", ".greeting-row h1"]
+              ? [".guard .brand", ".owner-overflow-menu summary"]
               : [".guard .brand", ".guard .topbar [data-action=logout]", ".duty-identity .eyebrow", ".greeting-row h1"];
             return selectors.map(selector => {
               const box = document.querySelector(selector).getBoundingClientRect();
@@ -68,7 +69,11 @@ test("MVP hides messaging for every role and rejects new messages", async () => 
             });
           },role==="owner");
         };
+        // Owner home has a distinct compact/hero header; compare its inner
+        // pages with the property page, which uses the same header layout.
+        if (role === 'owner') await p.getByRole('button', {name:'Manage Property',exact:true}).click();
         const baseline = await positions();
+        if (role === 'owner') await p.getByRole('button', {name:'Home',exact:true}).click();
         const routes = role === "bala" ? ["round","report","instructions"] : role === "supervisor" ? ["incidents","summaries","setup","instructionSetup","patrols","admin"] : ["property","supervisors","subscription"];
         for (const route of routes) {
           if(role==="supervisor" && ["instructionSetup","patrols","admin"].includes(route)) {

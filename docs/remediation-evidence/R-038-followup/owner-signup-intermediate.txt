@@ -1,0 +1,102 @@
+TAP version 13
+# (node:55028) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: owner mobile setup, supervisor creation and honest subscription screen
+ok 1 - owner mobile setup, supervisor creation and honest subscription screen
+  ---
+  duration_ms: 6605.8325
+  type: 'test'
+  ...
+# Subtest: owner KPIs are display-only and supervisor mode persists without changing identity
+ok 2 - owner KPIs are display-only and supervisor mode persists without changing identity
+  ---
+  duration_ms: 5515.2562
+  type: 'test'
+  ...
+# Subtest: owner dashboard stays compact on mobile without operational evidence links
+not ok 3 - owner dashboard stays compact on mobile without operational evidence links
+  ---
+  duration_ms: 1679.7084
+  type: 'test'
+  location: 'C:\\Users\\mabog\\OneDrive\\Documents\\ChatGPT\\ISDL Guard Pro\\tests\\owner-ui.test.js:53:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    0 !== 3
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 3
+  actual: 0
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/tests/owner-ui.test.js:56:134)
+    async Test.run (node:internal/test_runner/test:1125:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:787:7)
+  ...
+# Subtest: owner can swipe through and select multiple property dashboards
+ok 4 - owner can swipe through and select multiple property dashboards
+  ---
+  duration_ms: 2898.0356
+  type: 'test'
+  ...
+# (node:45288) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: self-service signup creates an isolated owner, customer and first property
+ok 5 - self-service signup creates an isolated owner, customer and first property
+  ---
+  duration_ms: 3869.9113
+  type: 'test'
+  ...
+# Subtest: signup rejects duplicate identities and an unaccepted customer notice
+ok 6 - signup rejects duplicate identities and an unaccepted customer notice
+  ---
+  duration_ms: 3228.6394
+  type: 'test'
+  ...
+# Subtest: signup enforces its five-attempt per-client limit
+ok 7 - signup enforces its five-attempt per-client limit
+  ---
+  duration_ms: 4097.4099
+  type: 'test'
+  ...
+# Subtest: owner password-reset confirmation changes the password and invalidates the old one
+ok 8 - owner password-reset confirmation changes the password and invalidates the old one
+  ---
+  duration_ms: 4584.2388
+  type: 'test'
+  ...
+# Subtest: an owner with a legacy old-password vault signs in after reset without clearing device data
+ok 9 - an owner with a legacy old-password vault signs in after reset without clearing device data
+  ---
+  duration_ms: 9240.8044
+  type: 'test'
+  ...
+# Subtest: sign-in recovery explains fixed guard and supervisor recovery roles
+ok 10 - sign-in recovery explains fixed guard and supervisor recovery roles
+  ---
+  duration_ms: 8351.7693
+  type: 'test'
+  ...
+# Subtest: mobile signup wizard creates the account and retains a narrow layout
+ok 11 - mobile signup wizard creates the account and retains a narrow layout
+  ---
+  duration_ms: 10102.5303
+  type: 'test'
+  ...
+# Subtest: landing signup entry opens account creation while ordinary entry retains sign-in
+ok 12 - landing signup entry opens account creation while ordinary entry retains sign-in
+  ---
+  duration_ms: 9845.8788
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 11
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 73337.7572

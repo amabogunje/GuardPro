@@ -1,5 +1,6 @@
 import { phoneNumber } from './login-id.js';
-export function teamSettings(host,{site,users,reusableUsers=[],api,esc,icon,done,roleOnly=null,allowReuse=false,startAdd=false}) {
+export function teamSettings(host,{site,users,reusableUsers=[],api,esc,icon,done,roleOnly=null,allowReuse=false,startAdd=false,managerRole='owner'}) {
+  if(managerRole==='supervisor')roleOnly='guard';
   const members=users.filter(u=>u.role!=='owner'&&(!roleOnly||u.role===roleOnly));
   const reusable=reusableUsers.filter(u=>!roleOnly||u.role===roleOnly);
   let query='',page=0;
@@ -8,7 +9,7 @@ export function teamSettings(host,{site,users,reusableUsers=[],api,esc,icon,done
     host.innerHTML=`<section class="card checkpoint-panel team-panel"><div class="checkpoint-heading"><h2>Users <span class="checkpoint-count">(${members.length})</span></h2><span class="team-actions"><button type="button" class="checkpoint-text-action" id="add-member">+ Add user</button>${allowReuse?'<button type="button" class="checkpoint-text-action" id="reuse-member">+ Reuse</button>':''}</span></div>${members.length>size?`<label class="checkpoint-search">Find a user<input type="search" id="team-search" placeholder="Name, number or email" value="${esc(query)}"></label>`:''}<div id="team-rows"></div></section>`;
     host.querySelector('#add-member').onclick=()=>edit(null);
     host.querySelector('#reuse-member')?.addEventListener('click',reuse);
-    if(roleOnly) {
+    if(roleOnly==='supervisor') {
       host.querySelector('h2').innerHTML=`Supervisors <span class="checkpoint-count">(${members.length})</span>`;
       host.querySelector('#add-member').textContent='+ Add supervisor';
     }
@@ -36,13 +37,18 @@ export function teamSettings(host,{site,users,reusableUsers=[],api,esc,icon,done
     host.querySelector('#team-next')?.addEventListener('click',()=>{page++;rows();});
   }
   function edit(member) {
-    host.innerHTML=`<section class="card checkpoint-panel team-panel"><div class="checkpoint-heading"><h2>${member?'Edit user':'Add user'}</h2><button type="button" class="checkpoint-text-action" id="team-cancel">Cancel</button></div><form id="team-editor" class="settings-fields"><label>Name *<input name="name" required maxlength="120" value="${esc(member?.name||'')}"></label><label>Role *<select name="role" required><option value="guard">Guard</option><option value="supervisor" ${member?.role==='supervisor'?'selected':''}>Supervisor</option></select></label><label>WhatsApp number *<input name="whatsapp" type="tel" required autocomplete="tel" placeholder="+1 212 555 0199" value="${esc(member?.whatsapp||'')}"></label><small>Use a full international number, for example +1 212 555 0199. Nigerian numbers may also use 0818 335 4052.</small><label>Email (optional)<input name="email" type="email" maxlength="200" autocomplete="email" value="${esc(member?.email||'')}"></label><fieldset class="password-reset"><legend>${member?'Reset sign-in password':'Password *'}</legend><label>${member?'New temporary password (optional)':'Password *'}<input name="password" type="password" minlength="12" ${member?'':'required'} autocomplete="new-password"></label><small>${member?'Enter a new temporary password only when the user needs help signing in. Give it to them through your normal verified process.':'Use at least 12 characters.'}</small></fieldset><label>Profile photo (optional)<input type="file" name="profile_photo" accept="image/jpeg,image/png"></label><small>JPEG or PNG, up to 2 MB.</small>${member?`<label>Status<select name="disabled"><option value="false">Active</option><option value="true" ${member.disabled?'selected':''}>Inactive</option></select></label><small>Inactive members cannot sign in. Their past records are kept.</small>`:''}<p class="checkpoint-status" role="status" tabindex="-1"></p><button class="primary" id="team-save" disabled>${member?'Save changes':'Create user'}</button>${member&&allowReuse?'<button type="button" class="team-remove" id="team-unassign">Remove from this property</button>':''}</form></section>`;
+    if(managerRole==='supervisor' && member?.assignment_count>1) {
+      host.innerHTML=`<section class="card"><h2>${esc(member.name)}</h2><p>This guard works at more than one property. Ask the owner to change their account or reset their password.</p><button id="team-cancel">Back to users</button></section>`;
+      host.querySelector('#team-cancel').onclick=()=>list(member.id);
+      return;
+    }
+    host.innerHTML=`<section class="card checkpoint-panel team-panel"><div class="checkpoint-heading"><h2>${member?'Edit user':'Add user'}</h2><button type="button" class="checkpoint-text-action" id="team-cancel">Cancel</button></div><form id="team-editor" class="settings-fields"><label>Name *<input name="name" required maxlength="120" value="${esc(member?.name||'')}"></label><label>Role *<select name="role" required><option value="guard">Guard</option><option value="supervisor" ${member?.role==='supervisor'?'selected':''}>Supervisor</option></select></label><label>WhatsApp number *<input name="whatsapp" type="tel" required autocomplete="tel" placeholder="+1 212 555 0199" value="${esc(member?.whatsapp||'')}"></label><small>Use a full international number, for example +1 212 555 0199. Nigerian numbers may also use 0818 335 4052.</small><label>Email (optional)<input name="email" type="email" maxlength="200" autocomplete="email" value="${esc(member?.email||'')}"></label><fieldset class="password-reset"><legend>${member?'Reset sign-in password':'Temporary password *'}</legend><label>${member?'New temporary password (optional)':'Temporary password *'}<input name="password" type="password" minlength="12" ${member?'':'required'} autocomplete="new-password"></label><small>${member?'Enter a new temporary password only when the user needs help signing in. Give it to them through your normal verified process. They must replace it at their next sign-in.':'Use at least 12 characters. The user must choose a private password at first sign-in.'}</small></fieldset><label>Profile photo (optional)<input type="file" name="profile_photo" accept="image/jpeg,image/png"></label><small>JPEG or PNG, up to 2 MB.</small>${member?`<label>Status<select name="disabled"><option value="false">Active</option><option value="true" ${member.disabled?'selected':''}>Inactive</option></select></label><small>Inactive members cannot sign in. Their past records are kept.</small>`:''}<p class="checkpoint-status" role="status" tabindex="-1"></p><button class="primary" id="team-save" disabled>${member?'Save changes':'Create user'}</button>${member&&allowReuse?'<button type="button" class="team-remove" id="team-unassign">Remove from this property</button>':''}</form></section>`;
     const form=host.querySelector('form'),save=host.querySelector('#team-save');
     if(roleOnly) {
-      host.querySelector('h2').textContent=member?'Edit supervisor':'Add supervisor';
+      host.querySelector('h2').textContent=member?`Edit ${roleOnly}`:`Add ${roleOnly}`;
       form.elements.role.value=roleOnly;
       form.elements.role.closest('label').hidden=true;
-      if(!member)save.textContent='Create supervisor';
+      if(!member)save.textContent=`Create ${roleOnly}`;
     }
     const snapshot=()=>JSON.stringify([...new FormData(form)].filter(([key])=>key!=='profile_photo'));
     const baseline=snapshot();let busy=false;

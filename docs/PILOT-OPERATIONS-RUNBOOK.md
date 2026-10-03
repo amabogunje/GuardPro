@@ -1,8 +1,21 @@
 # Pilot operations runbook
 
-This runbook applies to the free Guard Patrol pilot: no more than five customer owners, fewer than 25 guards and supervisors in total, one property per owner, and no live AI transcription. The product owner is the named support and recovery owner.
+This runbook applies to the free Guard Patrol beta. The 2026-10-03 product-owner decision uses normal public signup, with no invitation code or separate pilot-wide account cap. Existing free-tier limits apply: one property and up to five guards/supervisors per customer, with no live AI transcription or payments. The product owner is the named support and recovery owner. Follow docs/CONTROLLED-PILOT.md for participant acceptance.
 
 It is an operating procedure, not a statement of legal compliance or a promise of monitoring, emergency response, availability, or recovery time.
+
+## Address lookup activation — R-039
+
+The application uses Geoapify forward geocoding for **Find address** in signup and property setup. Device GPS remains independent of this service. As of 2026-10-03, the supplied key is configured in ignored local `.env.local` and a live public Lagos landmark lookup passed. Hosted activation and actual home-address coverage checks are outstanding.
+
+1. Create a free account/project at [Geoapify MyProjects](https://myprojects.geoapify.com/). Do not purchase a plan automatically. Its [published pricing](https://www.geoapify.com/pricing/) permits commercial free-plan use within quota with attribution; verify current terms/quota when activating.
+2. Configure `GEOAPIFY_API_KEY` as a **server-only** secret for each intended hosting environment. Never put it in `public/`, commit it, paste it into chat/logs, or prefix it with `NEXT_PUBLIC_`. For local work, use an ignored env file explicitly loaded by Node; `npm start` loads `.env`, whereas `npm run start:cloud` loads `.env.local` and may use its configured cloud database. Do not overwrite existing env files or run a production database just to test lookup.
+3. After an authorized deployment/restart, test one representative known address in each supported area, ambiguous input, an unknown street, and device GPS. A returned coordinate is not proof of a correct entrance: inspect the map and confirm. Do not claim that a specific home address is covered until tested with the real provider.
+4. Preserve the visible Geoapify/OpenStreetMap attribution. Search is sent only when the person clicks Find address. The server returns a reduced coordinate/match response and does not log the searched address or provider URL/key.
+5. The application caps searches at 20 per owner or anonymous IP per ten-minute window, with 1,000 total per 24-hour window. Hosted counters use the database; local SQLite counters are process-local and reset on restart. Set provider-project limits and monitor usage too; these controls are not a guaranteed cross-environment spending cap.
+6. Provider requests time out after eight seconds and do not hold the application mutation transaction. Without a configured key or during outages, the form retains coordinates and offers GPS/manual entry. No automatic fallback provider receives the address.
+
+No database migration is introduced by R-039. Earlier unreleased password work still requires migration 025 before deploying the combined working tree. A provider key should be configured in the hosting secret store rather than a shell command that prints it.
 
 ## Daily service check
 
@@ -42,7 +55,7 @@ The product owner must accept the measured recovery objectives before X3 can be 
 
 ## Pilot capacity boundary — X9
 
-The application enforces one property and five non-owner users per free customer. The pilot-wide enrollment ceiling is five owners and fewer than 25 guards/supervisors. These are enrollment limits, not throughput claims.
+The application enforces one property and five non-owner users per free customer. The former pilot-wide enrollment ceiling is superseded by the 2026-10-03 public free-tier beta decision. Recruit deliberately and measure capacity before expanding; per-customer limits are not throughput claims.
 
 Before wider use, record a repeatable measurement using representative encrypted browser queues and at least one media retry:
 
@@ -51,7 +64,7 @@ Before wider use, record a repeatable measurement using representative encrypted
 - Owner: seven-day health view and read-only evidence view.
 - Record `/api/state` response time, browser render time, encrypted browser storage used, Blob storage used, and any failed/retried upload. State the device, network condition, data counts and revision.
 
-Do not invite another pilot customer or raise user/history limits until the product owner reviews these measurements. If data volume makes a page slow, implement pagination/incremental synchronization before increasing the limit.
+Review these measurements with the product owner before expanding recruitment or raising user/history limits. If data volume makes a page slow, implement pagination/incremental synchronization before increasing the limit.
 
 ## Customer-facing boundary — X8
 

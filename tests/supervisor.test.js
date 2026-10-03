@@ -34,7 +34,13 @@ async function login(name) {
     }),
   });
   assert.equal(r.status, 200);
-  return r.headers.get("set-cookie").split(";")[0];
+  let cookie=r.headers.get("set-cookie").split(";")[0];
+  const auth=await r.json();
+  if(auth.passwordChangeRequired) {
+    const changed=await req('/api/password-change',cookie,{password:'Private-supervisor-fixture-2026!'});
+    cookie='session='+changed.proof;
+  }
+  return cookie;
 }
 before(async () => {
   fs.mkdirSync(data, { recursive: true });
@@ -102,7 +108,9 @@ test("customer account hierarchy restricts creation and assignments", async () =
     body: JSON.stringify({ email, password: payload.password }),
   });
   assert.equal(r.status, 200);
-  const cookie = r.headers.get("set-cookie").split(";")[0];
+  let cookie = r.headers.get("set-cookie").split(";")[0];
+  const changed = await req('/api/password-change',cookie,{password:'Private-supervisor-2026!'});
+  cookie = 'session='+changed.proof;
   await req("/api/admin", cookie, {
     ...payload,
     email: `guard-${randomUUID()}@demo.isdl`,
@@ -110,7 +118,7 @@ test("customer account hierarchy restricts creation and assignments", async () =
     name: "New guard",
   });
   await req("/api/admin", supervisor, { ...payload, role: "owner" }, 403);
-  await req("/api/admin", supervisor, {...payload,email:`peer-${randomUUID()}@demo.isdl`});
+  await req("/api/admin", supervisor, {...payload,email:`peer-${randomUUID()}@demo.isdl`},403);
   await req("/api/admin", owner, { ...payload, role: "guard",email:`owner-guard-${randomUUID()}@demo.isdl` });
   await req("/api/admin", other, payload, 403);
   await req(

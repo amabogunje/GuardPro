@@ -29,10 +29,18 @@ function write(k, v) {
     t.onabort = () => reject(t.error || new Error("Device storage full"));
   });
 }
-export async function unlock(email, password, canonical) {
+export async function unlock(email, password, canonical, fresh = false) {
   await open();
   const alias=loginId(email);
-  account = canonical || (await read('login-alias:'+alias)) || alias;
+  const previousAccount=await read('login-alias:'+alias);
+  account = canonical || previousAccount || alias;
+  // After a server reset, a different device can still hold the old vault.
+  // Never silently ignore that saved work when opening the new account key.
+  const current=await read(account);
+  const recoveryAccount=current?.previousAccount || (previousAccount!==account?previousAccount:null);
+  if(!fresh && !current?.data && recoveryAccount && (await read(recoveryAccount))?.data) {
+    throw new Error('Cannot unlock saved work. Use the previous password to recover this device workspace.');
+  }
   let existing = await read(account),
     salt = existing?.salt || crypto.getRandomValues(new Uint8Array(16)),
     base = await crypto.subtle.importKey(
@@ -68,9 +76,15 @@ export async function unlock(email, password, canonical) {
       );
     }
   }
-  await write(account, { salt });
+  await write(account, { salt, previousAccount: recoveryAccount });
   if(canonical) await write('login-alias:'+alias,account);
   return { state: null, queue: [], draft: null };
+}
+export async function unlockSavedWork(email,password,canonical) {
+  await open();
+  const current=await read(canonical);
+  const previous=current?.previousAccount || await read('login-alias:'+loginId(email));
+  return unlock(email,password,current?.data?canonical:(previous||canonical),true);
 }
 let saving = Promise.resolve();
 export function save(value) {
@@ -87,7 +101,7 @@ export function save(value) {
         saveKey,
         enc.encode(snapshot),
       );
-    await write(saveAccount, { salt: old.salt, iv, data });
+    await write(saveAccount, { salt: old.salt, previousAccount: old.previousAccount, iv, data });
   };
   saving = saving.catch(() => {}).then(task);
   return saving;

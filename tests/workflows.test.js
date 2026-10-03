@@ -191,7 +191,7 @@ test("approved report, recoverable media, tenant isolation and expiring private 
     approved: true,
   });
   e.payload.shift_id = shift;
-  e.captured_at = (await req("/api/state", guard)).shifts.find(
+  e.captured_at = (await req("/api/state", owner)).shifts.find(
     (s) => s.id === shift,
   ).started_at;
   incident = e.id;
@@ -301,6 +301,7 @@ test("Android viewport: offline capture, reload, shared sign-out, interrupted up
       errors = [];
     p.on("pageerror", (e) => errors.push(e.message));
     await p.goto(base + "/app");
+    await p.locator("#email").fill("bala@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in" }).click();
     await p.getByRole("heading", { name: "Hello, Bala." }).waitFor();
@@ -359,6 +360,7 @@ test("Android viewport: offline capture, reload, shared sign-out, interrupted up
       await p.getByText("Offline browser test:", { exact: false }).count(),
       0,
     );
+    await p.locator("#email").fill("bala@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in" }).click();
     await p.getByRole("button", { name: "End shift", exact: true }).waitFor();
@@ -418,6 +420,7 @@ test("voice recording, permission fallbacks, owner mobile and supervisor adminis
       errors = [];
     p.on("pageerror", (e) => errors.push(e.message));
     await p.goto(base + "/app");
+    await p.locator("#email").fill("bala@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in" }).click();
     await p.getByRole("heading", { name: "Hello, Bala." }).waitFor();
@@ -476,7 +479,7 @@ test("voice recording, permission fallbacks, owner mobile and supervisor adminis
     await p.locator("#email").fill("owner@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in" }).click();
-    await p.locator(".owner-health").waitFor();
+    await p.locator(".owner-actions").waitFor();
     assert.equal(
       await p.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -579,7 +582,7 @@ test("Material layouts: every page at compact, medium and expanded widths", asyn
               await p.locator('#qr-print-close').click();
             }
           }
-          await p.locator("[data-md]").first().waitFor();
+          await p.locator("[data-md]:visible").first().waitFor();
           const overflow = await p.evaluate(() => ({
             width: innerWidth,
             scroll: document.documentElement.scrollWidth,
@@ -641,6 +644,7 @@ test("off-duty messaging is disabled; duty actions return after check-in", async
       }),
       p = await ctx.newPage();
     await p.goto(base + "/app");
+    await p.locator("#email").fill("bala@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in" }).click();
     await p.getByRole("heading", { name: "Hello, Bala." }).waitFor();
@@ -792,6 +796,7 @@ test("shift supervisor messages survive offline reload, arrive once and stay cus
       }),
       p = await ctx.newPage();
     const signIn = async () => {
+      await p.locator("#email").fill("bala@demo.isdl");
       await p.locator("#password").fill("Pilot-only-2026!");
       await p.getByRole("button", { name: "Sign in" }).click();
       await p.getByRole("heading", { name: "Hello, Bala." }).waitFor();
@@ -996,6 +1001,7 @@ test("mobile patrol countdown, five-minute reminder, overdue and offline start s
       p = await ctx.newPage();
     await p.clock.install({ time: new Date(now) });
     await p.goto(base + "/app");
+    await p.locator("#email").fill("bala@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in", exact: true }).click();
     await p.getByRole("heading", { name: "Hello, Bala." }).waitFor();
@@ -1159,6 +1165,7 @@ test("patrol mobile: selected QR/NFC auto-save, resume, hidden manual exception"
       };
     });
     await p.goto(base + "/app");
+    await p.locator("#email").fill("bala@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in", exact: true }).click();
     await p.getByRole("button", { name: "Start patrol", exact: true }).click();
@@ -1290,6 +1297,7 @@ test("simplified report: camera photo and audio-only submission with aligned Hom
       }),
       p = await ctx.newPage();
     await p.goto(base + "/app");
+    await p.locator("#email").fill("bala@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in", exact: true }).click();
     await p
@@ -1403,6 +1411,7 @@ test("cancel confirmations preserve shift and report; typed-only reports need no
       }),
       p = await ctx.newPage();
     await p.goto(base + "/app");
+    await p.locator("#email").fill("bala@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in", exact: true }).click();
     const clickConfirm = async (action, message, accept) => {
@@ -1534,6 +1543,7 @@ test("guard history is collapsed, scoped to the shift and read-only, including o
       }),
       p = await ctx.newPage();
     await p.goto(base + "/app");
+    await p.locator("#email").fill("bala@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in", exact: true }).click();
     await p
@@ -1680,6 +1690,7 @@ test("recorded shift instructions: owner publishes, scoped private playback, off
       }),
       g = await gc.newPage();
     await g.goto(base + "/app");
+    await g.locator("#email").fill("bala@demo.isdl");
     await g.locator("#password").fill("Pilot-only-2026!");
     await g.getByRole("button", { name: "Sign in", exact: true }).click();
     await g
@@ -1727,6 +1738,7 @@ test("recorded shift instructions: owner publishes, scoped private playback, off
       }),
       t = await tc.newPage();
     await t.goto(base + "/app");
+    await t.locator("#email").fill("bala@demo.isdl");
     await t.locator("#password").fill("Pilot-only-2026!");
     await t.getByRole("button", { name: "Sign in", exact: true }).click();
     await t
@@ -1785,6 +1797,7 @@ test("voice supervisor messages: photo, offline reload, failed upload retry and 
       }),
       p = await ctx.newPage();
     const signIn = async () => {
+      await p.locator("#email").fill("bala@demo.isdl");
       await p.locator("#password").fill("Pilot-only-2026!");
       await p.getByRole("button", { name: "Sign in", exact: true }).click();
       await p
@@ -2106,6 +2119,7 @@ test("two-way shift chat: current guard view, supervisor history and named repli
       }),
       g = await gc.newPage();
     await g.goto(base + "/app");
+    await g.locator("#email").fill("bala@demo.isdl");
     await g.locator("#password").fill("Pilot-only-2026!");
     await g.getByRole("button", { name: "Sign in", exact: true }).click();
     await g
@@ -2237,6 +2251,7 @@ test("empty current conversation stays hidden until a named supervisor sends the
       }),
       p = await ctx.newPage();
     await p.goto(base + "/app");
+    await p.locator("#email").fill("bala@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in", exact: true }).click();
     await p
@@ -2315,6 +2330,7 @@ test("newest messages first and current-shift unread badge persists and clears o
       }),
       p = await ctx.newPage();
     const signIn = async () => {
+      await p.locator("#email").fill("bala@demo.isdl");
       await p.locator("#password").fill("Pilot-only-2026!");
       await p.getByRole("button", { name: "Sign in", exact: true }).click();
       await p.getByRole("heading", { name: "Hello, Bala." }).waitFor();
@@ -2402,7 +2418,7 @@ test("refresh restores each role, offline drafts, and explicit sign-out still lo
       await p.locator("#email").fill(role + "@demo.isdl");
       await p.locator("#password").fill("Pilot-only-2026!");
       await p.getByRole("button", { name: "Sign in", exact: true }).click();
-      if (role === "owner") await p.locator(".owner-overflow-menu summary").click();
+      if (role === "owner" && !(await p.locator(".owner-overflow-menu").evaluate(el => el.open))) await p.locator(".owner-overflow-menu summary").click();
       await p.getByRole("button", { name: "Sign out", exact: true }).waitFor();
       if (role === "bala") {
         await p
@@ -2423,7 +2439,7 @@ test("refresh restores each role, offline drafts, and explicit sign-out still lo
         await p.locator("img.photo").waitFor();
       }
       await p.reload();
-      if (role === "owner") await p.locator(".owner-overflow-menu summary").click();
+      if (role === "owner" && !(await p.locator(".owner-overflow-menu").evaluate(el => el.open))) await p.locator(".owner-overflow-menu summary").click();
       await p.getByRole("button", { name: "Sign out", exact: true }).waitFor();
       assert.equal(await p.locator("#login").count(), 0);
       assert.equal(
@@ -2449,7 +2465,7 @@ test("refresh restores each role, offline drafts, and explicit sign-out still lo
         );
         assert.equal(await p.locator("img.photo").count(), 1);
       }
-      if (role === "owner") await p.locator(".owner-overflow-menu summary").click();
+      if (role === "owner" && !(await p.locator(".owner-overflow-menu").evaluate(el => el.open))) await p.locator(".owner-overflow-menu summary").click();
       await p.getByRole("button", { name: "Sign out", exact: true }).click();
       await p.getByRole("heading", { name: "Welcome back" }).waitFor();
       assert.equal(
@@ -2459,6 +2475,7 @@ test("refresh restores each role, offline drafts, and explicit sign-out still lo
       await p.reload();
       await p.getByRole("heading", { name: "Welcome back" }).waitFor();
       if (role === "bala") {
+        await p.locator("#email").fill("bala@demo.isdl");
         await p.locator("#password").fill("Pilot-only-2026!");
         await p.getByRole("button", { name: "Sign in", exact: true }).click();
         await p
@@ -2481,6 +2498,7 @@ test("refresh restores each role, offline drafts, and explicit sign-out still lo
     const ctx = await browser.newContext(),
       p = await ctx.newPage();
     await p.goto(base + "/app");
+    await p.locator("#email").fill("bala@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in", exact: true }).click();
     await p.getByRole("button", { name: "Sign out", exact: true }).waitFor();
@@ -2508,11 +2526,12 @@ test("sign-out invalidates a restored second tab", async () => {
     const ctx = await browser.newContext(),
       p = await ctx.newPage();
     await p.goto(base + "/app");
+    await p.locator("#email").fill("bala@demo.isdl");
     await p.locator("#password").fill("Pilot-only-2026!");
     await p.getByRole("button", { name: "Sign in", exact: true }).click();
     await p.getByRole("button", { name: "Sign out", exact: true }).waitFor();
     const popup = ctx.waitForEvent("page");
-    await p.evaluate(() => window.open("/", "_blank"));
+    await p.evaluate(() => window.open("/app", "_blank"));
     const otherTab = await popup;
     await otherTab
       .getByRole("button", { name: "Sign out", exact: true })

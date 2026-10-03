@@ -39,7 +39,13 @@ async function login(email) {
     body: JSON.stringify({ email, password: "Pilot-only-2026!" }),
   });
   assert.equal(r.status, 200);
-  return r.headers.get("set-cookie").split(";")[0];
+  let cookie=r.headers.get("set-cookie").split(";")[0];
+  const auth=await r.json();
+  if(auth.passwordChangeRequired) {
+    const changed=await request('/api/password-change',cookie,{password:'Private-settings-2026!'});
+    cookie='session='+changed.proof;
+  }
+  return cookie;
 }
 before(async () => {
   server = spawn(process.execPath, ["server.js"], {
@@ -285,9 +291,10 @@ test("shift-level voice instructions are saved with the selected shift", async (
     payload: { shift_id: startId, note: "Complete" },
   });
 });
-test("supervisors edit and deactivate peers, while owners and other customers stay protected", async () => {
+test("only owners edit and deactivate supervisors; supervisor peer changes are denied", async () => {
   const email = "settings-peer@demo.isdl";
-  await request("/api/admin", supervisor, {
+  const owner=await login("owner@demo.isdl");
+  await request("/api/admin", owner, {
     kind: "user",
     site_id: "oak",
     role: "supervisor",
@@ -311,9 +318,11 @@ test("supervisors edit and deactivate peers, while owners and other customers st
   await request("/api/admin", other, edit, 403);
   await request("/api/admin", supervisor, { ...edit, user_id: "owner" }, 403);
   await request("/api/admin", supervisor, { ...edit, role: "owner" }, 403);
-  await request("/api/admin", supervisor, edit);
+  await request("/api/admin", supervisor, edit, 403);
+  await request("/api/admin", owner, edit);
   assert.equal((await request("/api/state", cookie)).user.name, "Updated peer");
-  await request("/api/admin", supervisor, { ...edit, disabled: "true" });
+  await request("/api/admin", supervisor, { ...edit, disabled: "true" },403);
+  await request("/api/admin", owner, { ...edit, disabled: "true" });
   await request("/api/state", cookie, null, 401);
   await request(
     "/api/login",
@@ -328,7 +337,7 @@ test("supervisors edit and deactivate peers, while owners and other customers st
   );
 });
 test("settings tabs fit phone and desktop; checkpoint editing and QR labels work", async () => {
-  for(let i=0;i<4;i++) await request('/api/admin',supervisor,{kind:'user',site_id:'oak',name:'Team test '+i,role:'guard',email:`team-list-${i}@demo.isdl`,password:'Pilot-only-2026!'});
+  for(let i=0;i<5;i++) await request('/api/admin',supervisor,{kind:'user',site_id:'oak',name:'Team test '+i,role:'guard',email:`team-list-${i}@demo.isdl`,password:'Pilot-only-2026!'});
   const browser = await chromium.launch({
     executablePath: "C:/Program Files/Google/Chrome/Application/chrome.exe",
     headless: true,

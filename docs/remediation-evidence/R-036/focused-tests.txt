@@ -1,0 +1,21 @@
+(node:38568) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ supervisors manage only local guards; peer, promotion, shared and cross-customer resets are denied (1994.4449ms)
+✔ legacy-account migration flags existing non-owners once and preserves completed passwords (2.5755ms)
+✔ mobile browser completes private password and displays Other property image (8971.9784ms)
+✔ password vault transition copies pending evidence and retains the original encrypted record (5543.1197ms)
+✔ reset screen recovers known-password drafts or explicitly retains inaccessible work (10329.2859ms)
+✔ temporary passwords restrict access, require private replacement, revoke sessions and audit without secrets (1073.4902ms)
+(node:19832) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ property types have fixed local dashboard images and default safely for legacy properties (6.9276ms)
+✔ property setup accepts Other and rejects unsupported types (1.2525ms)
+✔ property-location writes remain correct when property type was added after actor (1.4029ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 29094.2534

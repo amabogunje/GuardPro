@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: Android viewport: offline capture, reload, shared sign-out, interrupted upload and exactly-once retry
+ok 1 - Android viewport: offline capture, reload, shared sign-out, interrupted upload and exactly-once retry
+  ---
+  duration_ms: 15340.9091
+  type: 'test'
+  ...
+# Subtest: Material layouts: every page at compact, medium and expanded widths
+ok 2 - Material layouts: every page at compact, medium and expanded widths
+  ---
+  duration_ms: 26402.5565
+  type: 'test'
+  ...
+# Subtest: mobile patrol countdown, five-minute reminder, overdue and offline start survive reload
+ok 3 - mobile patrol countdown, five-minute reminder, overdue and offline start survive reload
+  ---
+  duration_ms: 5732.216
+  type: 'test'
+  ...
+# Subtest: refresh restores each role, offline drafts, and explicit sign-out still locks saved work
+ok 4 - refresh restores each role, offline drafts, and explicit sign-out still locks saved work
+  ---
+  duration_ms: 12486.5064
+  type: 'test'
+  ...
+# Subtest: sign-out invalidates a restored second tab
+ok 5 - sign-out invalidates a restored second tab
+  ---
+  duration_ms: 6144.1287
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 67863.894

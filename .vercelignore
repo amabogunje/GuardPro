@@ -7,3 +7,4 @@ skills-lock.json
 .git
 node_modules
 scripts
+.integration-worktree

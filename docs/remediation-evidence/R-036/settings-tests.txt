@@ -1,0 +1,15 @@
+✔ settings protect scope and preserve shift versions used by guard starts (3526.2713ms)
+✔ supervisor voice instructions publish privately and guards retain shift audio versions (180.1146ms)
+✔ shift-level voice instructions are saved with the selected shift (122.9192ms)
+✔ only owners edit and deactivate supervisors; supervisor peer changes are denied (769.5401ms)
+✔ settings tabs fit phone and desktop; checkpoint editing and QR labels work (25494.2799ms)
+✔ Any guard is exclusive, property-scoped, and does not invent attendance expectations (631.6968ms)
+✔ phone-only team accounts can sign in; aliases preserve the same encrypted pending work (5624.4378ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 38274.5194

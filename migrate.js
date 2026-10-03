@@ -66,6 +66,12 @@ BEGIN
 END
 $$;
 `);
+    await exec(fs.readFileSync("migrations/025.sql", "utf8"));
+    if (postgres) await exec(`DO $$ BEGIN
+      IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'guardpro_app') THEN
+        GRANT SELECT, INSERT, UPDATE, DELETE ON user_password_state TO guardpro_app;
+      END IF;
+    END $$;`);
     if (!postgres || process.env.SEED_DEMO === "true") await seedDemo();
   });
 }

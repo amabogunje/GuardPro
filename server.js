@@ -9,6 +9,7 @@ import { settingsRoutes } from "./settings.js";
 import { phoneNumber, loginId } from "./public/login-id.js";
 import { assessLocation, propertyInput } from './location-checks.js';
 import { propertyLocationInsertSql } from "./property-location-write.js";
+import { addressQuery, geocodeAddress } from './geocoding.js';
 import { transcribeAndDraft, draftSummary } from "./ai.js";
 import express from "express";
 import multer from "multer";
@@ -209,6 +210,19 @@ async function rate(key, duration, maximum) {
   limit.set(key, entry);
   return entry.n <= maximum;
 }
+async function addressLookup(req,res,next) {
+  try {
+    if(req.user ? req.user.role!=='owner' : !pilotSupportContact) fail('Address search is unavailable here',403);
+    const address=addressQuery(req.body?.address);
+    if(!process.env.GEOAPIFY_API_KEY?.trim()) fail('Address search is not available yet. Use your current position or enter coordinates.',503);
+    const identity=req.user?'user:'+req.user.id:'ip:'+req.ip;
+    if(!(await rate('geocode:'+identity,600000,20))) fail('Too many address searches. Please wait ten minutes and try again.',429);
+    if(!(await rate('geocode:daily',86400000,1000))) fail('Address search has reached its daily limit. Use your current position or try tomorrow.',429);
+    // Do not use post(): provider I/O must not hold the database write lock.
+    res.json({results:await geocodeAddress(address)});
+  }catch(error){next(error);}
+}
+app.post('/api/public/geocode',addressLookup);
 async function issueSession(res, u) {
   const token = randomBytes(32).toString("hex");
   const expiresAt = Date.now() + 12 * 3600000;
@@ -220,7 +234,8 @@ async function issueSession(res, u) {
     maxAge: 43200000,
   });
   const contact = await one("SELECT vault_key FROM user_contacts WHERE user_id=?", u.id);
-  return { id: u.id, name: u.name, role: u.role, proof: token, expiresAt, vaultAccount: contact?.vault_key || u.email };
+  const passwordChangeRequired = Boolean((await one('SELECT must_change FROM user_password_state WHERE user_id=?',u.id))?.must_change ?? (u.role !== 'owner'));
+  return { id: u.id, name: u.name, role: u.role, proof: token, expiresAt, vaultAccount: contact?.vault_key || u.email, passwordChangeRequired };
 }
 post("/api/login", async (req, res) => {
   let u = await one(
@@ -373,9 +388,33 @@ app.use(["/api", "/media"], async (req, res, next) => {
   if (!req.user || await one("SELECT 1 FROM disabled_users WHERE user_id=?",req.user.id)) return res.status(401).json({ error: "Sign in required" });
   if (req.baseUrl === "/api" && req.headers["x-session-proof"] !== token)
     return res.status(401).json({ error: "Unlock your account to continue" });
+  const credential=await one('SELECT must_change FROM user_password_state WHERE user_id=?',req.user.id);
+  if (Boolean(credential?.must_change ?? (req.user.role !== 'owner')) &&
+      !['/api/password-change','/api/logout'].includes(req.originalUrl.split('?')[0]))
+    return res.status(403).json({error:'Choose your own password before continuing',code:'PASSWORD_CHANGE_REQUIRED'});
   req.token = token;
   next();
 });
+post('/api/password-change',async(req,res)=>{
+  // Recheck within the mutation transaction: a concurrent completion/reset
+  // must not let an already revoked restricted session set another password.
+  if (!(await one('SELECT 1 FROM sessions WHERE token=? AND user_id=? AND expires>?',req.token,req.user.id,Date.now()))) fail('Sign in required',401);
+  const credential=await one('SELECT must_change FROM user_password_state WHERE user_id=?',req.user.id);
+  if (!Boolean(credential?.must_change ?? (req.user.role !== 'owner'))) fail('No temporary password to replace',403);
+  const password=String(req.body.password||'');
+  if(password.length<12 || password.length>256) fail('Use a password of 12 to 256 characters');
+  const account=await one('SELECT * FROM users WHERE id=?',req.user.id);
+  if(verify(password,account.password)) fail('Choose a different password from your temporary password');
+  await run('UPDATE users SET password=? WHERE id=?',hash(password),account.id);
+  await run('INSERT INTO user_password_state VALUES(?,0) ON CONFLICT(user_id) DO UPDATE SET must_change=0',account.id);
+  // A new vault keeps the old encrypted copy intact on every device.
+  const vaultKey=`user:${account.id}:${id()}`;
+  await run('INSERT INTO user_contacts VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET vault_key=excluded.vault_key',account.id,null,vaultKey,0);
+  await run('DELETE FROM sessions WHERE user_id=?',account.id);
+  await audit(req.user,'user.password_changed',{user_id:account.id});
+  res.json(await issueSession(res,account));
+});
+app.post('/api/geocode',addressLookup);
 post("/api/logout", async (req, res) => {
   await run("DELETE FROM sessions WHERE token=?", req.token);
   res.clearCookie("session");
@@ -1748,6 +1787,7 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
     fail("Customer management only", 403);
   let b = req.body,
     s = b.site_id;
+  let createdSiteId;
   if (b.kind === "customer")
     fail("Customer onboarding is not available here", 403);
   if (b.kind === "additional_site" && req.user.role !== "owner")
@@ -1776,6 +1816,7 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
     await run("INSERT INTO assignments VALUES(?,?)", req.user.id, sid);
     await run('INSERT INTO site_locations VALUES(?,?,?,?)',sid,property.latitude,property.longitude,property.radius_m);
     await run(propertyLocationInsertSql,id(),sid,property.address,property.latitude,property.longitude,property.radius_m,property.property_type,req.user.id,now());
+    createdSiteId = sid;
   } else {
     await requireSite(req.user, s);
     if (b.kind === "shift_plan") {
@@ -1805,6 +1846,7 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
     } else if (b.kind === "update_user") {
       const target = await one("SELECT u.* FROM users u JOIN assignments a ON a.user_id=u.id WHERE u.id=? AND a.site_id=?",b.user_id,s);
       if(!target || target.role === "owner" || !["guard","supervisor"].includes(b.role)) fail("Only assigned guards and supervisors can be managed",403);
+      if(req.user.role==='supervisor' && (target.role!=='guard' || b.role!=='guard')) fail('Supervisors can only manage guards',403);
       if(target.id===req.user.id && (b.disabled === "true" || b.role!==target.role)) fail("You cannot deactivate yourself or change your own role",403);
       if(req.user.role === "supervisor" && target.id !== req.user.id && await one("SELECT 1 FROM assignments WHERE user_id=? AND site_id<>?",target.id,s))
         fail("Shared accounts can only be changed by an owner",403);
@@ -1819,7 +1861,10 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
       if(b.disabled === "true") await run("INSERT INTO disabled_users VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET actor=excluded.actor,at=excluded.at",target.id,req.user.id,now());
       else await run("DELETE FROM disabled_users WHERE user_id=?",target.id);
       if(b.disabled === "true" || b.password || b.role !== target.role) await run("DELETE FROM sessions WHERE user_id=?",target.id);
-      if(b.password) await audit(req.user,"user.password_reset",{site:s,user_id:target.id});
+      if(b.password) {
+        await run('INSERT INTO user_password_state VALUES(?,1) ON CONFLICT(user_id) DO UPDATE SET must_change=1',target.id);
+        await audit(req.user,"user.password_reset",{site:s,user_id:target.id});
+      }
       if(b.disabled === "true") await audit(req.user,"user.disabled",{user_id:target.id,active_shift:Boolean(await one("SELECT 1 FROM shifts WHERE user_id=? AND ended_at IS NULL",target.id))});
       if(b.disabled === "true" || b.role !== "guard") {
         const assignedSites=await all("SELECT site_id FROM assignments WHERE user_id=?",target.id);
@@ -1871,6 +1916,7 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
         randomBytes(8).toString("hex"),
       );
     else if (b.kind === "user") {
+      if(req.user.role==='supervisor' && b.role!=='guard') fail('Supervisors can only create guards',403);
       if (
         !["guard", "owner", "supervisor"].includes(b.role) ||
         String(b.password || "").length < 12
@@ -1892,6 +1938,8 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
         b.role,
       );
       await run("INSERT INTO assignments VALUES(?,?)", uid, s);
+      await run('INSERT INTO user_password_state VALUES(?,1)',uid);
+      await audit(req.user,'user.password_temporary_created',{site:s,user_id:uid});
       await saveTeamContact(uid,contact);
       if (req.file) {
         const photoPath = await saveMedia("profiles/" + uid, req.file.buffer, req.file.mimetype);
@@ -1928,8 +1976,8 @@ post("/api/admin", upload.single("profile_photo"), async (req, res) => {
       await audit(req.user,'team.unassigned',{site:s,user_id:target.id,role:target.role});
     } else fail("Unknown action");
   }
-  await audit(req.user, "admin " + b.kind, { site: s, name: b.name });
-  res.json({ ok: true });
+  await audit(req.user, "admin " + b.kind, { site: createdSiteId || s, name: b.name });
+  res.json({ ok: true, ...(createdSiteId ? { siteId: createdSiteId } : {}) });
 });
 settingsRoutes({app,post,all,one,run,requireSite,fail,id,now,audit});
 app.get("/media/profile/:user", async (req, res) => {

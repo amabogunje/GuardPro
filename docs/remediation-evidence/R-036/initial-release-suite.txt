@@ -1,0 +1,530 @@
+
+> isdl-guard-patrol@0.2.0 test:release
+> node --test --test-concurrency=1 --test-skip-pattern="shift supervisor messages|voice supervisor messages|two-way shift chat|messaging requires a shift|empty current conversation|newest messages first|recorded shift instructions: owner publishes" tests/*.test.js
+
+✔ Any roster reports a count only; named rosters retain their assigned denominator (34.8999ms)
+✔ activity reports use Nigerian day boundaries and source-matched counts (2.7552ms)
+✔ expectations count due guard shifts and patrol stops; resolved count stays within report cohort (0.7424ms)
+✔ activity reports do not count stale or late starts as attendance for a scheduled occurrence (0.541ms)
+✔ GPS classification preserves accuracy uncertainty (1970.7195ms)
+✔ owner-only address setup and durable capture-time assessments (131.5605ms)
+✔ supervisor reviews grouped GPS flags without changing problems (5566.4779ms)
+✖ owner property form saves an address and confirmed map position (33011.4099ms)
+✔ normalizes Nigerian shortcuts and international WhatsApp numbers (1.4886ms)
+✔ a failed upload keeps a retryable reservation and finalizes exactly once (3308.3487ms)
+✔ a delayed media upload does not delay another recorded guard activity (940.8952ms)
+✖ MVP hides messaging for every role and rejects new messages (21794.5679ms)
+✔ owner evidence is owner-only, tenant scoped and retains private media authorization (1669.633ms)
+✔ a supervisor-resolved P1 security problem appears in its owner’s recent history only (34.5309ms)
+✔ owner activity labels the current seven-day period and patrol starts as partial evidence (9.1814ms)
+✔ patrol health weights completed checkpoints above start timing (6.7598ms)
+✖ owner is guided from an empty account through property and supervision setup (33990.249ms)
+✔ owner dashboard gives three direct, display-only monitoring answers (1.8105ms)
+✔ seven-day period includes activity already due today but excludes older records (6.0179ms)
+✔ current shift starts and completed patrols appear in owner health (1.5397ms)
+✔ health uses historical expected slots, weighted missed/late and capture time (19.1219ms)
+✔ unconfigured and Any attendance do not become perfect health (1.0309ms)
+✔ risk uses all reports as denominator and keeps unclassified reports explicit (0.7616ms)
+✔ classification requires category and conditional security priority (3.0383ms)
+✔ owner dashboard distinguishes recently reported P1 issues, live monitoring and three-day patrol completion (1.1687ms)
+(node:16792) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ owner supervision is a persistent per-property responsibility choice (2181.5807ms)
+✔ owner reuses and removes same-customer guards and supervisors without deleting accounts (258.8584ms)
+✔ owner archives a property without deleting its records and can create a new property afterwards (78.4486ms)
+✔ owner overview is assigned-site scoped and excludes secrets (1794.623ms)
+✔ owner acting as supervisor resolves scoped problems retaining actual identity (55.7224ms)
+✔ old offline captures received now remain unconfirmed; Any does not invent staffing expectations (5.1564ms)
+✔ owner overview returns the configured property type and address for the fixed dashboard image (2.9993ms)
+✔ Any roster records attendance without claiming a required headcount; named roster flags missing guard (3.5201ms)
+(node:57568) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✖ owner mobile setup, supervisor creation and honest subscription screen (33979.7582ms)
+✖ owner KPIs are display-only and supervisor mode persists without changing identity (31090.5199ms)
+✖ owner dashboard stays compact on mobile without operational evidence links (30665.1033ms)
+✖ owner can swipe through and select multiple property dashboards (30606.0791ms)
+(node:25008) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ temporary passwords restrict access, require private replacement, revoke sessions and audit without secrets (1912.678ms)
+(node:76008) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ property types have fixed local dashboard images and default safely for legacy properties (4.6143ms)
+✔ property setup accepts Other and rejects unsupported types (1.0671ms)
+✔ property-location writes remain correct when property type was added after actor (1.1453ms)
+✖ assisted provisioning creates two isolated owner/property accounts with audit receipts (410.3743ms)
+✔ public signup stays unavailable until an ISDL support contact is configured (1511.2267ms)
+✔ settings protect scope and preserve shift versions used by guard starts (1778.0978ms)
+✔ supervisor voice instructions publish privately and guards retain shift audio versions (97.6713ms)
+✔ shift-level voice instructions are saved with the selected shift (71.8188ms)
+✖ supervisors edit and deactivate peers, while owners and other customers stay protected (10.9157ms)
+✖ settings tabs fit phone and desktop; checkpoint editing and QR labels work (41222.8108ms)
+✖ Any guard is exclusive, property-scoped, and does not invent attendance expectations (274.1304ms)
+✔ phone-only team accounts can sign in; aliases preserve the same encrypted pending work (4727.2903ms)
+(node:70184) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ self-service signup creates an isolated owner, customer and first property (3454.1097ms)
+✔ signup rejects duplicate identities and an unaccepted customer notice (23.9895ms)
+✖ owner password-reset confirmation changes the password and invalidates the old one (11.6894ms)
+✖ an owner with a legacy old-password vault signs in after reset without clearing device data (9.6121ms)
+✖ sign-in recovery keeps guard and supervisor help owner-assisted (31564.0362ms)
+✖ mobile signup wizard creates the account and retains a narrow layout (31634.8004ms)
+✖ landing signup entry opens account creation while ordinary entry retains sign-in (30811.5368ms)
+✖ customer account hierarchy restricts creation and assignments (2731.4877ms)
+✔ only owners can share users across properties or change shared accounts (765.6301ms)
+✔ supervisor pages retain a mobile canvas on phone and desktop (17912.3317ms)
+✔ shift overview scopes attendance and patrols without inventing a default shift (59.5939ms)
+✔ supervisor setup guidance presents one next configuration step in operational order (3.2378ms)
+✔ empty guard list distinguishes an open Any-guard shift from no assigned guards (1.3068ms)
+✔ attendance is tied to the selected occurrence and retains valid overnight coverage (2.8789ms)
+✔ historical overview uses prior plans and separates carry-over from later records (3.8754ms)
+✔ problem KPI and list agree for unresolved carry-over and drop resolved reports (2.6245ms)
+✖ supervisor single recipient and five-message inbox pagination and sorting (277.7599ms)
+✔ reported problems use compact outstanding and previous lists with detail navigation (8053.8554ms)
+✔ supervisor views daily, monthly and custom activity reports and downloads CSV (7013.6292ms)
+✔ optional user photos persist privately and reject invalid uploads (154.3729ms)
+✔ cookie alone cannot unlock API after shared-phone sign-out (1810.8862ms)
+✔ service health endpoint exposes no operational or customer detail (7.198ms)
+✔ authentication, guard scope, duplicate shift, complete scheduled round and end (140.4445ms)
+✖ approved report, recoverable media, tenant isolation and expiring private links (7.681ms)
+✖ supervisor state machine, notification receipt and summary approval (13.3202ms)
+✖ Android viewport: offline capture, reload, shared sign-out, interrupted upload and exactly-once retry (32988.0061ms)
+✖ voice recording, permission fallbacks, owner mobile and supervisor administration UI (33110.5216ms)
+✖ Material layouts: every page at compact, medium and expanded widths (35194.8916ms)
+✖ off-duty messaging is disabled; duty actions return after check-in (33455.0288ms)
+✔ shift timing handles Nigerian day and overnight schedules, elapsed time and absent plans (1.4275ms)
+✔ patrol interval windows, overdue time, persisted start and midnight (0.9575ms)
+✔ owner and supervisor can schedule only assigned sites; guard cannot (36.2913ms)
+✖ mobile patrol countdown, five-minute reminder, overdue and offline start survive reload (36352.3173ms)
+✔ sequential patrol enforcement, checkpoint mismatch and GPS review (147.9473ms)
+✖ patrol mobile: selected QR/NFC auto-save, resume, hidden manual exception (34774.62ms)
+✖ simplified report: camera photo and audio-only submission with aligned Home (33628.0353ms)
+✖ cancel confirmations preserve shift and report; typed-only reports need no photo (33814.3037ms)
+✖ guard history is collapsed, scoped to the shift and read-only, including offline reports (34838.4484ms)
+✖ refresh restores each role, offline drafts, and explicit sign-out still locks saved work (36244.9409ms)
+✖ sign-out invalidates a restored second tab (35285.0524ms)
+✔ concurrent retries create one report and attachment; competing shifts remain unique (951.4739ms)
+ℹ tests 91
+ℹ suites 0
+ℹ pass 60
+ℹ fail 31
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 818041.0843
+
+✖ failing tests:
+
+test at tests\gps.test.js:56:1
+✖ owner property form saves an address and confirmed map position (33011.4099ms)
+  locator.click: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for getByRole('button', { name: 'Property', exact: true })[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\gps.test.js:59:253) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for getByRole('button', { name: 'Property', exact: true })" ]
+  }
+
+test at tests\messaging-disabled.test.js:9:1
+✖ MVP hides messaging for every role and rejects new messages (21794.5679ms)
+  page.evaluate: TypeError: Cannot read properties of null (reading 'getBoundingClientRect')
+      at eval (eval at evaluate (:311:30), <anonymous>:6:59)
+      at Array.map (<anonymous>)
+      at eval (eval at evaluate (:311:30), <anonymous>:5:30)
+      at UtilityScript.evaluate (<anonymous>:313:16)
+      at UtilityScript.<anonymous> (<anonymous>:1:44)
+      at positions (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\messaging-disabled.test.js:61:20)
+      at async TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\messaging-disabled.test.js:71:26) {
+    log: []
+  }
+
+test at tests\owner-first-property-onboarding.test.js:18:1
+✖ owner is guided from an empty account through property and supervision setup (33990.249ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for locator('.owner-health') to be visible[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-first-property-onboarding.test.js:26:41) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for locator('.owner-health') to be visible" ]
+  }
+
+test at tests\owner-ui.test.js:29:1
+✖ owner mobile setup, supervisor creation and honest subscription screen (33979.7582ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for locator('.owner-health') to be visible[22m
+  
+      at signedIn (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:21:229)
+      at async TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:30:20) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for locator('.owner-health') to be visible" ]
+  }
+
+test at tests\owner-ui.test.js:43:1
+✖ owner KPIs are display-only and supervisor mode persists without changing identity (31090.5199ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for locator('.owner-health') to be visible[22m
+  
+      at signedIn (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:21:229)
+      at async TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:44:20) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for locator('.owner-health') to be visible" ]
+  }
+
+test at tests\owner-ui.test.js:54:1
+✖ owner dashboard stays compact on mobile without operational evidence links (30665.1033ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for locator('.owner-health') to be visible[22m
+  
+      at signedIn (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:21:229)
+      at async TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:55:20) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for locator('.owner-health') to be visible" ]
+  }
+
+test at tests\owner-ui.test.js:60:1
+✖ owner can swipe through and select multiple property dashboards (30606.0791ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for locator('.owner-health') to be visible[22m
+  
+      at signedIn (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:21:229)
+      at async TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\owner-ui.test.js:63:20) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for locator('.owner-health') to be visible" ]
+  }
+
+test at tests\provisioning.test.js:128:1
+✖ assisted provisioning creates two isolated owner/property accounts with audit receipts (410.3743ms)
+  Error: file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/database.js:103
+    return sqlite.prepare(statement).run(...params).changes;
+                  ^
+  
+  Error: table property_locations has 9 columns but 8 values were supplied
+      at run (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/database.js:103:17)
+      at file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/scripts/provision-customer.mjs:98:11
+      at async transaction (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/database.js:54:19)
+      at async file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/scripts/provision-customer.mjs:68:18 {
+    code: 'ERR_SQLITE_ERROR',
+    errcode: 1,
+    errstr: 'SQL logic error'
+  }
+  
+  Node.js v24.14.1
+  
+      at ChildProcess.<anonymous> (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/tests/provisioning.test.js:56:31)
+      at ChildProcess.emit (node:events:508:28)
+      at ChildProcess._handle.onexit (node:internal/child_process:294:12)
+
+test at tests\settings.test.js:288:1
+✖ supervisors edit and deactivate peers, while owners and other customers stay protected (10.9157ms)
+  AssertionError [ERR_ASSERTION]: {"error":"Supervisors can only create guards"}
+  
+  403 !== 200
+  
+      at request (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/tests/settings.test.js:20:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/tests/settings.test.js:290:3)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 403,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\settings.test.js:330:1
+✖ settings tabs fit phone and desktop; checkpoint editing and QR labels work (41222.8108ms)
+  locator.click: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for locator('#team-next')[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\settings.test.js:404:41) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for locator('#team-next')" ]
+  }
+
+test at tests\settings.test.js:509:1
+✖ Any guard is exclusive, property-scoped, and does not invent attendance expectations (274.1304ms)
+  AssertionError [ERR_ASSERTION]: {"error":"Choose your own password before continuing","code":"PASSWORD_CHANGE_REQUIRED"}
+  
+  403 !== 200
+  
+      at request (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/tests/settings.test.js:20:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/tests/settings.test.js:529:18)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 403,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\signup.test.js:158:1
+✖ owner password-reset confirmation changes the password and invalidates the old one (11.6894ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  429 !== 200
+  
+      at TestContext.<anonymous> (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/tests/signup.test.js:163:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 429,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\signup.test.js:209:1
+✖ an owner with a legacy old-password vault signs in after reset without clearing device data (9.6121ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  429 !== 200
+  
+      at TestContext.<anonymous> (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/tests/signup.test.js:215:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 429,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\signup.test.js:251:1
+✖ sign-in recovery keeps guard and supervisor help owner-assisted (31564.0362ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for getByText('Ask your owner to reset your password or check the email or WhatsApp number saved for your account.', { exact: true }) to be visible[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\signup.test.js:259:146) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for getByText('Ask your owner to reset your password or check the email or WhatsApp number saved for your account.', { exact: true }) to be visible" ]
+  }
+
+test at tests\signup.test.js:269:1
+✖ mobile signup wizard creates the account and retains a narrow layout (31634.8004ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for locator('.owner-health') to be visible[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\signup.test.js:299:41) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for locator('.owner-health') to be visible" ]
+  }
+
+test at tests\signup.test.js:317:1
+✖ landing signup entry opens account creation while ordinary entry retains sign-in (30811.5368ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for getByText('Guard Patrol does not provide emergency response.', { exact: true }) to be visible[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\signup.test.js:334:96) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for getByText('Guard Patrol does not provide emergency response.', { exact: true }) to be visible" ]
+  }
+
+test at tests\supervisor.test.js:67:1
+✖ customer account hierarchy restricts creation and assignments (2731.4877ms)
+  AssertionError [ERR_ASSERTION]: {"error":"Choose your own password before continuing","code":"PASSWORD_CHANGE_REQUIRED"}
+  
+  403 !== 200
+  
+      at req (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/tests/supervisor.test.js:24:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/tests/supervisor.test.js:106:3)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 403,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\supervisor.test.js:723:1
+✖ supervisor single recipient and five-message inbox pagination and sorting (277.7599ms)
+  AssertionError [ERR_ASSERTION]: {"error":"Choose your own password before continuing","code":"PASSWORD_CHANGE_REQUIRED"}
+  
+  403 !== 200
+  
+      at req (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/tests/supervisor.test.js:24:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/tests/supervisor.test.js:727:21)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 403,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\workflows.test.js:186:1
+✖ approved report, recoverable media, tenant isolation and expiring private links (7.681ms)
+  TypeError: Cannot read properties of undefined (reading 'started_at')
+      at TestContext.<anonymous> (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/tests/workflows.test.js:196:4)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7)
+
+test at tests\workflows.test.js:242:1
+✖ supervisor state machine, notification receipt and summary approval (13.3202ms)
+  AssertionError [ERR_ASSERTION]: {"error":"Not found"}
+  
+  404 !== 400
+  
+      at req (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/tests/workflows.test.js:26:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///C:/Users/mabog/OneDrive/Documents/ChatGPT/ISDL%20Guard%20Pro/tests/workflows.test.js:249:3)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 404,
+    expected: 400,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\workflows.test.js:289:1
+✖ Android viewport: offline capture, reload, shared sign-out, interrupted upload and exactly-once retry (32988.0061ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for getByRole('heading', { name: 'Hello, Bala.' }) to be visible[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\workflows.test.js:306:60) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for getByRole('heading', { name: 'Hello, Bala.' }) to be visible" ]
+  }
+
+test at tests\workflows.test.js:402:1
+✖ voice recording, permission fallbacks, owner mobile and supervisor administration UI (33110.5216ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for getByRole('heading', { name: 'Hello, Bala.' }) to be visible[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\workflows.test.js:423:60) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for getByRole('heading', { name: 'Hello, Bala.' }) to be visible" ]
+  }
+
+test at tests\workflows.test.js:520:1
+✖ Material layouts: every page at compact, medium and expanded widths (35194.8916ms)
+  locator.click: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for locator('[data-page="round"]').first()[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\workflows.test.js:556:66) {
+    name: 'TimeoutError',
+    log: [ `  - waiting for locator('[data-page="round"]').first()` ]
+  }
+
+test at tests\workflows.test.js:630:1
+✖ off-duty messaging is disabled; duty actions return after check-in (33455.0288ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for getByRole('heading', { name: 'Hello, Bala.' }) to be visible[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\workflows.test.js:646:60) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for getByRole('heading', { name: 'Hello, Bala.' }) to be visible" ]
+  }
+
+test at tests\workflows.test.js:970:1
+✖ mobile patrol countdown, five-minute reminder, overdue and offline start survive reload (36352.3173ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for getByRole('heading', { name: 'Hello, Bala.' }) to be visible[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\workflows.test.js:1001:60) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for getByRole('heading', { name: 'Hello, Bala.' }) to be visible" ]
+  }
+
+test at tests\workflows.test.js:1130:1
+✖ patrol mobile: selected QR/NFC auto-save, resume, hidden manual exception (34774.62ms)
+  locator.click: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for getByRole('button', { name: 'Start patrol', exact: true })[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\workflows.test.js:1164:72) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for getByRole('button', { name: 'Start patrol', exact: true })" ]
+  }
+
+test at tests\workflows.test.js:1276:1
+✖ simplified report: camera photo and audio-only submission with aligned Home (33628.0353ms)
+  locator.click: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for getByRole('button', { name: 'Report a problem', exact: true })[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\workflows.test.js:1297:8) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for getByRole('button', { name: 'Report a problem', exact: true })" ]
+  }
+
+test at tests\workflows.test.js:1389:1
+✖ cancel confirmations preserve shift and report; typed-only reports need no photo (33814.3037ms)
+  locator.click: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for getByRole('button', { name: 'Click here', exact: true })[22m
+  
+      at clickConfirm (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\workflows.test.js:1409:20)
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\workflows.test.js:1419:11) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for getByRole('button', { name: 'Click here', exact: true })" ]
+  }
+
+test at tests\workflows.test.js:1476:1
+✖ guard history is collapsed, scoped to the shift and read-only, including offline reports (34838.4484ms)
+  locator.click: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for getByRole('button', { name: 'Report a problem', exact: true })[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\workflows.test.js:1541:8) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for getByRole('button', { name: 'Report a problem', exact: true })" ]
+  }
+
+test at tests\workflows.test.js:2386:1
+✖ refresh restores each role, offline drafts, and explicit sign-out still locks saved work (36244.9409ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for locator('#report') to be visible[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\workflows.test.js:2445:36) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for locator('#report') to be visible" ]
+  }
+
+test at tests\workflows.test.js:2500:1
+✖ sign-out invalidates a restored second tab (35285.0524ms)
+  locator.waitFor: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for getByRole('button', { name: 'Sign out', exact: true }) to be visible[22m
+  
+      at TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\workflows.test.js:2513:68) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for getByRole('button', { name: 'Sign out', exact: true }) to be visible" ]
+  }
+npm notice
+npm notice New minor version of npm available! 11.11.0 -> 11.21.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.21.0
+npm notice To update run: npm install -g npm@11.21.0
+npm notice

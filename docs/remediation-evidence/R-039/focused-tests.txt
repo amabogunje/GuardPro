@@ -1,0 +1,19 @@
+✔ provider adapter encodes input, validates coordinates and never exposes provider secrets (2138.5345ms)
+✔ lookup API supports signup and owners, denies guards and isolates provider latency (1066.4359ms)
+✔ property lookup fills coordinates and preview without navigation and retains GPS and save (12492.8884ms)
+✔ ambiguous results require choice; errors and stale searches cannot overwrite the position (10468.4855ms)
+✔ signup uses the same address lookup and persists its selected coordinates (2955.6749ms)
+✔ anonymous geocoding has a per-client limit (108.6215ms)
+(node:16732) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ property types have fixed local dashboard images and default safely for legacy properties (4.2136ms)
+✔ property setup accepts Other and rejects unsupported types (0.9821ms)
+✔ property-location writes remain correct when property type was added after actor (0.9875ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 30417.2203

@@ -1,0 +1,21 @@
+✔ customer account hierarchy restricts creation and assignments (3895.374ms)
+✔ only owners can share users across properties or change shared accounts (941.7992ms)
+✔ supervisor pages retain a mobile canvas on phone and desktop (15179.5694ms)
+✔ shift overview scopes attendance and patrols without inventing a default shift (34.2711ms)
+✔ supervisor setup guidance presents one next configuration step in operational order (3.3036ms)
+✔ empty guard list distinguishes an open Any-guard shift from no assigned guards (0.4085ms)
+✔ attendance is tied to the selected occurrence and retains valid overnight coverage (1.302ms)
+✔ historical overview uses prior plans and separates carry-over from later records (1.1157ms)
+✔ problem KPI and list agree for unresolved carry-over and drop resolved reports (0.8845ms)
+✔ supervisor single recipient and five-message inbox pagination and sorting (7748.5783ms)
+✔ reported problems use compact outstanding and previous lists with detail navigation (6163.4476ms)
+✔ supervisor views daily, monthly and custom activity reports and downloads CSV (7881.6905ms)
+✔ optional user photos persist privately and reject invalid uploads (194.4026ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 43890.7027

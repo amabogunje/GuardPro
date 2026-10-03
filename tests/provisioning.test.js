@@ -142,6 +142,7 @@ test("assisted provisioning creates two isolated owner/property accounts with au
   assert.deepEqual(firstState.sites.map((site) => site.id), [first.siteId]);
   assert.deepEqual(secondState.sites.map((site) => site.id), [second.siteId]);
   assert.equal(firstState.propertyLocations.at(-1).address, "1 Provisioning Close, Ikeja, Lagos, Nigeria");
+  assert.equal(firstState.propertyLocations.at(-1).property_type, 'single_family_home');
   await request(`/api/settings/${second.siteId}`, firstSession, 403);
   await request(`/api/settings/${first.siteId}`, secondSession, 403);
 
@@ -150,6 +151,10 @@ test("assisted provisioning creates two isolated owner/property accounts with au
   const audit = db
     .prepare("SELECT actor,action,detail FROM audit WHERE id=?")
     .get(first.auditId);
+  const location = db.prepare('SELECT actor, latitude, longitude FROM property_locations WHERE site_id=?').get(first.siteId);
+  assert.equal(location.actor, first.ownerId);
+  assert.equal(location.latitude, 6.601);
+  assert.equal(location.longitude, 3.351);
   db.close();
   assert.equal(audit.actor, "operator:qa-operator");
   assert.equal(audit.action, "customer.provisioned");

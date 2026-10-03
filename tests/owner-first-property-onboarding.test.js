@@ -23,7 +23,7 @@ test('owner is guided from an empty account through property and supervision set
     await page.locator('#email').fill('owner@demo.isdl');
     await page.locator('#password').fill('Pilot-only-2026!');
     await page.getByRole('button',{name:'Sign in',exact:true}).click();
-    await page.locator('.owner-health').waitFor();
+    await page.getByRole('button',{name:'Manage Property',exact:true}).waitFor();
 
     await page.getByRole('button',{name:'Manage Property',exact:true}).click();
     await page.getByRole('button',{name:'Remove property',exact:true}).click();

@@ -1,0 +1,12 @@
+✔ GPS classification preserves accuracy uncertainty (1316.0866ms)
+✔ owner-only address setup and durable capture-time assessments (96.4397ms)
+✔ supervisor reviews grouped GPS flags without changing problems (5026.8209ms)
+✔ owner property form saves an address and confirmed map position (5241.1609ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12411.9751

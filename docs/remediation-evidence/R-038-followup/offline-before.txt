@@ -1,0 +1,45 @@
+TAP version 13
+# Subtest: Android viewport: offline capture, reload, shared sign-out, interrupted upload and exactly-once retry
+not ok 1 - Android viewport: offline capture, reload, shared sign-out, interrupted upload and exactly-once retry
+  ---
+  duration_ms: 45865.3204
+  type: 'test'
+  location: 'C:\\Users\\mabog\\OneDrive\\Documents\\ChatGPT\\ISDL Guard Pro\\tests\\workflows.test.js:289:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    locator.waitFor: Timeout 30000ms exceeded.
+    Call log:
+    [2m  - waiting for getByRole('heading', { name: 'Hello, Bala.' }) to be visible[22m
+    
+  code: 'ERR_TEST_FAILURE'
+  name: 'TimeoutError'
+  stack: |-
+    TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\workflows.test.js:348:60)
+  ...
+# Subtest: Material layouts: every page at compact, medium and expanded widths
+not ok 2 - Material layouts: every page at compact, medium and expanded widths
+  ---
+  duration_ms: 45235.424
+  type: 'test'
+  location: 'C:\\Users\\mabog\\OneDrive\\Documents\\ChatGPT\\ISDL Guard Pro\\tests\\workflows.test.js:523:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    locator.waitFor: Timeout 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-md]').first() to be visible[22m
+    [2m    62 × locator resolved to hidden <button type="button" data-md="true" data-action="logout">Sign out</button>[22m
+    
+  code: 'ERR_TEST_FAILURE'
+  name: 'TimeoutError'
+  stack: |-
+    TestContext.<anonymous> (C:\Users\mabog\OneDrive\Documents\ChatGPT\ISDL Guard Pro\tests\workflows.test.js:585:48)
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 0
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 92904.4282
